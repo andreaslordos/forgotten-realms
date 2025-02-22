@@ -1,0 +1,24 @@
+{
+    "andreas": {
+        "name": "andreas",
+        "email": "",
+        "sex": "M",
+        "points": 0,
+        "inventory": [
+            {
+                "name": "Emerald Gem",
+                "description": "A rare emerald.",
+                "weight": 0.2,
+                "value": 100
+            },
+            {
+                "name": "Golden Coin",
+                "description": "A valuable ancient coin.",
+                "weight": 0.1,
+                "value": 50
+            }
+        ],
+        "level": "Initiate",
+        "current_room": "room_0_1"
+    }
+}
