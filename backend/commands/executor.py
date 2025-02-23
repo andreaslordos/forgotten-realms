@@ -117,10 +117,9 @@ def execute_command(command, player, game_state, player_manager, visited):
             player.set_current_room(new_room_id)
             player_manager.save_players()
             new_room = game_state.get_room(new_room_id)
-            msg = f"You move {direction} into {new_room.name}.\n"
             # For movement, we might want to not re-display the description if it was visited,
             # but you could always force a description. Here we force it for clarity.
-            msg += f"{new_room.name}\n{new_room.description}\n"
+            msg = f"{new_room.name}\n{new_room.description}\n"
             for item in new_room.items:
                 msg += f"{item.description}\n"
             # Mark the room as visited.

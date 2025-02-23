@@ -163,7 +163,6 @@ async def login(sid, data):
     initial_text = f"\n{current_room.name}\n{current_room.description}\n"
     for item in current_room.items:
         initial_text += f"{item.description}\n"
-    initial_text += "\nEnter command:"
     await send_message(sid, initial_text)
 
     # Broadcast that the player has arrived
@@ -221,19 +220,16 @@ async def background_tick():
                         if cmd.lower() == "users":
                             player_names = [info['player'].name for info in online_sessions.values()]
                             responses.append(f"Online users: {', '.join(player_names)}")
-                            responses.append("Enter command:")
                             continue
                             
                         result = execute_command(cmd, player, game_state, player_manager, visited)
                         responses.append(result)
                         if result == "quit":
                             session_data['should_disconnect'] = True
-                        responses.append("Enter command:")
                             
                     except Exception as e:
                         print(f"[Error] Command '{cmd}' failed for {player.name}: {str(e)}")
                         responses.append(f"Error processing command: {str(e)}")
-                        responses.append("Enter command:")
                 
                 # Send combined response
                 if responses:

@@ -1,29 +1,32 @@
-// src/App.js
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 
 function App() {
-  // UI states
-  const [phase, setPhase] = useState('login'); // 'login' or 'game'
+  // Game phases: 'login' or 'game'
+  const [phase, setPhase] = useState('login');
+  // Login form
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
+  // The main text log from server + user commands
   const [messages, setMessages] = useState([]);
+  // The user’s typed text (shown after the `* ` prompt)
   const [command, setCommand] = useState('');
 
-  // Socket reference
+  // Socket.IO reference
   const socketRef = useRef(null);
 
-  // We'll use this ref to scroll the message container to the bottom
+  // Scroll-to-bottom reference for the text area
   const messagesEndRef = useRef(null);
 
-  // Scroll logic: Whenever 'messages' changes, scroll to bottom
+  // Auto-scroll to bottom whenever messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
-  // Socket.IO connection on mount
+  // Establish Socket.IO connection on mount
   useEffect(() => {
     socketRef.current = io('http://localhost:8888');
 
@@ -31,7 +34,7 @@ function App() {
       console.log('Connected to backend.');
     });
 
-    // Login event responses
+    // Listen for login results
     socketRef.current.on('loginSuccess', () => {
       setPhase('game');
     });
@@ -39,7 +42,7 @@ function App() {
       alert(`Login failed: ${error}`);
     });
 
-    // General messages from server
+    // Listen for general messages
     socketRef.current.on('message', (msg) => {
       setMessages((prev) => [...prev, msg]);
     });
@@ -52,7 +55,7 @@ function App() {
     };
   }, []);
 
-  // Handle login
+  // Handle login form submit
   const handleLogin = (e) => {
     e.preventDefault();
     socketRef.current.emit('login', { username, password });
@@ -61,75 +64,113 @@ function App() {
   // Handle command submission
   const handleCommandSubmit = (e) => {
     e.preventDefault();
+    if (!command.trim()) return;
+
+    // 1) Show the typed command (with "* " prefix) in the message log
+    setMessages((prev) => [...prev, `* ${command}`]);
+
+    // 2) Send the command to the server
     socketRef.current.emit('command', command);
+
+    // 3) Clear the command input
     setCommand('');
   };
 
-  // ---------- LOGIN SCREEN ----------
+  // ---------------------------------------------
+  //  LOGIN SCREEN
+  // ---------------------------------------------
   if (phase === 'login') {
     return (
-      <div style={{ padding: '2rem' }}>
-        <h1>AI MUD</h1>
-        <form onSubmit={handleLogin}>
-          <div>
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
+      <div style={{ fontFamily: 'monospace', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {/* Purple stats bar (empty for now) */}
+        <div style={{ backgroundColor: '#fe01ff', color: '#000', padding: '0.5rem' }}>
+          <strong>AI MUD - Login</strong>
+        </div>
+
+        {/* Login form area */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ backgroundColor: '#f9f9f9', padding: '2rem', borderRadius: '4px' }}>
+            <h2>Login</h2>
+            <form onSubmit={handleLogin}>
+              <div>
+                <label>Username: </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  style={{ marginBottom: '1rem' }}
+                />
+              </div>
+              <div>
+                <label>Password: </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={{ marginBottom: '1rem' }}
+                />
+              </div>
+              <button type="submit" style={{ padding: '0.5rem' }}>Login</button>
+            </form>
           </div>
-          <div>
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          <button type="submit">Login</button>
-        </form>
+        </div>
+
+        {/* Yellow input bar is hidden during login phase */}
       </div>
     );
   }
 
-  // ---------- GAME SCREEN ----------
+  // ---------------------------------------------
+  //  GAME SCREEN
+  // ---------------------------------------------
   return (
-    <div style={{ padding: '2rem' }}>
-      <h1>AI MUD Game</h1>
+    <div style={{ fontFamily: 'monospace', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      
+      {/* Purple stats bar at the top */}
+      <div style={{ backgroundColor: '#fe01ff', color: '#000', padding: '0.5rem' }}>
+        <strong>HP: 43/43 | ST: 48 | DEX: 59</strong>  {/* example stats */}
+      </div>
 
-      {/* Message display area */}
-      <div
-        style={{
-          border: '1px solid #ccc',
-          padding: '1rem',
-          height: '300px',
-          overflowY: 'auto',
-          backgroundColor: '#f9f9f9',
-          marginBottom: '1rem',
-          whiteSpace: 'pre-wrap'
-        }}
-      >
+      {/* Main text area (retro black/green) */}
+      <div style={{
+        flex: 1,
+        backgroundColor: '#02ffff',
+        color: '#000000',
+        padding: '0.5rem',
+        overflowY: 'auto'
+      }}>
         {messages.map((msg, index) => (
           <div key={index}>{msg}</div>
         ))}
-        {/* This invisible div stays at the bottom; we scroll to it */}
+
+        {/* Show the current prompt line at the bottom:
+            "* " + whatever the user typed so far. */}
+        <div>
+          <span>* </span>
+          <span>{command}</span>
+        </div>
+
+        {/* Scroll anchor */}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Command input */}
-      <form onSubmit={handleCommandSubmit}>
+      {/* Yellow input bar */}
+      <form onSubmit={handleCommandSubmit} style={{ backgroundColor: '#ffff00', padding: '0.5rem' }}>
         <input
           type="text"
-          placeholder="Enter command..."
+          placeholder="Type your command..."
           value={command}
           onChange={(e) => setCommand(e.target.value)}
-          style={{ width: '80%', padding: '0.5rem' }}
-          required
+          style={{
+            width: '100%',
+            border: 'none',
+            outline: 'none',
+            backgroundColor: '#ffff00',
+            fontFamily: 'monospace'
+          }}
         />
-        <button type="submit" style={{ padding: '0.5rem' }}>Send</button>
       </form>
     </div>
   );

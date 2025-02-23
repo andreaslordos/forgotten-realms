@@ -79,5 +79,32 @@
         "inventory": [],
         "level": "Initiate",
         "current_room": "room_0_1"
+    },
+    "oijdfi0": {
+        "name": "Oijdfi0",
+        "email": null,
+        "sex": "M",
+        "points": 0,
+        "inventory": [],
+        "level": "Initiate",
+        "current_room": "room_2_1"
+    },
+    "iofjvoie": {
+        "name": "Iofjvoie",
+        "email": null,
+        "sex": "M",
+        "points": 0,
+        "inventory": [],
+        "level": "Initiate",
+        "current_room": "room_2_2"
+    },
+    "oijerg": {
+        "name": "Oijerg",
+        "email": null,
+        "sex": "M",
+        "points": 0,
+        "inventory": [],
+        "level": "Initiate",
+        "current_room": "room_2_1"
     }
 }
