@@ -1,28 +1,68 @@
-from commands.parser import parse_command, parse_item_command
+from commands.parser import parse_command
+from services.notifications import broadcast_arrival, broadcast_departure
+from commands.parser import parse_item_command
+import asyncio
+from globals import online_sessions
+
+def build_look_description(player, game_state):
+    current_room = game_state.get_room(player.current_room)
+    
+    # Build the room description.
+    room_desc = f"{current_room.name}\n{current_room.description}\n"
+    
+    # List items in the room, each on a new line.
+    if current_room.items:
+        for item in current_room.items:
+            room_desc += f"{item.name}: {item.description}\n"
+    
+    # List other players present in the room, with a brief summary of their inventory.
+    players_here = []
+    for sid, session_data in online_sessions.items():
+        other_player = session_data['player']
+        if other_player.current_room == current_room.room_id and other_player != player:
+            inv_summary = ", ".join(item.name for item in other_player.inventory) if other_player.inventory else "nothing"
+            players_here.append(f"{other_player.name} is here, carrying {inv_summary}")
+    
+    if players_here:
+        room_desc += "\n" + "\n".join(players_here)
+    
+    return room_desc.strip()
 
 def execute_command(command, player, game_state, player_manager, visited):
-    """
-    Process a player's command and return a string response.
-    The 'visited' set is used to avoid re-describing a room when moving,
-    but the "look" command should always force a full description.
-    """
     command = command.strip()
     
     # Quit command:
     if command.lower() in ("quit", "exit"):
-        # Perform any necessary cleanup (e.g., drop items, save state)
-        # You can call your logout routines here if needed.
         return "quit"
     
-    # Look command: force full description regardless of visited state.
-    if command.lower() == "look":
-        current_room = game_state.get_room(player.current_room)
-        room_desc = f"{current_room.name}\n{current_room.description}\n"
-        for item in current_room.items:
-            room_desc += f"{item.description}\n"
-        # Optionally, you could append a presence message here:
-        # (e.g., list other players present in the room)
-        return room_desc.strip()
+    # Movement command handling.
+    direction = parse_command(command)
+    if direction:
+        old_room = game_state.get_room(player.current_room)
+        if direction in old_room.exits:
+            new_room_id = old_room.exits[direction]
+            
+            # Notify departure from the old room.
+            asyncio.create_task(broadcast_departure(old_room.room_id, player))
+            
+            # Update player's room.
+            player.set_current_room(new_room_id)
+            player_manager.save_players()
+            
+            new_room = game_state.get_room(new_room_id)
+            
+            # Notify arrival in the new room.
+            asyncio.create_task(broadcast_arrival(player))
+            
+            # Use build_look_description to include other players immediately.
+            visited.add(new_room.room_id)
+            return build_look_description(player, game_state)
+        else:
+            return "You can't go that way."
+    
+    # Handle "look" command.
+    if command.lower() in ("look", "*look"):
+        return build_look_description(player, game_state)
     
     # Handle exits command.
     if command.lower() in ("x", "exits"):
@@ -36,12 +76,12 @@ def execute_command(command, player, game_state, player_manager, visited):
     
     if command.lower() in ("inv", "i", "inventory"):
         if not player.inventory:
-            return_str = "You aren't carrying anything!"
+            return "You aren't carrying anything!"
         else:
             return_str = "You are currently holding the following: "
             for item in player.inventory:
                 return_str += f"{item.name}, "
-        return return_str
+            return return_str
     
     # Handle item commands (take/get and drop).
     action, item_name = parse_item_command(command)
@@ -108,25 +148,4 @@ def execute_command(command, player, game_state, player_manager, visited):
             else:
                 return "You do not have that item in your inventory."
     
-    # Handle movement commands.
-    direction = parse_command(command)
-    if direction:
-        current_room = game_state.get_room(player.current_room)
-        if direction in current_room.exits:
-            new_room_id = current_room.exits[direction]
-            player.set_current_room(new_room_id)
-            player_manager.save_players()
-            new_room = game_state.get_room(new_room_id)
-            # For movement, we might want to not re-display the description if it was visited,
-            # but you could always force a description. Here we force it for clarity.
-            msg = f"{new_room.name}\n{new_room.description}\n"
-            for item in new_room.items:
-                msg += f"{item.description}\n"
-            # Mark the room as visited.
-            visited.add(new_room.room_id)
-            return msg.strip()
-        else:
-            return "You can't go that way."
-    
-    # If command doesn't match any known command.
     return "Command not recognized."

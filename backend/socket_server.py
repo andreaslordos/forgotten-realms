@@ -11,6 +11,9 @@ from managers.game_state import GameState
 from managers.map_generator import generate_3x3_grid
 from commands.executor import execute_command  # Must return strings for each command.
 
+from services.notifications import set_context
+from globals import online_sessions
+
 # ------------------------------------------------------------------------------
 # 1) Socket.IO and Web Application Setup
 # ------------------------------------------------------------------------------
@@ -63,7 +66,7 @@ if not game_state.rooms:
 #   'command_queue': [str, ...],
 #   ... (any other session data you want)
 # }
-online_sessions = {}
+# update: this is being imported from globals.py
 
 # ------------------------------------------------------------------------------
 # 4) Utility Functions
@@ -75,6 +78,8 @@ async def send_message(sid, message):
     The React client listens for 'message' to display output lines.
     """
     await sio.emit('message', message, room=sid)
+
+set_context(online_sessions, send_message)
 
 async def broadcast_arrival(new_player):
     """
@@ -119,7 +124,7 @@ async def login(sid, data):
     """
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
-    email = data.get('email', '').strip() if 'email' in data else None
+    email = data.get('email', '').strip() if data.get('email') else None
 
     if not username or not password:
         await sio.emit('loginFailure', "Username and password required", room=sid)
@@ -128,14 +133,14 @@ async def login(sid, data):
     # Check if player exists
     player = player_manager.login(username)
     if player:
-        # Existing player, check password
+        # Existing player, check password.
         try:
             auth_manager.login(username, password)
         except Exception as e:
             await sio.emit('loginFailure', str(e), room=sid)
             return
     else:
-        # Register new player
+        # Register new player.
         try:
             auth_manager.register(username, password)
         except Exception as e:
@@ -143,11 +148,11 @@ async def login(sid, data):
             return
         player = player_manager.register(username, email=email)
 
-    # Reset the player's current room to spawn on each login
+    # Reset the player's current room to the spawn room.
     player.set_current_room(player_manager.spawn_room)
     player_manager.save_players()
 
-    # Create or update the session data
+    # Create or update the session data.
     online_sessions[sid] = {
         'player': player,
         'visited': set(),
@@ -155,17 +160,16 @@ async def login(sid, data):
         'command_queue': []
     }
 
-    # Notify the client of success
+    # Notify the client of successful login.
     await sio.emit('loginSuccess', room=sid)
 
-    # Send the initial room description
-    current_room = game_state.get_room(player.current_room)
-    initial_text = f"\n{current_room.name}\n{current_room.description}\n"
-    for item in current_room.items:
-        initial_text += f"{item.description}\n"
+    # Build and send the initial room description, including other players present.
+    # Import build_look_description from your executor (ensure no circular import issues).
+    from commands.executor import build_look_description
+    initial_text = build_look_description(player, game_state)
     await send_message(sid, initial_text)
 
-    # Broadcast that the player has arrived
+    # Broadcast that the player has arrived to others in the room.
     await broadcast_arrival(player)
 
 

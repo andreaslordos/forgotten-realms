@@ -1,0 +1,36 @@
+# notifications.py
+
+from socketio import AsyncServer
+
+# Assuming online_sessions and send_message are passed in or imported appropriately.
+# You may need to adjust how you reference these depending on your architecture.
+
+def set_context(online_sessions, send_message):
+    """
+    Sets global variables for notifications. This is one way to inject
+    dependencies from your server setup.
+    """
+    global SESSIONS, send_msg
+    SESSIONS = online_sessions
+    send_msg = send_message
+
+async def broadcast_arrival(player):
+    """
+    Notify all players in the player's current room that the player has arrived.
+    """
+    room_id = player.current_room
+    display_name = player.name
+    for sid, session_data in SESSIONS.items():
+        other_player = session_data['player']
+        if other_player.current_room == room_id and other_player != player:
+            await send_msg(sid, f"{display_name} has just arrived.")
+
+async def broadcast_departure(old_room_id, player):
+    """
+    Notify all players in the specified room that the player has left.
+    """
+    display_name = player.name
+    for sid, session_data in SESSIONS.items():
+        other_player = session_data['player']
+        if other_player.current_room == old_room_id and other_player != player:
+            await send_msg(sid, f"{display_name} has just left.")
