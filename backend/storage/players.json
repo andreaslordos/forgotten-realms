@@ -25,5 +25,59 @@
         "inventory": [],
         "level": "Initiate",
         "current_room": "room_1_1"
+    },
+    "iuhuefgivueh": {
+        "name": "Iuhuefgivueh",
+        "email": null,
+        "sex": "M",
+        "points": 0,
+        "inventory": [],
+        "level": "Initiate",
+        "current_room": "room_1_1"
+    },
+    "iuohveu": {
+        "name": "Iuohveu",
+        "email": null,
+        "sex": "M",
+        "points": 0,
+        "inventory": [],
+        "level": "Initiate",
+        "current_room": "room_1_1"
+    },
+    "oiihjefv": {
+        "name": "Oiihjefv",
+        "email": null,
+        "sex": "M",
+        "points": 0,
+        "inventory": [],
+        "level": "Initiate",
+        "current_room": "room_1_1"
+    },
+    "oiuefhj": {
+        "name": "Oiuefhj",
+        "email": null,
+        "sex": "M",
+        "points": 0,
+        "inventory": [],
+        "level": "Initiate",
+        "current_room": "room_2_2"
+    },
+    "hefovi": {
+        "name": "Hefovi",
+        "email": null,
+        "sex": "M",
+        "points": 0,
+        "inventory": [],
+        "level": "Initiate",
+        "current_room": "room_2_0"
+    },
+    "ijer": {
+        "name": "Ijer",
+        "email": null,
+        "sex": "M",
+        "points": 0,
+        "inventory": [],
+        "level": "Initiate",
+        "current_room": "room_0_1"
     }
 }
