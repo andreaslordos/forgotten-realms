@@ -139,17 +139,16 @@ function App() {
         backgroundColor: '#02ffff',
         color: '#000000',
         padding: '0.5rem',
-        overflowY: 'auto'
+        overflowY: 'auto',
+        whiteSpace: 'pre-wrap'  // Ensures line breaks are respected
       }}>
         {messages.map((msg, index) => (
-          <div key={index}>{msg}</div>
+          <pre key={index} style={{ margin: 0 }}>{msg}</pre>
         ))}
 
-        {/* Show the current prompt line at the bottom:
-            "* " + whatever the user typed so far. */}
+        {/* Show the current prompt line at the bottom */}
         <div>
           <span>* </span>
-          <span>{command}</span>
         </div>
 
         {/* Scroll anchor */}
