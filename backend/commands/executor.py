@@ -78,9 +78,8 @@ def execute_command(command, player, game_state, player_manager, visited):
         if not player.inventory:
             return "You aren't carrying anything!"
         else:
-            return_str = "You are currently holding the following: "
-            for item in player.inventory:
-                return_str += f"{item.name}, "
+            return_str = "You are currently holding the following:\n"
+            return_str += " ".join([item.name for item in player.inventory])
             return return_str
     
     # Handle item commands (take/get and drop).

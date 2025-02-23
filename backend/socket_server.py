@@ -71,6 +71,20 @@ async def send_message(sid, message):
     """
     await sio.emit('message', message, room=sid)
 
+async def send_stats_update(sid, player):
+    """
+    Emit a 'statsUpdate' event to update the player's HUD in the client.
+    """
+    if not player:
+        return
+    stats_data = {
+        "name": player.name,
+        "score": player.points,
+        "stamina": player.stamina,
+        "max_stamina": player.max_stamina
+    }
+    await sio.emit("statsUpdate", stats_data, room=sid)
+
 # Inject shared globals into the notifications module.
 set_context(online_sessions, send_message)
 
@@ -90,7 +104,7 @@ async def post_login(sid):
     """
     Called after successful login or registration.
     Sets the player's room, sends the initial room description,
-    and broadcasts the arrival to other players.
+    updates stats, and broadcasts the arrival to other players.
     """
     session = online_sessions[sid]
     player = session['player']
@@ -99,9 +113,14 @@ async def post_login(sid):
     player_manager.save_players()
     # Update last_active as current login time.
     player.last_active = datetime.now()
+
+    # Send stats to client (so the top bar is correct).
+    await send_stats_update(sid, player)
+
     # Build and send the initial room description.
     initial_text = build_look_description(player, game_state)
     await send_message(sid, initial_text)
+
     # Notify others in the room.
     await broadcast_arrival(player)
 
@@ -204,9 +223,7 @@ async def command(sid, command_text):
             del session['auth_state']
             await sio.emit('setInputType', 'text', room=sid)
             # Build the custom login success message.
-            # Mask the entered password.
             masked = '*' * len(password)
-            # Format last login time (using player's last_active; adjust formatting as desired).
             last_login = player.last_active.strftime("%H:%M:%S")
             login_message = (
                 f"*{masked}\n\n"
@@ -314,11 +331,19 @@ async def background_tick():
                     except Exception as e:
                         print(f"[Error] Command '{cmd}' failed for {player.name if player else 'Unknown'}: {str(e)}")
                         responses.append(f"Error processing command: {str(e)}")
+
+                # Send combined response
                 if responses:
                     try:
                         await send_message(sid, "\n".join(responses))
                     except Exception as e:
                         print(f"[Error] Failed to send message to {player.name if player else 'Unknown'}: {str(e)}")
+
+                # After processing commands, send updated stats to the client.
+                if player:
+                    await send_stats_update(sid, player)
+
+                # Handle disconnect if requested
                 if session_data.get('should_disconnect'):
                     try:
                         await sio.disconnect(sid)

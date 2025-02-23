@@ -10,6 +10,7 @@ class Player:
         self.points = 0
         self.inventory = []  # List of Item objects
         self.stamina = levels[0]['stamina']
+        self.max_stamina = levels[0]['stamina']
         self.strength = levels[0]['strength']  # Strength determines max weight (in kg)
         self.dexterity = levels[0]['dexterity']
         self.carrying_capacity_num = levels[0]['carrying_capacity_num']  # Max number of items
@@ -27,6 +28,7 @@ class Player:
         new_level = levels[self.next_level_at]
         self.level = new_level['name']
         self.stamina = new_level['stamina']
+        self.max_stamina = new_level['stamina']
         self.strength = new_level['strength']
         self.dexterity = new_level['dexterity']
         self.carrying_capacity_num = new_level['carrying_capacity_num']
@@ -49,12 +51,12 @@ class Player:
         if self.total_inventory_weight() + item.weight > self.strength:
             return False, "This item is too heavy to carry."
         self.inventory.append(item)
-        return True, f"{item.name} added to your inventory."
+        return True, f"{item.name} taken."
 
     def remove_item(self, item):
         if item in self.inventory:
             self.inventory.remove(item)
-            return True, f"{item.name} removed from your inventory."
+            return True, f"{item.name} dropped."
         return False, "Item not found in your inventory."
 
     def drop_all_items(self):
