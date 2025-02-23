@@ -15,8 +15,8 @@
         "description": "This is the room located at position (0, 1).",
         "items": [
             {
-                "name": "Sword",
-                "description": "A sharp steel sword.",
+                "name": "sword",
+                "description": "A sharp steel sword lies on the ground here.",
                 "weight": 5,
                 "value": 0
             }
@@ -41,7 +41,14 @@
         "room_id": "room_1_0",
         "name": "Room (1, 0)",
         "description": "This is the room located at position (1, 0).",
-        "items": [],
+        "items": [
+            {
+                "name": "gem",
+                "description": "A rare emerald glistens!",
+                "weight": 0.2,
+                "value": 100
+            }
+        ],
         "exits": {
             "north": "room_0_0",
             "south": "room_2_0",
@@ -52,7 +59,14 @@
         "room_id": "room_1_1",
         "name": "Room (1, 1)",
         "description": "This is the room located at position (1, 1).",
-        "items": [],
+        "items": [
+            {
+                "name": "coin",
+                "description": "Nearby lies a golden coin.",
+                "weight": 0.1,
+                "value": 50
+            }
+        ],
         "exits": {
             "north": "room_0_1",
             "south": "room_2_1",
@@ -75,14 +89,7 @@
         "room_id": "room_2_0",
         "name": "Room (2, 0)",
         "description": "This is the room located at position (2, 0).",
-        "items": [
-            {
-                "name": "Emerald Gem",
-                "description": "A rare emerald.",
-                "weight": 0.2,
-                "value": 100
-            }
-        ],
+        "items": [],
         "exits": {
             "north": "room_1_0",
             "east": "room_2_1"
@@ -105,16 +112,10 @@
         "description": "This is the room located at position (2, 2).",
         "items": [
             {
-                "name": "Shield",
-                "description": "A sturdy wooden shield.",
+                "name": "shield",
+                "description": "A sturdy wooden shield is on the ground.",
                 "weight": 8,
                 "value": 0
-            },
-            {
-                "name": "Golden Coin",
-                "description": "A valuable ancient coin.",
-                "weight": 0.1,
-                "value": 50
             }
         ],
         "exits": {

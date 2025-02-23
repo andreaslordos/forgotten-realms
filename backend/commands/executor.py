@@ -13,7 +13,7 @@ def build_look_description(player, game_state):
     # List items in the room, each on a new line.
     if current_room.items:
         for item in current_room.items:
-            room_desc += f"{item.name}: {item.description}\n"
+            room_desc += f"{item.description}\n"
     
     # List other players present in the room, with a brief summary of their inventory.
     players_here = []
