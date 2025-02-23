@@ -3,7 +3,7 @@ import os
 import hashlib
 
 class AuthManager:
-    def __init__(self, save_file="storage/auth.json"):
+    def __init__(self, save_file="backend/storage/auth.json"):
         self.save_file = save_file
         self.credentials = {}
         self.load_credentials()

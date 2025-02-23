@@ -3,7 +3,7 @@ import os
 from models.room import Room
 
 class GameState:
-    def __init__(self, save_file="storage/rooms.json"):
+    def __init__(self, save_file="backend/storage/rooms.json"):
         self.save_file = save_file
         self.rooms = {}
         self.load_rooms()

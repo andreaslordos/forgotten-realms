@@ -3,7 +3,7 @@ import os
 from models.player import Player
 
 class PlayerManager:
-    def __init__(self, save_file="storage/players.json", spawn_room="room_1_1"):
+    def __init__(self, save_file="backend/storage/players.json", spawn_room="room_1_1"):
         self.save_file = save_file
         self.players = {}
         self.spawn_room = spawn_room
