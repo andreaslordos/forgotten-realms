@@ -10,15 +10,17 @@ class PlayerManager:
         self.load_players()
 
     def register(self, name, sex='M', email=None):
-        if name in self.players:
-            return self.players[name]
-        new_player = Player(name, sex, email, spawn_room=self.spawn_room)
-        self.players[name] = new_player
+        uname = name.lower()
+        if uname in self.players:
+            return self.players[uname]
+        display_name = name.capitalize()
+        new_player = Player(display_name, sex, email, spawn_room=self.spawn_room)
+        self.players[uname] = new_player
         self.save_players()
         return new_player
 
     def login(self, name):
-        return self.players.get(name, None)
+        return self.players.get(name.lower(), None)
 
     def save_players(self):
         with open(self.save_file, "w") as f:

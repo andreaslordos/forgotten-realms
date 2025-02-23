@@ -20,21 +20,22 @@ class AuthManager:
             json.dump(self.credentials, f, indent=4)
 
     def hash_password(self, username, password):
-        # Simple salted hash; replace with a secure method in production
         salted = password + username
         return hashlib.sha256(salted.encode("utf-8")).hexdigest()
 
     def register(self, username, password):
-        if username in self.credentials:
+        uname = username.lower()
+        if uname in self.credentials:
             raise Exception("User already exists.")
-        hashed = self.hash_password(username, password)
-        self.credentials[username] = hashed
+        hashed = self.hash_password(uname, password)
+        self.credentials[uname] = hashed
         self.save_credentials()
         return True
 
     def login(self, username, password):
-        hashed = self.hash_password(username, password)
-        if username in self.credentials and self.credentials[username] == hashed:
+        uname = username.lower()
+        hashed = self.hash_password(uname, password)
+        if uname in self.credentials and self.credentials[uname] == hashed:
             return True
         else:
             raise Exception("Invalid credentials")

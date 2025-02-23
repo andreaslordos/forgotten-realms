@@ -1,24 +1,29 @@
 {
     "andreas": {
-        "name": "andreas",
+        "name": "Andreas",
+        "email": null,
+        "sex": "M",
+        "points": 0,
+        "inventory": [],
+        "level": "Initiate",
+        "current_room": "room_1_1"
+    },
+    "andreaslordos": {
+        "name": "Andreaslordos",
+        "email": null,
+        "sex": "M",
+        "points": 0,
+        "inventory": [],
+        "level": "Initiate",
+        "current_room": "room_1_1"
+    },
+    "ejf": {
+        "name": "Ejf",
         "email": "",
         "sex": "M",
         "points": 0,
-        "inventory": [
-            {
-                "name": "Emerald Gem",
-                "description": "A rare emerald.",
-                "weight": 0.2,
-                "value": 100
-            },
-            {
-                "name": "Golden Coin",
-                "description": "A valuable ancient coin.",
-                "weight": 0.1,
-                "value": 50
-            }
-        ],
+        "inventory": [],
         "level": "Initiate",
-        "current_room": "room_0_1"
+        "current_room": "room_1_1"
     }
 }

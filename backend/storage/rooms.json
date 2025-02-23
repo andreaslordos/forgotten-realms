@@ -13,7 +13,14 @@
         "room_id": "room_0_1",
         "name": "Room (0, 1)",
         "description": "This is the room located at position (0, 1).",
-        "items": [],
+        "items": [
+            {
+                "name": "Sword",
+                "description": "A sharp steel sword.",
+                "weight": 5,
+                "value": 0
+            }
+        ],
         "exits": {
             "south": "room_1_1",
             "west": "room_0_0",
@@ -24,14 +31,7 @@
         "room_id": "room_0_2",
         "name": "Room (0, 2)",
         "description": "This is the room located at position (0, 2).",
-        "items": [
-            {
-                "name": "Sword",
-                "description": "A sharp steel sword.",
-                "weight": 5,
-                "value": 0
-            }
-        ],
+        "items": [],
         "exits": {
             "south": "room_1_2",
             "west": "room_0_1"
@@ -41,7 +41,14 @@
         "room_id": "room_1_0",
         "name": "Room (1, 0)",
         "description": "This is the room located at position (1, 0).",
-        "items": [],
+        "items": [
+            {
+                "name": "Emerald Gem",
+                "description": "A rare emerald.",
+                "weight": 0.2,
+                "value": 100
+            }
+        ],
         "exits": {
             "north": "room_0_0",
             "south": "room_2_0",
@@ -52,7 +59,14 @@
         "room_id": "room_1_1",
         "name": "Room (1, 1)",
         "description": "This is the room located at position (1, 1).",
-        "items": [],
+        "items": [
+            {
+                "name": "Golden Coin",
+                "description": "A valuable ancient coin.",
+                "weight": 0.1,
+                "value": 50
+            }
+        ],
         "exits": {
             "north": "room_0_1",
             "south": "room_2_1",
