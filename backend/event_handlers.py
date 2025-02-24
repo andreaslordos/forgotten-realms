@@ -10,6 +10,7 @@ import asyncio
 from datetime import datetime
 from commands.executor import build_look_description, execute_command
 from services.notifications import broadcast_arrival, broadcast_departure
+import re
 from globals import version
 
 def register_handlers(sio, auth_manager, player_manager, game_state, online_sessions, utils):
@@ -58,6 +59,24 @@ def register_handlers(sio, auth_manager, player_manager, game_state, online_sess
         # Stage 1: Awaiting Persona Name
         if session['auth_state'] == 'awaiting_name':
             username = command_text.strip()
+            if len(username) == 0:
+                await utils.send_message(sio, sid, "Invalid input. Please enter a name.")
+                return
+
+            # Validate: Only ASCII letters and digits, length 2-20.
+            if not re.match(r"^[A-Za-z0-9]{2,20}$", username):
+                await utils.send_message(sio, sid, 
+                    "Invalid username. Use only letters and numbers, 2 to 20 characters long, with no punctuation.")
+                return
+
+            # Check against reserved commands.
+            reserved_commands = {"shout", "help", "info", "users", "look", "get", "drop", "inventory", "quit",
+                                "n", "s", "e", "w", "north", "south", "east", "west"}
+            if username.lower() in reserved_commands:
+                await utils.send_message(sio, sid, 
+                    "That username is reserved. Please choose a different name.")
+                return
+
             session['temp_data']['username'] = username
             player = player_manager.login(username)
             if player:
