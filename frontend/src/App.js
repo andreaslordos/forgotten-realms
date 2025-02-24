@@ -163,7 +163,7 @@ function App() {
       <form onSubmit={handleCommandSubmit} style={{ backgroundColor: "#ffff00", padding: "0.5rem" }}>
         <input
           type={inputType}
-          placeholder={inputDisabled ? "Connection Closed" : "Type your command!!"}
+          placeholder={inputDisabled ? "Connection Closed" : "Type your command!!!"}
           value={command}
           onChange={(e) => setCommand(e.target.value)}
           disabled={inputDisabled}
