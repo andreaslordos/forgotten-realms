@@ -8,6 +8,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -18,15 +21,12 @@ jobs:
           node-version: '16'
 
       - name: Install Dependencies and Build
-        working-directory: frontend
         run: |
           npm install
           npm run build
 
       - name: Deploy to Firebase Hosting
-        working-directory: frontend
-        uses: w9jds/firebase-action@v2.2.0
-        with:
-          args: deploy --only hosting
+        run: |
+          npx firebase deploy --only hosting
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
