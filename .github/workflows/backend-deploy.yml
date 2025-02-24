@@ -1,0 +1,40 @@
+name: Deploy Backend to Cloud Run
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Build and Push Docker Image
+        run: |
+          cd backend
+          # Build the image for linux/amd64 and push it.
+          docker buildx build --platform linux/amd64 --push \
+            -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/my-mud-server:v${{ github.run_number }} .
+      
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy my-mud-service \
+            --image us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/my-mud-server:v${{ github.run_number }} \
+            --platform managed \
+            --region us-central1 \
+            --allow-unauthenticated
+

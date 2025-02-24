@@ -25,12 +25,13 @@ async def broadcast_arrival(player):
         if other_player.current_room == room_id and other_player != player:
             await send_msg(sid, f"{display_name} has just arrived.")
 
-async def broadcast_departure(old_room_id, player):
+async def broadcast_departure(room_id, departing_player):
     """
-    Notify all players in the specified room that the player has left.
+    Notify all players in the room that someone has left.
     """
-    display_name = player.name
     for sid, session_data in SESSIONS.items():
-        other_player = session_data['player']
-        if other_player.current_room == old_room_id and other_player != player:
-            await send_msg(sid, f"{display_name} has just left.")
+        if ('player' in session_data and 
+            session_data['player'] is not None and 
+            session_data['player'].current_room == room_id and 
+            session_data['player'] != departing_player):
+            await send_msg(sid, f"{departing_player.name} has left")

@@ -95,10 +95,11 @@ async def broadcast_arrival(new_player):
     room_id = new_player.current_room
     display_name = new_player.name
     for sid, session_data in online_sessions.items():
-        if 'player' in session_data:
-            other_player = session_data['player']
-            if other_player.current_room == room_id and other_player != new_player:
-                await send_message(sid, f"{display_name} has just arrived")
+        if ('player' in session_data and 
+            session_data['player'] is not None and 
+            session_data['player'].current_room == room_id and 
+            session_data['player'] != new_player):
+            await send_message(sid, f"{display_name} has just arrived")
 
 async def post_login(sid):
     """
@@ -142,7 +143,7 @@ async def connect(sid, environ):
     }
     # Send the mystical splash message.
     MYSTICAL_SPLASH = """\
-                       Forgotten Realms - Version 1.0
+                       Forgotten Realms - Version 1.1
 
                       Veritas Domini manet in aeternum
     ********************************************************************
