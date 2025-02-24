@@ -356,14 +356,17 @@ async def background_tick():
 # ------------------------------------------------------------------------------
 # 7) Main Entry Point
 # ------------------------------------------------------------------------------
+import os
+# If you're not using a CLI argument or config for port:
+port = int(os.environ.get('PORT', 8080))
 
 async def main():
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 8888)
+    site = web.TCPSite(runner, '0.0.0.0', port)
     print("Starting background task and web server...")
     await site.start()
-    print("Server started at http://0.0.0.0:8888")
+    print(f"Server started at http://0.0.0.0:{port}")
     try:
         await background_tick()
     finally:

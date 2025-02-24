@@ -37,7 +37,14 @@ function App() {
 
   // Establish Socket.IO connection on mount
   useEffect(() => {
-    socketRef.current = io('http://localhost:8888');
+    socketRef.current = io('https://my-mud-service-225193993451.us-central1.run.app', {
+      transports: ['websocket'] // optional
+    });
+
+    // useEffect(() => {
+    //   socketRef.current = io('https://my-mud-service-225193993451.us-central1.run.app', {
+    //     transports: ['websocket'] // optional
+    //   });
 
     // On successful connect
     socketRef.current.on('connect', () => {
@@ -131,7 +138,7 @@ function App() {
       <div style={{ backgroundColor: "#fe01ff", color: "#000", padding: "0.5rem" }}>
         {playerName
           ? <strong>{playerName} | Score: {playerScore}, Stamina: {playerStamina}/{maxStamina}</strong>
-          : <strong>The Forgotten Realms Await</strong>
+          : <strong>The Forgotten Realms</strong>
         }
       </div>
 

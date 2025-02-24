@@ -14,8 +14,23 @@ def parse_command(command_str):
         "e": "east",
         "east": "east",
         "w": "west",
-        "west": "west"
+        "west": "west",
+        "u": "up",
+        "up": "up",
+        "d": "down",
+        "down": "down",
+        "ne": "northeast",
+        "northeast": "northeast",
+        "nw": "northwest",
+        "northwest": "northwest",
+        "se": "southeast",
+        "southeast": "southeast",
+        "sw": "southwest",
+        "southwest": "southwest",
+        "in": "in",
+        "out": "out"
     }
+    
     # Remove "go" if it's the first token.
     if tokens and tokens[0] == "go":
         tokens = tokens[1:]
