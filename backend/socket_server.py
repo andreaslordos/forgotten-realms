@@ -143,7 +143,7 @@ async def connect(sid, environ):
     }
     # Send the mystical splash message.
     MYSTICAL_SPLASH = """\
-                       Forgotten Realms - Version 1.11
+                       Forgotten Realms - Version 1.12
 
                       Veritas Domini manet in aeternum
     ********************************************************************
