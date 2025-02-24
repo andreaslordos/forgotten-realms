@@ -73,9 +73,9 @@ function App() {
     });
 
     // Listen for loginSuccess event to switch to game phase
-    socketRef.current.on('loginSuccess', () => {
-      setPhase("game");
-    });
+    // socketRef.current.on('loginSuccess', () => {
+    //   setPhase("game");
+    // });
 
     // Listen for stats updates (HUD)
     socketRef.current.on('statsUpdate', (data) => {
@@ -83,6 +83,7 @@ function App() {
       setPlayerScore(data.score);
       setPlayerStamina(data.stamina);
       setMaxStamina(data.max_stamina);
+      setPhase("game");
     });
 
     return () => {
@@ -95,24 +96,18 @@ function App() {
   // Handle command submission
   const handleCommandSubmit = (e) => {
     e.preventDefault();
-    // If input is disabled, ignore
     if (inputDisabled) {
       return;
     }
-
-    // In game phase, if blank input is entered, just add a new prompt
-    if (command === "" && phase === "game") {
-      setMessages((prev) => {
-        let newMessages = [...prev];
-        if (newMessages.length > 0 && newMessages[newMessages.length - 1] === "* ") {
-          newMessages.pop();
-        }
-        return [...newMessages, "* "];
-      });
+  
+    // In game phase, if blank input is entered, just add a new prompt line and do nothing else.
+    if (command.trim() === "" && phase === "game") {
+      setMessages((prev) => [...prev, "* "]);
+      setCommand("");
       return;
     }
-
-    // For login phase, blank input is allowed and sent to the server
+  
+    // For login phase, blank input is allowed and sent to the server.
     let outputCommand = command;
     if (inputType === "password") {
       outputCommand = "*".repeat(command.length);
@@ -129,6 +124,7 @@ function App() {
     socketRef.current.emit('command', command);
     setCommand("");
   };
+  
 
   return (
     <div style={{ fontFamily: "monospace", height: "100vh", display: "flex", flexDirection: "column" }}>
