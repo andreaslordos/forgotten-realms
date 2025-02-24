@@ -37,14 +37,13 @@ function App() {
 
   // Establish Socket.IO connection on mount
   useEffect(() => {
-    socketRef.current = io('https://my-mud-service-225193993451.us-central1.run.app', {
+    const SOCKET_URL = process.env.NODE_ENV === 'production' 
+      ? 'https://my-mud-service-225193993451.us-central1.run.app'
+      : 'http://localhost:8080';
+    
+    socketRef.current = io(SOCKET_URL, {
       transports: ['websocket'] // optional
     });
-
-    // useEffect(() => {
-    //   socketRef.current = io('https://my-mud-service-225193993451.us-central1.run.app', {
-    //     transports: ['websocket'] // optional
-    //   });
 
     // On successful connect
     socketRef.current.on('connect', () => {

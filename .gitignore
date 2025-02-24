@@ -1,0 +1,66 @@
+# -----------------------
+# OS-generated files
+# -----------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------
+# Python
+# -----------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+ENV/
+env/
+.venv/
+
+# Environment variables
+*.env
+
+# -----------------------
+# Node.js
+# -----------------------
+node_modules/
+npm-debug.log
+yarn-error.log
+pnpm-lock.yaml
+
+# -----------------------
+# Frontend build output
+# -----------------------
+build/
+dist/
+
+# -----------------------
+# Firebase
+# -----------------------
+.firebase/
+.firebaserc
+
+# -----------------------
+# Logs
+# -----------------------
+*.log
+*.log.*
+
+# -----------------------
+# Docker
+# -----------------------
+# If you have local override files or generated artifacts
+docker-compose.override.yml
+docker-compose.*.yml
+*.tmp
+
+# -----------------------
+# Other
+# -----------------------
+# Local IDE configs, etc.
+.vscode/
+.idea/
+*.swp
+*.swo
