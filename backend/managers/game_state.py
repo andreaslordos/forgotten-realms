@@ -16,6 +16,10 @@ class GameState:
         return self.rooms.get(room_id, None)
 
     def save_rooms(self):
+        # Ensure the directory for the save file exists
+        directory = os.path.dirname(self.save_file)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         with open(self.save_file, "w") as f:
             json.dump({rid: r.to_dict() for rid, r in self.rooms.items()}, f, indent=4)
 
