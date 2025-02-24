@@ -21,7 +21,9 @@ async def broadcast_arrival(player):
     room_id = player.current_room
     display_name = player.name
     for sid, session_data in SESSIONS.items():
-        other_player = session_data['player']
+        other_player = session_data.get('player')
+        if not other_player:
+            continue  # Skip sessions that haven't authenticated.
         if other_player.current_room == room_id and other_player != player:
             await send_msg(sid, f"{display_name} has just arrived.")
 

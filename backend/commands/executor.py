@@ -1,6 +1,7 @@
 from commands.parser import parse_command
 from services.notifications import broadcast_arrival, broadcast_departure
 from commands.parser import parse_item_command
+from commands.communication import process_communication_command
 import asyncio
 from globals import online_sessions
 
@@ -10,15 +11,17 @@ def build_look_description(player, game_state):
     # Build the room description.
     room_desc = f"{current_room.name}\n{current_room.description}\n"
     
-    # List items in the room, each on a new line.
+    # List items in the room.
     if current_room.items:
         for item in current_room.items:
             room_desc += f"{item.description}\n"
     
-    # List other players present in the room, with a brief summary of their inventory.
+    # List other players present in the room.
     players_here = []
     for sid, session_data in online_sessions.items():
-        other_player = session_data['player']
+        other_player = session_data.get('player')
+        if not other_player:
+            continue  # Skip sessions without a player.
         if other_player.current_room == current_room.room_id and other_player != player:
             inv_summary = ", ".join(item.name for item in other_player.inventory) if other_player.inventory else "nothing"
             players_here.append(f"{other_player.name} is here, carrying {inv_summary}")

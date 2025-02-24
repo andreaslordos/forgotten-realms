@@ -1,5 +1,8 @@
+# tick_service.py
 import asyncio
 from commands.executor import execute_command
+from commands.communication import process_communication_command
+from commands.system import process_system_command
 
 async def start_background_tick(sio, online_sessions, player_manager, game_state, utils):
     print("[Tick] Background tick service starting...")
@@ -17,14 +20,13 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                 session['command_queue'].clear()
                 for cmd in commands:
                     try:
-                        if cmd.lower() == "users":
-                            player_names = [
-                                info['player'].name 
-                                for info in online_sessions.values() 
-                                if 'player' in info and info['player']
-                            ]
-                            responses.append(f"Online users: {', '.join(player_names)}")
+                        # First, try processing communication commands.
+                        if await process_communication_command(cmd, player, session, sid, online_sessions, sio, utils):
                             continue
+                        # Then, try system commands (users, help, info).
+                        if await process_system_command(cmd, player, online_sessions, sio, sid, utils):
+                            continue
+                        # Finally, process non-communication, non-system commands normally.
                         result = execute_command(cmd, player, game_state, player_manager, session.get('visited', set()))
                         responses.append(result)
                         if result == "quit":
