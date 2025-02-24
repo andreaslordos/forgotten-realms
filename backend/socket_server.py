@@ -56,6 +56,11 @@ async def main():
     finally:
         await runner.cleanup()
 
+async def handle_root(request):
+    return web.Response(text="Socket.IO server is running.")
+
+app.router.add_get('/', handle_root)
+
 if __name__ == '__main__':
     try:
         asyncio.run(main())

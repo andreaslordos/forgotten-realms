@@ -10,6 +10,7 @@ import asyncio
 from datetime import datetime
 from commands.executor import build_look_description, execute_command
 from services.notifications import broadcast_arrival, broadcast_departure
+from globals import version
 
 def register_handlers(sio, auth_manager, player_manager, game_state, online_sessions, utils):
     """
@@ -166,8 +167,8 @@ def register_handlers(sio, auth_manager, player_manager, game_state, online_sess
             'visited': set(),
             'failedAttempts': 0
         }
-        MYSTICAL_SPLASH = """\
-                  Forgotten Realms - Version 1.13
+        MYSTICAL_SPLASH = f"""\
+                  Forgotten Realms - Version {version}
 
                   Veritas Domini manet in aeternum
 ********************************************************************
