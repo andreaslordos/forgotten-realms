@@ -42,8 +42,11 @@ function App() {
       : 'http://localhost:8080';
     
     socketRef.current = io(SOCKET_URL, {
-      transports: ['websocket'] // optional
-    });
+      transports: ['websocket'],
+      reconnection: false,         // disable auto reconnection on the client
+      pingInterval: 30000,         // 30 seconds (in ms)
+      pingTimeout: 600000,         // 600 seconds (10 minutes, in ms)
+    });  
 
     // On successful connect
     socketRef.current.on('connect', () => {
