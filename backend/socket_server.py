@@ -15,7 +15,11 @@ from tick_service import start_background_tick
 import utils  # This module contains send_message and send_stats_update
 
 # Setup Socket.IO server and the web app.
-sio = socketio.AsyncServer(async_mode='aiohttp', cors_allowed_origins='*')
+sio = socketio.AsyncServer(async_mode='aiohttp', 
+                          cors_allowed_origins='*',
+                          ping_timeout=600,
+                          ping_interval=30,
+                          reconnection=False)
 app = web.Application()
 sio.attach(app)
 
