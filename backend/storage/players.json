@@ -1,0 +1,20 @@
+{
+    "stupidgem": {
+        "name": "Stupidgem",
+        "email": null,
+        "sex": "M",
+        "points": 0,
+        "inventory": [],
+        "level": "Initiate",
+        "current_room": "room_1_2"
+    },
+    "lumina": {
+        "name": "Lumina",
+        "email": null,
+        "sex": "M",
+        "points": 0,
+        "inventory": [],
+        "level": "Initiate",
+        "current_room": "room_1_1"
+    }
+}

@@ -1,155 +1,155 @@
 # backend/commands/executor.py
 
-from commands.parser import parse_command
+from commands.parser import parse_command, is_movement_command
+from commands.registry import command_registry
 from services.notifications import broadcast_arrival, broadcast_departure
-from commands.parser import parse_item_command
-from commands.communication import process_communication_command
 import asyncio
-from globals import online_sessions
+import logging
 
-def build_look_description(player, game_state):
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+async def execute_command(command_str, player, game_state, player_manager, visited, online_sessions=None, sio=None, utils=None):
+    """
+    Execute a command string.
+    
+    Args:
+        command_str (str): The command string to execute
+        player (Player): The player executing the command
+        game_state (GameState): The current game state
+        player_manager (PlayerManager): The player manager
+        visited (set): Set of room IDs the player has visited
+        online_sessions (dict): Optional online sessions dictionary
+        sio (SocketIO): Optional Socket.IO instance
+        utils (module): Optional utilities module
+        
+    Returns:
+        str: The result of the command execution
+    """
+    # Get players in the current room
+    players_in_room = []
+    if online_sessions:
+        for sid, session_data in online_sessions.items():
+            other_player = session_data.get('player')
+            if other_player and other_player.current_room == player.current_room:
+                players_in_room.append(other_player)
+    
+    # Parse the command string - now passing online_sessions to access all players
+    parsed_commands = parse_command(command_str, command_registry.command_context, players_in_room, online_sessions)
+    
+    if not parsed_commands:
+        return "Huh? I didn't understand that."
+    
+    # Execute each command and collect results
+    results = []
+    for cmd in parsed_commands:
+        verb = cmd["verb"]
+        
+        # Special case for "quit"
+        if verb.lower() == "quit":
+            return "quit"
+        
+        # Check if it's a movement command
+        if is_movement_command(verb):
+            result = await handle_movement(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils)
+            results.append(result)
+            continue
+        
+        # Get the handler for this verb
+        handler = command_registry.get_handler(verb)
+        if handler:
+            # Call the handler with the parsed command and appropriate context
+            result = await handler(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils)
+            results.append(result)
+        else:
+            results.append(f"I don't know how to '{verb}'.")
+    
+    return "\n".join(filter(None, results))  # Filter out empty results
+
+
+async def handle_movement(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+    """
+    Handle movement commands.
+    
+    Args:
+        cmd (dict): The parsed command
+        player (Player): The player executing the command
+        game_state (GameState): The current game state
+        player_manager (PlayerManager): The player manager
+        visited (set): Set of room IDs the player has visited
+        online_sessions (dict): Optional online sessions dictionary
+        sio (SocketIO): Optional Socket.IO instance
+        utils (module): Optional utilities module
+        
+    Returns:
+        str: The result of the movement
+    """
+    direction = cmd["verb"]
+    old_room = game_state.get_room(player.current_room)
+    
+    if direction in old_room.exits:
+        new_room_id = old_room.exits[direction]
+        
+        # Notify departure from the old room
+        if online_sessions and sio and utils:
+            await broadcast_departure(old_room.room_id, player)
+        
+        # Update player's room
+        player.set_current_room(new_room_id)
+        player_manager.save_players()
+        
+        new_room = game_state.get_room(new_room_id)
+        
+        # Notify arrival in the new room
+        if online_sessions and sio and utils:
+            await broadcast_arrival(player)
+        
+        # Use build_look_description to include other players immediately
+        if visited is not None:
+            visited.add(new_room.room_id)
+        return build_look_description(player, game_state, online_sessions)
+    else:
+        return "You can't go that way."
+
+
+def build_look_description(player, game_state, online_sessions=None):
+    """
+    Build a description of the current room, including items and other players.
+    
+    Args:
+        player (Player): The player looking
+        game_state (GameState): The current game state
+        online_sessions (dict): Optional online sessions dictionary
+        
+    Returns:
+        str: The room description
+    """
     current_room = game_state.get_room(player.current_room)
     
-    # Build the room description.
+    # Build the room description
     room_desc = f"{current_room.name}\n{current_room.description}\n"
     
-    # List items in the room.
+    # List items in the room
     if current_room.items:
+        items_desc = []
         for item in current_room.items:
-            room_desc += f"{item.description}\n"
+            items_desc.append(item.description)
+        if items_desc:
+            room_desc += "\n".join(items_desc) + "\n"
     
-    # List other players present in the room.
+    # List other players present in the room
     players_here = []
-    for sid, session_data in online_sessions.items():
-        other_player = session_data.get('player')
-        if not other_player:
-            continue  # Skip sessions without a player.
-        if other_player.current_room == current_room.room_id and other_player != player:
-            inv_summary = ", ".join(item.name for item in other_player.inventory) if other_player.inventory else "nothing"
-            players_here.append(f"{other_player.name} is here, carrying {inv_summary}")
+    if online_sessions:
+        for sid, session_data in online_sessions.items():
+            other_player = session_data.get('player')
+            if not other_player:
+                continue  # Skip sessions without a player
+            if other_player.current_room == current_room.room_id and other_player != player:
+                inv_summary = ", ".join(item.name for item in other_player.inventory) if other_player.inventory else "nothing"
+                players_here.append(f"{other_player.name} is here, carrying {inv_summary}")
     
     if players_here:
         room_desc += "\n" + "\n".join(players_here)
     
     return room_desc.strip()
-
-def execute_command(command, player, game_state, player_manager, visited):
-    command = command.strip()
-    
-    # Quit command:
-    if command.lower() in ("quit", "exit"):
-        return "quit"
-    
-    # Movement command handling.
-    direction = parse_command(command)
-    if direction:
-        old_room = game_state.get_room(player.current_room)
-        if direction in old_room.exits:
-            new_room_id = old_room.exits[direction]
-            
-            # Notify departure from the old room.
-            asyncio.create_task(broadcast_departure(old_room.room_id, player))
-            
-            # Update player's room.
-            player.set_current_room(new_room_id)
-            player_manager.save_players()
-            
-            new_room = game_state.get_room(new_room_id)
-            
-            # Notify arrival in the new room.
-            asyncio.create_task(broadcast_arrival(player))
-            
-            # Use build_look_description to include other players immediately.
-            visited.add(new_room.room_id)
-            return build_look_description(player, game_state)
-        else:
-            return "You can't go that way."
-    
-    # Handle "look" command.
-    if command.lower() in ("look", "*look"):
-        return build_look_description(player, game_state)
-    
-    # Handle exits command.
-    if command.lower() in ("x", "exits"):
-        current_room = game_state.get_room(player.current_room)
-        exit_list = []
-        for direction, dest_room_id in current_room.exits.items():
-            dest_room = game_state.get_room(dest_room_id)
-            dest_name = dest_room.name if dest_room else "Unknown"
-            exit_list.append(f"{direction}: {dest_name}")
-        return "Exits:\n" + "\n".join(sorted(exit_list))
-    
-    if command.lower() in ("inv", "i", "inventory"):
-        if not player.inventory:
-            return "You aren't carrying anything!"
-        else:
-            return_str = "You are currently holding the following:\n"
-            return_str += " ".join([item.name for item in player.inventory])
-            return return_str
-    
-    # Handle item commands (take/get and drop).
-    action, item_name = parse_item_command(command)
-    if action == "take":
-        current_room = game_state.get_room(player.current_room)
-        if not item_name:
-            return "Specify the item to take (e.g., 'get sword' or 'g all')."
-        if item_name == "all":
-            picked_up = []
-            for item in list(current_room.items):
-                success, message = player.add_item(item)
-                if success:
-                    current_room.remove_item(item)
-                    picked_up.append(item.name)
-            return f"Picked up: {', '.join(picked_up)}." if picked_up else "Couldn't pick up anything."
-        elif item_name == "treasure":
-            picked_up = []
-            for item in list(current_room.items):
-                if item.value > 0:
-                    success, message = player.add_item(item)
-                    if success:
-                        current_room.remove_item(item)
-                        picked_up.append(item.name)
-            return f"Treasure picked up: {', '.join(picked_up)}." if picked_up else "No treasure items available."
-        else:
-            found_item = next((i for i in current_room.items if item_name in i.name.lower()), None)
-            if found_item:
-                success, message = player.add_item(found_item)
-                if success:
-                    current_room.remove_item(found_item)
-                return message
-            else:
-                return "No such item found."
-    
-    elif action == "drop":
-        current_room = game_state.get_room(player.current_room)
-        if not item_name:
-            return "Specify the item to drop (e.g., 'drop shield' or 'dr all')."
-        if item_name == "all":
-            dropped_items = list(player.inventory)
-            if dropped_items:
-                for item in dropped_items:
-                    player.remove_item(item)
-                    current_room.add_item(item)
-                return f"Dropped all items: {', '.join(i.name for i in dropped_items)}."
-            else:
-                return "You aren't carrying anything."
-        elif item_name == "treasure":
-            dropped_items = [i for i in player.inventory if i.value > 0]
-            if dropped_items:
-                for i in dropped_items:
-                    player.remove_item(i)
-                    current_room.add_item(i)
-                return f"Dropped all treasure: {', '.join(i.name for i in dropped_items)}."
-            else:
-                return "You have no treasure items to drop."
-        else:
-            found_item = next((i for i in player.inventory if item_name in i.name.lower()), None)
-            if found_item:
-                success, message = player.remove_item(found_item)
-                if success:
-                    current_room.add_item(found_item)
-                return message
-            else:
-                return "You do not have that item in your inventory."
-    
-    return "Command not recognized."

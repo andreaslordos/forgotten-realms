@@ -1,9 +1,14 @@
 # backend/services/notifications.py
 
-from socketio import AsyncServer
+import logging
 
-# Assuming online_sessions and send_message are passed in or imported appropriately.
-# You may need to adjust how you reference these depending on your architecture.
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Global variables initialized as None
+SESSIONS = None
+send_msg = None
 
 def set_context(online_sessions, send_message):
     """
@@ -11,15 +16,24 @@ def set_context(online_sessions, send_message):
     dependencies from your server setup.
     """
     global SESSIONS, send_msg
+    logger.debug("Setting notification context")
     SESSIONS = online_sessions
     send_msg = send_message
+    logger.info("Notification context set successfully")
 
 async def broadcast_arrival(player):
     """
     Notify all players in the player's current room that the player has arrived.
     """
+    global SESSIONS, send_msg
+    if not SESSIONS or not send_msg:
+        logger.warning("Attempted to broadcast arrival but context not initialized")
+        return
+        
     room_id = player.current_room
     display_name = player.name
+    logger.debug(f"Broadcasting arrival of {display_name} to room {room_id}")
+    
     for sid, session_data in SESSIONS.items():
         other_player = session_data.get('player')
         if not other_player:
@@ -31,6 +45,13 @@ async def broadcast_departure(room_id, departing_player):
     """
     Notify all players in the room that someone has left.
     """
+    global SESSIONS, send_msg
+    if not SESSIONS or not send_msg:
+        logger.warning("Attempted to broadcast departure but context not initialized")
+        return
+        
+    logger.debug(f"Broadcasting departure of {departing_player.name} from room {room_id}")
+    
     for sid, session_data in SESSIONS.items():
         if ('player' in session_data and 
             session_data['player'] is not None and 
