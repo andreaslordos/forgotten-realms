@@ -69,7 +69,7 @@ class CommandContext:
         return word
 
 
-def parse_command_string(command_str, command_context=None, abbreviations=None, players_in_room=None):
+def parse_command_string(command_str, command_context=None, abbreviations=None, players_in_room=None, online_sessions=None):
     """
     Parses a command string using the format: <verb> <subject> WITH <object>.
     Handles conjunctions, pronouns, and command chaining.
@@ -78,12 +78,16 @@ def parse_command_string(command_str, command_context=None, abbreviations=None, 
         command_str (str): The command string to parse
         command_context (CommandContext): Optional context from previous commands
         abbreviations (dict): Optional mapping of abbreviations to full commands
-        players_in_room (list): Optional list of players in the current room
+        players_in_room (list): Optional list of players in the room
+        online_sessions (dict): Optional dictionary of all online sessions
         
     Returns:
         list: A list of parsed command dictionaries
     """
     logger.debug(f"Parsing command string: '{command_str}'")
+    
+    if not command_str:
+        return []
     
     if not command_context:
         command_context = CommandContext()
@@ -93,6 +97,34 @@ def parse_command_string(command_str, command_context=None, abbreviations=None, 
     
     # Normalize the command string
     command_str = command_str.strip().lower()
+    
+    # Handle quote-prefixed say commands
+    if command_str.startswith('"'):
+        # Remove the quote and treat as a say command
+        return [{"verb": "say", "subject": command_str[1:].strip(), "object": None, "instrument": None, "original": command_str}]
+    
+    # Check if command starts with a player name (for tell command)
+    # This needs to check all online players, not just those in the room
+    if len(command_str.split()) > 1:
+        first_word = command_str.split()[0]
+        message = " ".join(command_str.split()[1:])
+        
+        # First check online_sessions if provided (this includes all players)
+        if online_sessions:
+            all_players = [session.get('player') for session in online_sessions.values() 
+                          if session.get('player') is not None]
+            
+            for player in all_players:
+                if player.name.lower() == first_word.lower():
+                    # Convert to a tell command
+                    return [{"verb": "tell", "subject": player.name, "object": None, "instrument": message, "original": command_str}]
+        
+        # Then check players_in_room as a fallback
+        elif players_in_room:
+            for player in players_in_room:
+                if player.name.lower() == first_word.lower():
+                    # Convert to a tell command
+                    return [{"verb": "tell", "subject": player.name, "object": None, "instrument": message, "original": command_str}]
     
     # Split on conjunctions (and, then, comma, period)
     conjunctions = [" and ", " then ", ",", "."]
@@ -286,7 +318,7 @@ def is_movement_command(verb):
     """Check if a verb is a movement command."""
     return verb in DIRECTION_ALIASES.values() or verb in DIRECTION_ALIASES.keys()
 
-def parse_command(command_str, context=None, players_in_room=None):
+def parse_command(command_str, context=None, players_in_room=None, online_sessions=None):
     """
     Main entry point for command parsing.
     
@@ -294,28 +326,40 @@ def parse_command(command_str, context=None, players_in_room=None):
         command_str (str): The command string to parse
         context (CommandContext): Optional context from previous commands
         players_in_room (list): Optional list of players in the current room
+        online_sessions (dict): Optional dictionary of all online sessions
         
     Returns:
         list: A list of parsed command dictionaries
     """
     logger.debug(f"Main parse_command called with: '{command_str}'")
     
+    if not command_str:
+        return []
+    
     if not context:
         context = CommandContext()
+    
+    # Initialize commands list to avoid reference error
+    commands = []
 
+    # Handle commands starting with quote (say command)
+    if command_str.startswith('"'):
+        # Create a say command explicitly
+        say_text = command_str[1:].strip()
+        commands = [{"verb": "say", "subject": say_text, "object": None, "instrument": None, "original": command_str}]
     # First check if it's a single-letter command that could be ambiguous
-    if command_str == "u":
+    elif command_str == "u":
         # For "u", we prioritize the direction "up" for consistency
         all_abbreviations = {"u": "up"}
-        commands = parse_command_string(command_str, context, all_abbreviations, players_in_room)
+        commands = parse_command_string(command_str, context, all_abbreviations, players_in_room, online_sessions)
     elif command_str in DIRECTION_ALIASES:
         # For other direction aliases, prioritize them
         all_abbreviations = {command_str: DIRECTION_ALIASES[command_str]}
-        commands = parse_command_string(command_str, context, all_abbreviations, players_in_room)
+        commands = parse_command_string(command_str, context, all_abbreviations, players_in_room, online_sessions)
     else:
         # For all other commands, combine abbreviations with command abbreviations taking precedence
         all_abbreviations = {**DIRECTION_ALIASES, **COMMAND_ABBREVIATIONS}
-        commands = parse_command_string(command_str, context, all_abbreviations, players_in_room)
+        commands = parse_command_string(command_str, context, all_abbreviations, players_in_room, online_sessions)
     
     # Special handling for movement commands (go north, north, n, etc.)
     for cmd in commands:

@@ -52,7 +52,9 @@ async def handle_exits(cmd, player, game_state, player_manager, visited, online_
         dest_room = game_state.get_room(dest_room_id)
         dest_name = dest_room.name if dest_room else "Unknown"
         exit_list.append(f"{direction}: {dest_name}")
-    return "Exits:\n" + "\n".join(sorted(exit_list))
+    if exit_list == []:
+        return "No exits from here."
+    return "\n".join(sorted(exit_list))
 
 
 # ===== GET/TAKE COMMAND =====

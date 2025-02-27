@@ -4,6 +4,11 @@ from commands.parser import parse_command, is_movement_command
 from commands.registry import command_registry
 from services.notifications import broadcast_arrival, broadcast_departure
 import asyncio
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 async def execute_command(command_str, player, game_state, player_manager, visited, online_sessions=None, sio=None, utils=None):
     """
@@ -30,8 +35,8 @@ async def execute_command(command_str, player, game_state, player_manager, visit
             if other_player and other_player.current_room == player.current_room:
                 players_in_room.append(other_player)
     
-    # Parse the command string
-    parsed_commands = parse_command(command_str, command_registry.command_context, players_in_room)
+    # Parse the command string - now passing online_sessions to access all players
+    parsed_commands = parse_command(command_str, command_registry.command_context, players_in_room, online_sessions)
     
     if not parsed_commands:
         return "Huh? I didn't understand that."
@@ -60,7 +65,7 @@ async def execute_command(command_str, player, game_state, player_manager, visit
         else:
             results.append(f"I don't know how to '{verb}'.")
     
-    return "\n".join(results)
+    return "\n".join(filter(None, results))  # Filter out empty results
 
 
 async def handle_movement(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
@@ -88,7 +93,7 @@ async def handle_movement(cmd, player, game_state, player_manager, visited, onli
         
         # Notify departure from the old room
         if online_sessions and sio and utils:
-            asyncio.create_task(broadcast_departure(old_room.room_id, player))
+            await broadcast_departure(old_room.room_id, player)
         
         # Update player's room
         player.set_current_room(new_room_id)
@@ -98,7 +103,7 @@ async def handle_movement(cmd, player, game_state, player_manager, visited, onli
         
         # Notify arrival in the new room
         if online_sessions and sio and utils:
-            asyncio.create_task(broadcast_arrival(player))
+            await broadcast_arrival(player)
         
         # Use build_look_description to include other players immediately
         if visited is not None:

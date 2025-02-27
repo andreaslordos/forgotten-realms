@@ -6,6 +6,15 @@
         "points": 0,
         "inventory": [],
         "level": "Initiate",
-        "current_room": "room_1_1"
+        "current_room": "room_2_1"
+    },
+    "lumina": {
+        "name": "Lumina",
+        "email": null,
+        "sex": "M",
+        "points": 0,
+        "inventory": [],
+        "level": "Initiate",
+        "current_room": "room_2_2"
     }
 }

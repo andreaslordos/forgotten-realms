@@ -1,6 +1,9 @@
 # backend/commands/communication.py
 
 from commands.registry import command_registry
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ===== SHOUT COMMAND =====
 async def handle_shout(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
@@ -19,10 +22,20 @@ async def handle_shout(cmd, player, game_state, player_manager, visited, online_
     """
     subject = cmd.get("subject")
     
+    # Get the current sid from the online_sessions
+    current_sid = None
+    for sid, session in online_sessions.items():
+        if session.get('player') == player:
+            current_sid = sid
+            break
+    
+    if not current_sid:
+        return "Error: Session not found"
+    
     # If no message provided, prompt for one
     if not subject:
-        if 'pending_comm' not in online_sessions.get(sio.manager.sid, {}):
-            online_sessions[sio.manager.sid]['pending_comm'] = {'type': 'shout'}
+        if 'pending_comm' not in online_sessions.get(current_sid, {}):
+            online_sessions[current_sid]['pending_comm'] = {'type': 'shout'}
             return "OK, tell me the message:"
         return "You need to provide a message to shout."
     
@@ -31,10 +44,10 @@ async def handle_shout(cmd, player, game_state, player_manager, visited, online_
     
     if online_sessions and sio and utils:
         for sid, session_data in online_sessions.items():
-            if 'player' in session_data and sid != sio.manager.sid:
+            if 'player' in session_data and sid != current_sid:
                 await utils.send_message(sio, sid, shout_text)
     
-    return f"You shout: {subject}"
+    return ""
 
 
 # ===== SAY COMMAND (ROOM MESSAGE) =====
@@ -58,6 +71,16 @@ async def handle_say(cmd, player, game_state, player_manager, visited, online_se
     if not subject:
         return "What do you want to say?"
     
+    # Get the current sid from the online_sessions
+    current_sid = None
+    for sid, session in online_sessions.items():
+        if session.get('player') == player:
+            current_sid = sid
+            break
+    
+    if not current_sid:
+        return "Error: Session not found"
+    
     # Format the message
     room_msg = f"{player.name} the {player.level} says \"{subject}\""
     
@@ -67,10 +90,10 @@ async def handle_say(cmd, player, game_state, player_manager, visited, online_se
             other_player = session_data.get('player')
             if (other_player and 
                 other_player.current_room == player.current_room and 
-                sid != sio.manager.sid):
+                sid != current_sid):
                 await utils.send_message(sio, sid, room_msg)
     
-    return f"You say: {subject}"
+    return ""
 
 
 # ===== TELL COMMAND (PRIVATE MESSAGE) =====
@@ -95,10 +118,20 @@ async def handle_tell(cmd, player, game_state, player_manager, visited, online_s
     if not subject:
         return "Who do you want to tell something to?"
     
+    # Get the current sid from the online_sessions
+    current_sid = None
+    for sid, session in online_sessions.items():
+        if session.get('player') == player:
+            current_sid = sid
+            break
+    
+    if not current_sid:
+        return "Error: Session not found"
+    
     if not instrument:
         # If no message provided, prompt for one
-        if 'pending_comm' not in online_sessions.get(sio.manager.sid, {}):
-            online_sessions[sio.manager.sid]['pending_comm'] = {
+        if 'pending_comm' not in online_sessions.get(current_sid, {}):
+            online_sessions[current_sid]['pending_comm'] = {
                 'type': 'private', 
                 'recipient': subject
             }
@@ -108,7 +141,6 @@ async def handle_tell(cmd, player, game_state, player_manager, visited, online_s
     # Find the recipient
     recipient_sid = None
     recipient_name = subject.lower()
-    
     for sid, session_data in online_sessions.items():
         other_player = session_data.get('player')
         if other_player and other_player.name.lower() == recipient_name:
@@ -123,7 +155,7 @@ async def handle_tell(cmd, player, game_state, player_manager, visited, online_s
                 recipient_sid, 
                 f"{player.name} the {player.level} tells you \"{instrument}\""
             )
-        return f"You tell {subject}: {instrument}"
+        return f""
     else:
         return f"Player '{subject}' is not online."
 
@@ -149,6 +181,16 @@ async def handle_act(cmd, player, game_state, player_manager, visited, online_se
     if not subject:
         return "What do you want to do?"
     
+    # Get the current sid from the online_sessions
+    current_sid = None
+    for sid, session in online_sessions.items():
+        if session.get('player') == player:
+            current_sid = sid
+            break
+    
+    if not current_sid:
+        return "Error: Session not found"
+    
     # Format the action message
     action_msg = f"**{player.name} {subject}**"
     
@@ -158,7 +200,7 @@ async def handle_act(cmd, player, game_state, player_manager, visited, online_se
             other_player = session_data.get('player')
             if (other_player and 
                 other_player.current_room == player.current_room and 
-                sid != sio.manager.sid):
+                sid != current_sid):
                 await utils.send_message(sio, sid, action_msg)
     
     return action_msg
@@ -177,8 +219,18 @@ async def handle_converse(cmd, player, game_state, player_manager, visited, onli
     Returns:
         str: Confirmation message
     """
-    if online_sessions and sio.manager.sid in online_sessions:
-        session = online_sessions[sio.manager.sid]
+    # Get the current sid from the online_sessions
+    current_sid = None
+    for sid, session in online_sessions.items():
+        if session.get('player') == player:
+            current_sid = sid
+            break
+    
+    if not current_sid:
+        return "Error: Session not found"
+    
+    if online_sessions and current_sid in online_sessions:
+        session = online_sessions[current_sid]
         current_mode = session.get('converse_mode', False)
         session['converse_mode'] = not current_mode
         
@@ -221,7 +273,7 @@ async def handle_pending_communication(pending, message_text, player, sid, onlin
                 await utils.send_message(sio, osid, shout_text)
         
         del online_sessions[sid]['pending_comm']
-        return f"You shout: {message_text}"
+        return message_text
     
     elif pending['type'] == 'private':
         # Handle pending private message
@@ -241,7 +293,7 @@ async def handle_pending_communication(pending, message_text, player, sid, onlin
                 f"{player.name} the {player.level} tells you \"{message_text}\""
             )
             del online_sessions[sid]['pending_comm']
-            return f"You tell {pending['recipient']}: {message_text}"
+            return ""
         else:
             del online_sessions[sid]['pending_comm']
             return f"Player '{pending['recipient']}' is not online."
@@ -260,7 +312,6 @@ command_registry.register("converse", handle_converse, "Toggle converse mode (au
 
 # Register aliases
 command_registry.register_alias("sh", "shout")
-command_registry.register_alias("s", "say")
-command_registry.register_alias("\"", "say")  # Starting with a quote is a say command
+command_registry.register_alias('"', "say")  # Starting with a quote is a say command
 command_registry.register_alias("t", "tell")
 command_registry.register_alias("whisper", "tell")
