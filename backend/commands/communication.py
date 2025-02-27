@@ -1,86 +1,266 @@
 # backend/commands/communication.py
 
-async def process_communication_command(cmd, player, session, sid, online_sessions, sio, utils):
+from commands.registry import command_registry
+
+# ===== SHOUT COMMAND =====
+async def handle_shout(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
     """
-    Processes communication commands:
-      - Global shout: "shout <message>" or "shout" + prompt
-      - Room message: "<message>" (starts with quote)
-      - Private message: "<player> <message>" or "<player>" + prompt
+    Handle global shout command.
+    
+    Args:
+        cmd (dict): The parsed command
+        player (Player): The player shouting
+        online_sessions (dict): Online sessions dictionary
+        sio (SocketIO): Socket.IO instance
+        utils (module): Utilities module
+        
+    Returns:
+        str: Confirmation message
     """
-    # Handle pending communications first
-    if 'pending_comm' in session:
-        return await handle_pending_communication(session.pop('pending_comm'), cmd, player, sid, online_sessions, sio, utils)
-
-    # Parse and handle new communications
-    if cmd.lower().startswith("shout"):
-        return await handle_shout(cmd, player, session, sid, online_sessions, sio, utils)
+    subject = cmd.get("subject")
     
-    if cmd.startswith('"'):
-        return await handle_room_message(cmd[1:].strip(), player, sid, online_sessions, sio, utils)
+    # If no message provided, prompt for one
+    if not subject:
+        if 'pending_comm' not in online_sessions.get(sio.manager.sid, {}):
+            online_sessions[sio.manager.sid]['pending_comm'] = {'type': 'shout'}
+            return "OK, tell me the message:"
+        return "You need to provide a message to shout."
     
-    # Try to handle as private message
-    tokens = cmd.split(maxsplit=1)
-    recipient_sid = find_recipient_sid(tokens[0], online_sessions)
-    if recipient_sid is not None:
-        return await handle_private_message(tokens, player, session, sid, recipient_sid, sio, utils)
+    # Broadcast the shout to all players
+    shout_text = f"{player.name} the {player.level} shouts \"{subject}\""
+    
+    if online_sessions and sio and utils:
+        for sid, session_data in online_sessions.items():
+            if 'player' in session_data and sid != sio.manager.sid:
+                await utils.send_message(sio, sid, shout_text)
+    
+    return f"You shout: {subject}"
 
-    return False
 
-async def handle_pending_communication(pending, cmd, player, sid, online_sessions, sio, utils):
-    message = cmd.strip()
-    if not message:
-        return True
+# ===== SAY COMMAND (ROOM MESSAGE) =====
+async def handle_say(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+    """
+    Handle saying something in the current room.
+    
+    Args:
+        cmd (dict): The parsed command
+        player (Player): The player saying
+        online_sessions (dict): Online sessions dictionary
+        sio (SocketIO): Socket.IO instance
+        utils (module): Utilities module
+        
+    Returns:
+        str: Confirmation message
+    """
+    subject = cmd.get("subject")
+    
+    # If no message provided, return an error
+    if not subject:
+        return "What do you want to say?"
+    
+    # Format the message
+    room_msg = f"{player.name} the {player.level} says \"{subject}\""
+    
+    # Send to all players in the same room
+    if online_sessions and sio and utils:
+        for sid, session_data in online_sessions.items():
+            other_player = session_data.get('player')
+            if (other_player and 
+                other_player.current_room == player.current_room and 
+                sid != sio.manager.sid):
+                await utils.send_message(sio, sid, room_msg)
+    
+    return f"You say: {subject}"
 
+
+# ===== TELL COMMAND (PRIVATE MESSAGE) =====
+async def handle_tell(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+    """
+    Handle sending a private message to another player.
+    
+    Args:
+        cmd (dict): The parsed command
+        player (Player): The player sending the message
+        online_sessions (dict): Online sessions dictionary
+        sio (SocketIO): Socket.IO instance
+        utils (module): Utilities module
+        
+    Returns:
+        str: Confirmation message
+    """
+    subject = cmd.get("subject")  # recipient
+    instrument = cmd.get("instrument")  # message
+    
+    # Check if recipient and message are provided
+    if not subject:
+        return "Who do you want to tell something to?"
+    
+    if not instrument:
+        # If no message provided, prompt for one
+        if 'pending_comm' not in online_sessions.get(sio.manager.sid, {}):
+            online_sessions[sio.manager.sid]['pending_comm'] = {
+                'type': 'private', 
+                'recipient': subject
+            }
+            return f"OK, tell me your message for {subject}:"
+        return f"What do you want to tell {subject}?"
+    
+    # Find the recipient
+    recipient_sid = None
+    recipient_name = subject.lower()
+    
+    for sid, session_data in online_sessions.items():
+        other_player = session_data.get('player')
+        if other_player and other_player.name.lower() == recipient_name:
+            recipient_sid = sid
+            break
+    
+    if recipient_sid:
+        if sio and utils:
+            # Send the private message
+            await utils.send_message(
+                sio, 
+                recipient_sid, 
+                f"{player.name} the {player.level} tells you \"{instrument}\""
+            )
+        return f"You tell {subject}: {instrument}"
+    else:
+        return f"Player '{subject}' is not online."
+
+
+# ===== ACT COMMAND =====
+async def handle_act(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+    """
+    Handle acting out an emote in the current room.
+    
+    Args:
+        cmd (dict): The parsed command
+        player (Player): The player acting
+        online_sessions (dict): Online sessions dictionary
+        sio (SocketIO): Socket.IO instance
+        utils (module): Utilities module
+        
+    Returns:
+        str: Confirmation message
+    """
+    subject = cmd.get("subject")
+    
+    # If no action provided, return an error
+    if not subject:
+        return "What do you want to do?"
+    
+    # Format the action message
+    action_msg = f"**{player.name} {subject}**"
+    
+    # Send to all players in the same room
+    if online_sessions and sio and utils:
+        for sid, session_data in online_sessions.items():
+            other_player = session_data.get('player')
+            if (other_player and 
+                other_player.current_room == player.current_room and 
+                sid != sio.manager.sid):
+                await utils.send_message(sio, sid, action_msg)
+    
+    return action_msg
+
+
+# ===== CONVERSE COMMAND =====
+async def handle_converse(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+    """
+    Toggle converse mode for a player.
+    
+    Args:
+        cmd (dict): The parsed command
+        player (Player): The player
+        online_sessions (dict): Online sessions dictionary
+        
+    Returns:
+        str: Confirmation message
+    """
+    if online_sessions and sio.manager.sid in online_sessions:
+        session = online_sessions[sio.manager.sid]
+        current_mode = session.get('converse_mode', False)
+        session['converse_mode'] = not current_mode
+        
+        if session['converse_mode']:
+            return ("Converse mode ON. Everything you type will be spoken in the room.\n"
+                   "Use * or > to exit, or use (command) for special commands.")
+        else:
+            return "Converse mode OFF."
+    
+    return "Could not toggle converse mode."
+
+
+# ===== HANDLE PENDING COMMUNICATION =====
+async def handle_pending_communication(pending, message_text, player, sid, online_sessions, sio, utils):
+    """
+    Process a pending communication request.
+    
+    Args:
+        pending (dict): The pending communication info
+        message_text (str): The message text
+        player (Player): The player
+        sid (str): The session ID
+        online_sessions (dict): Online sessions dictionary
+        sio (SocketIO): Socket.IO instance
+        utils (module): Utilities module
+        
+    Returns:
+        str: Confirmation message
+    """
+    if not message_text.strip():
+        del online_sessions[sid]['pending_comm']
+        return "Communication cancelled."
+    
     if pending['type'] == 'shout':
-        await broadcast_message(f"{player.name} the {player.level} shouts \"{message}\"",
-                              sid, online_sessions, sio, utils)
+        # Handle pending shout
+        shout_text = f"{player.name} the {player.level} shouts \"{message_text}\""
+        
+        for osid, osession in online_sessions.items():
+            if 'player' in osession and osid != sid:
+                await utils.send_message(sio, osid, shout_text)
+        
+        del online_sessions[sid]['pending_comm']
+        return f"You shout: {message_text}"
+    
     elif pending['type'] == 'private':
-        recipient_sid = find_recipient_sid(pending['recipient'], online_sessions)
+        # Handle pending private message
+        recipient_name = pending['recipient'].lower()
+        recipient_sid = None
+        
+        for osid, osession in online_sessions.items():
+            other_player = osession.get('player')
+            if other_player and other_player.name.lower() == recipient_name:
+                recipient_sid = osid
+                break
+        
         if recipient_sid:
-            await utils.send_message(sio, recipient_sid,
-                                   f"{player.name} the {player.level} tells you \"{message}\"")
-    return True
+            await utils.send_message(
+                sio, 
+                recipient_sid, 
+                f"{player.name} the {player.level} tells you \"{message_text}\""
+            )
+            del online_sessions[sid]['pending_comm']
+            return f"You tell {pending['recipient']}: {message_text}"
+        else:
+            del online_sessions[sid]['pending_comm']
+            return f"Player '{pending['recipient']}' is not online."
+    
+    # Unknown pending type
+    del online_sessions[sid]['pending_comm']
+    return "Communication cancelled."
 
-async def handle_shout(cmd, player, session, sid, online_sessions, sio, utils):
-    parts = cmd.split(maxsplit=1)
-    if len(parts) == 1 or not parts[1].strip():
-        session['pending_comm'] = {'type': 'shout'}
-        await utils.send_message(sio, sid, "OK, tell me the message:")
-    else:
-        await broadcast_message(f"{player.name} the {player.level} shouts \"{parts[1].strip()}\"",
-                              sid, online_sessions, sio, utils)
-    return True
 
-async def handle_room_message(message, player, sid, online_sessions, sio, utils):
-    if not message:
-        return True
-    room_msg = f"{player.name} the {player.level} says \"{message}\""
-    for osid, osession in online_sessions.items():
-        other_player = osession.get('player')
-        if other_player and other_player.current_room == player.current_room and osid != sid:
-            await utils.send_message(sio, osid, room_msg)
-    return True
+# Register communication commands
+command_registry.register("shout", handle_shout, "Broadcast a message to all players.")
+command_registry.register("say", handle_say, "Say something to everyone in your current room.")
+command_registry.register("tell", handle_tell, "Send a private message to another player.")
+command_registry.register("act", handle_act, "Perform an action or emote in the current room.")
+command_registry.register("converse", handle_converse, "Toggle converse mode (auto-say).")
 
-async def handle_private_message(tokens, player, session, sid, recipient_sid, sio, utils):
-    if len(tokens) == 1 or not tokens[1].strip():
-        session['pending_comm'] = {'type': 'private', 'recipient': tokens[0]}
-        await utils.send_message(sio, sid, "OK, tell me your message:")
-    else:
-        await utils.send_message(sio, recipient_sid,
-                               f"{player.name} the {player.level} tells you \"{tokens[1].strip()}\"")
-    return True
-
-def find_recipient_sid(name, online_sessions):
-    """Find a player's session ID by their name (case-insensitive)"""
-    name = name.lower()
-    for osid, osession in online_sessions.items():
-        other_player = osession.get('player')
-        if other_player and other_player.name.lower() == name:
-            return osid
-    return None
-
-async def broadcast_message(message, sender_sid, online_sessions, sio, utils):
-    """Broadcast a message to all players except the sender"""
-    for osid in online_sessions:
-        if osid != sender_sid:
-            await utils.send_message(sio, osid, message)
+# Register aliases
+command_registry.register_alias("sh", "shout")
+command_registry.register_alias("s", "say")
+command_registry.register_alias("\"", "say")  # Starting with a quote is a say command
+command_registry.register_alias("t", "tell")
+command_registry.register_alias("whisper", "tell")
