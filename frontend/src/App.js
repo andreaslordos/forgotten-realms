@@ -35,29 +35,18 @@ function App() {
     }
   }, [messages]);
 
-  useEffect(() => {
-    // Set up a heartbeat to keep the connection alive
-    const heartbeatInterval = setInterval(() => {
-      if (socketRef.current && socketRef.current.connected) {
-        socketRef.current.emit('heartbeat', {});
-      }
-    }, 20000); // Send a heartbeat every 20 seconds
-    
-    return () => clearInterval(heartbeatInterval);
-  }, []);
-
   // Establish Socket.IO connection on mount
   useEffect(() => {
     const SOCKET_URL = process.env.NODE_ENV === 'production' 
-      ? 'https://my-mud-service-225193993451.us-central1.run.app'
+      ? 'http://35.184.168.121:8080'  // Use static IP for production
       : 'http://localhost:8080';
-    
+
     socketRef.current = io(SOCKET_URL, {
       transports: ['websocket'],
-      reconnection: false,         // disable auto reconnection on the client
-      pingInterval: 10000,         // 10 seconds (in ms)
-      pingTimeout: 30000,         // 30 seconds (in ms)
-    });  
+      reconnection: false,   // Disable auto-reconnection
+      pingInterval: 10000,   // 10 seconds (in ms)
+      pingTimeout: 30000,    // 30 seconds (in ms)
+    });
 
     // On successful connect
     socketRef.current.on('connect', () => {

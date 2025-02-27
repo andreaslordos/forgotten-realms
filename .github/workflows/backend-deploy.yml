@@ -1,4 +1,4 @@
-name: Deploy Backend to Cloud Run
+name: Deploy Backend to Compute Engine
 
 on:
   push:
@@ -24,24 +24,13 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Verify active account and configure Docker for Artifact Registry
+      - name: SSH into VM and Update Backend
         run: |
-          echo "Active accounts:"
-          gcloud auth list
-          echo "Configuring Docker authentication for Artifact Registry..."
-          gcloud auth configure-docker us-central1-docker.pkg.dev
-
-      - name: Build and Push Docker Image
-        run: |
-          cd backend
-          docker buildx build --platform linux/amd64 --push \
-            -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/my-mud-server:v${{ github.run_number }} .
-
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy my-mud-service \
-            --image us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/my-mud-server:v${{ github.run_number }} \
-            --platform managed \
-            --region us-central1 \
-            --allow-unauthenticated \
-            --timeout=60s
+          gcloud compute ssh my-socket-server --zone=us-central1-a --command "
+            cd ~/forgotten-realms &&
+            git pull origin main &&
+            cd backend &&
+            source venv/bin/activate &&
+            pip install -r requirements.txt &&
+            sudo systemctl restart socket-server
+          "
