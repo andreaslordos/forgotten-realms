@@ -38,7 +38,7 @@ function App() {
   // Establish Socket.IO connection on mount
   useEffect(() => {
     const SOCKET_URL = process.env.NODE_ENV === 'production' 
-      ? 'http://35.184.168.121:8080'  // Use static IP for production
+      ? 'wss://35.184.168.121:8080'  // Use static IP for production
       : 'http://localhost:8080';
 
     socketRef.current = io(SOCKET_URL, {
