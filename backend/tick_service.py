@@ -1,4 +1,5 @@
-# tick_service.py
+# backend/tick_service.py
+
 import asyncio
 from commands.executor import execute_command
 from commands.communication import process_communication_command

@@ -1,4 +1,4 @@
-# commands/communication.py
+# backend/commands/communication.py
 
 async def process_communication_command(cmd, player, session, sid, online_sessions, sio, utils):
     """

@@ -1,3 +1,5 @@
+# backend/managers/game_state.py
+
 import json
 import os
 from models.room import Room

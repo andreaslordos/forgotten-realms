@@ -1,3 +1,5 @@
+# backend/managers/map_generator.py
+
 from models.room import Room
 
 def generate_3x3_grid():

@@ -1,3 +1,5 @@
+# backend/managers/player.py
+
 import json
 import os
 from models.player import Player

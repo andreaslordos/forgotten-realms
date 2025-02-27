@@ -1,3 +1,5 @@
+# backend/managers/auth.py
+
 import json
 import os
 import hashlib

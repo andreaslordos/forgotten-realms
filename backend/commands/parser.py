@@ -1,3 +1,5 @@
+# backend/commands/parser.py
+
 def parse_command(command_str):
     """
     Parses a movement command and returns a canonical direction if recognized.

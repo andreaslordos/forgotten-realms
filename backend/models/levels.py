@@ -1,3 +1,5 @@
+# backend/models/levels.py
+
 levels = {
     0: {"name": "Initiate", "stamina": 45, "strength": 45, "dexterity": 45, "carrying_capacity_num": 6},
     400: {"name": "Novice", "stamina": 50, "strength": 50, "dexterity": 50, "carrying_capacity_num": 7},

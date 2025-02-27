@@ -1,3 +1,5 @@
+# backend/models/item.py
+
 class Item:
     def __init__(self, name, description, weight=1, value=0):
         """

@@ -1,4 +1,4 @@
-# commands/system.py
+# backend/commands/system.py
 
 async def process_system_command(cmd, player, online_sessions, sio, sid, utils):
     """

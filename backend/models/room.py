@@ -1,3 +1,5 @@
+# backend/models/room.py
+
 from models.item import Item
 
 class Room:
