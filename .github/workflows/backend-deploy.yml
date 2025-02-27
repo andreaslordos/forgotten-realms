@@ -27,7 +27,7 @@ jobs:
       - name: SSH into VM and Update Backend
         run: |
           gcloud compute ssh my-socket-server --zone=us-central1-a --command "
-            cd ~/forgotten-realms &&
+            cd /home/andreas/forgotten-realms &&
             git pull origin main &&
             cd backend &&
             source venv/bin/activate &&
