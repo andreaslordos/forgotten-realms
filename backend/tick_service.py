@@ -1,9 +1,7 @@
-# backend/tick_service.py
-
 import asyncio
 from commands.executor import execute_command
 from commands.communication import handle_pending_communication
-from commands.parser import parse_command_string
+from commands.parser import parse_command
 import time
 import logging
 
@@ -15,16 +13,16 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
     print("[Tick] Background tick service starting...")
     logger.info("Background tick service starting")
     
-    # Store the last activity time for inactivity reset
+    # Track last activity time (for inactivity reset)
     last_activity = time.time()
     
     while True:
         try:
             await asyncio.sleep(0.5)
             
-            # Check for inactivity reset (2 hours)
+            # Inactivity reset check (2 hours)
             current_time = time.time()
-            if online_sessions and (current_time - last_activity) > 7200:  # 2 hours in seconds
+            if online_sessions and (current_time - last_activity) > 7200:
                 print("[Tick] Triggering inactivity reset after 2 hours...")
                 logger.info("Triggering inactivity reset after 2 hours")
                 # TODO: Implement mid-week reset here
@@ -34,7 +32,6 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                 continue
             
             for sid, session in list(online_sessions.items()):
-                # Update last activity time for this session
                 if session.get('command_queue') or session.get('player'):
                     last_activity = current_time
                 
@@ -45,7 +42,7 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                 if not player:
                     continue
                 
-                # Process only one command per tick
+                # Process one command per tick
                 cmd = session['command_queue'].pop(0)
                 logger.info(f"Processing command: {cmd} for player {player.name}")
                 
@@ -64,44 +61,48 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                         await utils.send_message(sio, sid, pending_result)
                         continue
                     
-                    # Check for converse mode
+                    # Handle converse mode
                     if session.get('converse_mode'):
-                        # Check for exit commands (* or >)
                         if cmd.startswith('*') or cmd.startswith('>'):
                             session['converse_mode'] = False
                             await utils.send_message(sio, sid, "Converse mode OFF.")
                             continue
                         else:
-                            # Simply treat as a say command (no more parentheses parsing)
+                            # For converse mode, prepend "say" (and do no further splitting)
                             cmd = f"say {cmd}"
                     
-                    # If this is a chained command (contains "and", "then", etc.), split it and add parts back to queue
-                    if any(conj in cmd for conj in [" and ", " then ", ",", "."]):
-                        # First, send the original command as an echo for clarity
+                    # Use the parser to detect if this is a message command.
+                    # For example, if the command starts with a player's name, the parser should return a "tell" command.
+                    parsed_cmds = parse_command(cmd, None, session.get('players_in_room'), online_sessions)
+                    is_message_cmd = False
+                    if parsed_cmds:
+                        # We assume the parser returns a list with one command.
+                        verb = parsed_cmds[0].get("verb", "")
+                        if verb in {"say", "tell", "shout", "whisper"}:
+                            is_message_cmd = True
+                    
+                    # If not a message command and it contains chaining tokens, split it.
+                    conjunctions = [" and ", " then ", ",", "."]
+                    if not is_message_cmd and any(conj in cmd for conj in conjunctions):
+                        # Echo the original chained command for clarity.
                         await utils.send_message(sio, sid, f"> {cmd}")
                         
-                        # Split the command and add parts back to the queue (in reverse to maintain order)
-                        conjunctions = [" and ", " then ", ",", "."]
                         command_parts = [cmd]
                         for conj in conjunctions:
                             new_parts = []
                             for part in command_parts:
                                 new_parts.extend(part.split(conj))
                             command_parts = new_parts
-                        
-                        # Remove empty parts and add valid ones back to the queue
                         valid_parts = [part.strip() for part in command_parts if part.strip()]
-                        # Add in reverse order so they'll be processed in the correct order
+                        # Re-add the split parts to the front of the queue (in reverse order).
                         for part in reversed(valid_parts):
                             session['command_queue'].insert(0, part)
-                        
-                        # Skip further processing this tick
-                        continue
+                        continue  # Process the next tick (which will process the first split command)
                     
-                    # Echo the individual command before executing it
+                    # Echo the individual command before executing it.
                     await utils.send_message(sio, sid, f"{cmd}")
                     
-                    # Process the command
+                    # Process the command.
                     result = await execute_command(
                         cmd, 
                         player, 
@@ -113,7 +114,6 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                         utils
                     )
                     
-                    # Send the result immediately
                     await utils.send_message(sio, sid, result)
                     
                     if result == "quit":

@@ -71,18 +71,18 @@ class CommandContext:
 
 def parse_command_string(command_str, command_context=None, abbreviations=None, players_in_room=None, online_sessions=None):
     """
-    Parses a command string using the format: <verb> <subject> WITH <object>.
-    Handles conjunctions, pronouns, and command chaining.
+    Parses a command string into a single command dictionary.
+    (Any splitting on chaining tokens is now handled later in the tick service.)
     
     Args:
-        command_str (str): The command string to parse
-        command_context (CommandContext): Optional context from previous commands
-        abbreviations (dict): Optional mapping of abbreviations to full commands
-        players_in_room (list): Optional list of players in the room
-        online_sessions (dict): Optional dictionary of all online sessions
+        command_str (str): The command string to parse.
+        command_context (CommandContext): Optional context from previous commands.
+        abbreviations (dict): Optional mapping of abbreviations to full commands.
+        players_in_room (list): Optional list of players in the room.
+        online_sessions (dict): Optional dictionary of all online sessions.
         
     Returns:
-        list: A list of parsed command dictionaries
+        list: A list with a single parsed command dictionary.
     """
     logger.debug(f"Parsing command string: '{command_str}'")
     
@@ -95,76 +95,65 @@ def parse_command_string(command_str, command_context=None, abbreviations=None, 
     if not abbreviations:
         abbreviations = {}
     
-    # Normalize the command string
+    # Normalize the command string (but do not split by punctuation here)
     command_str = command_str.strip().lower()
     
-    # Handle quote-prefixed say commands
+    # Handle quote-prefixed say commands (these are message commands that must remain intact)
     if command_str.startswith('"'):
-        # Remove the quote and treat as a say command
-        return [{"verb": "say", "subject": command_str[1:].strip(), "object": None, "instrument": None, "original": command_str}]
+        return [{
+            "verb": "say",
+            "subject": command_str[1:].strip(),
+            "object": None,
+            "instrument": None,
+            "original": command_str
+        }]
     
-    # Check if command starts with a player name (for tell command)
-    # This needs to check all online players, not just those in the room
+    # Check if the command starts with a player's name (for tell commands)
     if len(command_str.split()) > 1:
         first_word = command_str.split()[0]
         message = " ".join(command_str.split()[1:])
         
-        # First check online_sessions if provided (this includes all players)
         if online_sessions:
-            all_players = [session.get('player') for session in online_sessions.values() 
-                          if session.get('player') is not None]
-            
+            all_players = [session.get('player') for session in online_sessions.values() if session.get('player') is not None]
             for player in all_players:
-                if player.name.lower() == first_word.lower():
-                    # Convert to a tell command
-                    return [{"verb": "tell", "subject": player.name, "object": None, "instrument": message, "original": command_str}]
-        
-        # Then check players_in_room as a fallback
+                if player.name.lower() == first_word:
+                    return [{
+                        "verb": "tell",
+                        "subject": player.name,
+                        "object": None,
+                        "instrument": message,
+                        "original": command_str
+                    }]
         elif players_in_room:
             for player in players_in_room:
-                if player.name.lower() == first_word.lower():
-                    # Convert to a tell command
-                    return [{"verb": "tell", "subject": player.name, "object": None, "instrument": message, "original": command_str}]
+                if player.name.lower() == first_word:
+                    return [{
+                        "verb": "tell",
+                        "subject": player.name,
+                        "object": None,
+                        "instrument": message,
+                        "original": command_str
+                    }]
     
-    # Split on conjunctions (and, then, comma, period)
-    conjunctions = [" and ", " then ", ",", "."]
-    command_parts = [command_str]
-    for conj in conjunctions:
-        new_parts = []
-        for part in command_parts:
-            new_parts.extend(part.split(conj))
-        command_parts = new_parts
-    
-    logger.debug(f"Command parts after splitting: {command_parts}")
-    
-    # Process each command part
-    parsed_commands = []
-    for part in command_parts:
-        part = part.strip()
-        if not part:
-            continue
-        
-        # Parse the command into components
-        command_dict = parse_single_command(part, command_context, abbreviations, players_in_room)
-        if command_dict:
-            parsed_commands.append(command_dict)
-    
-    logger.debug(f"Parsed commands: {parsed_commands}")
-    return parsed_commands
+    # For all other commands, simply parse the entire string as one command.
+    # Combine any needed abbreviation mappings.
+    all_abbreviations = {**DIRECTION_ALIASES, **COMMAND_ABBREVIATIONS}
+    cmd_dict = parse_single_command(command_str, command_context, all_abbreviations, players_in_room)
+    return [cmd_dict]
 
 
 def parse_single_command(command_str, context, abbreviations, players_in_room=None):
     """
-    Parses a single command using the format: <verb> <subject> WITH <object>
+    Parses a single command using the format: <verb> <subject> [with <object>]
     
     Args:
-        command_str (str): The command string to parse
-        context (CommandContext): The command context
-        abbreviations (dict): Mapping of abbreviations to full commands
-        players_in_room (list): Optional list of players in the room
+        command_str (str): The command string to parse.
+        context (CommandContext): The command context.
+        abbreviations (dict): Mapping of abbreviations to full commands.
+        players_in_room (list): Optional list of players in the room.
         
     Returns:
-        dict: A dictionary with the parsed command components
+        dict: A dictionary with the parsed command components.
     """
     logger.debug(f"Parsing single command: '{command_str}'")
     
@@ -173,14 +162,11 @@ def parse_single_command(command_str, context, abbreviations, players_in_room=No
         logger.debug("No tokens found, returning None")
         return None
     
-    # Check if we have a verb
+    # The first token is the verb
     verb = tokens[0]
-    
-    # Try to expand abbreviation
     full_verb = abbreviations.get(verb, verb)
     logger.debug(f"Verb: {verb}, expanded to: {full_verb}")
     
-    # Create the result dictionary
     result = {
         "verb": full_verb,
         "subject": None,
@@ -189,17 +175,14 @@ def parse_single_command(command_str, context, abbreviations, players_in_room=No
         "original": command_str
     }
     
-    # Process the remaining tokens
     remaining_tokens = tokens[1:]
     logger.debug(f"Remaining tokens: {remaining_tokens}")
     
-    # Special case for pronouns in communication commands
+    # Special handling for pronouns in communication commands
     if len(remaining_tokens) >= 2 and remaining_tokens[0] in ["him", "her", "them", "it"]:
         if full_verb in ["tell", "ask", "whisper"]:
             pronoun = remaining_tokens[0]
             message = " ".join(remaining_tokens[1:])
-            
-            # Resolve the pronoun
             if pronoun == "him" and context.last_male:
                 result["subject"] = context.last_male
             elif pronoun == "her" and context.last_female:
@@ -210,15 +193,13 @@ def parse_single_command(command_str, context, abbreviations, players_in_room=No
                 result["subject"] = context.last_it
             else:
                 result["subject"] = pronoun
-                
             result["instrument"] = message
             context.update(full_verb, result["subject"], None, result["instrument"])
             return result
     
-    # Look for "with" or equivalent to split subject and instrument
+    # Look for "with" (or equivalent) to separate subject from instrument
     with_index = -1
     with_equivalents = ["with", "wi", "using", "by", "via", "at", "to", "from"]
-    
     for i, token in enumerate(remaining_tokens):
         if token.lower() in with_equivalents:
             with_index = i
@@ -226,56 +207,56 @@ def parse_single_command(command_str, context, abbreviations, players_in_room=No
     
     logger.debug(f"'With' token found at index: {with_index}")
     
-    # Extract subject (before "with") and instrument (after "with")
     if with_index >= 0:
         subject_part = " ".join(remaining_tokens[:with_index]) if with_index > 0 else None
         instrument_part = " ".join(remaining_tokens[with_index+1:]) if with_index < len(remaining_tokens) - 1 else None
-        
         logger.debug(f"Subject part: '{subject_part}', Instrument part: '{instrument_part}'")
         
-        # Resolve pronouns
-        if subject_part == "him" and context.last_male:
-            result["subject"] = context.last_male
-        elif subject_part == "her" and context.last_female:
-            result["subject"] = context.last_female
-        elif subject_part == "it" and context.last_it:
-            result["subject"] = context.last_it
-        elif subject_part == "them" and context.last_player:
-            result["subject"] = context.last_player
+        if subject_part in ["him", "her", "it", "them"]:
+            if subject_part == "him" and context.last_male:
+                result["subject"] = context.last_male
+            elif subject_part == "her" and context.last_female:
+                result["subject"] = context.last_female
+            elif subject_part == "it" and context.last_it:
+                result["subject"] = context.last_it
+            elif subject_part == "them" and context.last_player:
+                result["subject"] = context.last_player
+            else:
+                result["subject"] = subject_part
         else:
             result["subject"] = subject_part
-            
-        if instrument_part == "him" and context.last_male:
-            result["instrument"] = context.last_male
-        elif instrument_part == "her" and context.last_female:
-            result["instrument"] = context.last_female
-        elif instrument_part == "it" and context.last_it:
-            result["instrument"] = context.last_it
-        elif instrument_part == "them" and context.last_player:
-            result["instrument"] = context.last_player
+        
+        if instrument_part in ["him", "her", "it", "them"]:
+            if instrument_part == "him" and context.last_male:
+                result["instrument"] = context.last_male
+            elif instrument_part == "her" and context.last_female:
+                result["instrument"] = context.last_female
+            elif instrument_part == "it" and context.last_it:
+                result["instrument"] = context.last_it
+            elif instrument_part == "them" and context.last_player:
+                result["instrument"] = context.last_player
+            else:
+                result["instrument"] = instrument_part
         else:
             result["instrument"] = instrument_part
     elif remaining_tokens:
-        # No "with" found, treat everything as subject
         subject_part = " ".join(remaining_tokens)
-        
-        # Handle pronoun resolution
-        if subject_part == "him" and context.last_male:
-            result["subject"] = context.last_male
-        elif subject_part == "her" and context.last_female:
-            result["subject"] = context.last_female
-        elif subject_part == "it" and context.last_it:
-            result["subject"] = context.last_it
-        elif subject_part == "them" and context.last_player:
-            result["subject"] = context.last_player
+        if subject_part in ["him", "her", "it", "them"]:
+            if subject_part == "him" and context.last_male:
+                result["subject"] = context.last_male
+            elif subject_part == "her" and context.last_female:
+                result["subject"] = context.last_female
+            elif subject_part == "it" and context.last_it:
+                result["subject"] = context.last_it
+            elif subject_part == "them" and context.last_player:
+                result["subject"] = context.last_player
+            else:
+                result["subject"] = subject_part
         else:
             result["subject"] = subject_part
     
     logger.debug(f"Final result: {result}")
-    
-    # Update the context with this command
     context.update(full_verb, result["subject"], None, result["instrument"])
-    
     return result
 
 
@@ -299,7 +280,7 @@ DIRECTION_ALIASES = {
 COMMAND_ABBREVIATIONS = {
     "g": "get",
     "dr": "drop",
-    "i": "inventory",  # Now this is unambiguous since "i" was removed from DIRECTION_ALIASES
+    "i": "inventory",  # Now unambiguous since "i" was removed from DIRECTION_ALIASES
     "inv": "inventory",
     "l": "look",
     "sh": "shout",
@@ -309,7 +290,7 @@ COMMAND_ABBREVIATIONS = {
     "fl": "flee",
     "x": "exits",
     "sc": "score",
-    "u": "users",  # Note: this conflicts with DIRECTION_ALIASES["u"]
+    "u": "users",  # Note: conflicts with DIRECTION_ALIASES["u"]
     "h": "help",
     "qq": "quit",  # Changed from "q" to "qq" as requested
 }
@@ -321,15 +302,7 @@ def is_movement_command(verb):
 def parse_command(command_str, context=None, players_in_room=None, online_sessions=None):
     """
     Main entry point for command parsing.
-    
-    Args:
-        command_str (str): The command string to parse
-        context (CommandContext): Optional context from previous commands
-        players_in_room (list): Optional list of players in the current room
-        online_sessions (dict): Optional dictionary of all online sessions
-        
-    Returns:
-        list: A list of parsed command dictionaries
+    Returns a list containing a single parsed command dictionary.
     """
     logger.debug(f"Main parse_command called with: '{command_str}'")
     
@@ -339,38 +312,31 @@ def parse_command(command_str, context=None, players_in_room=None, online_sessio
     if not context:
         context = CommandContext()
     
-    # Initialize commands list to avoid reference error
-    commands = []
-
-    # Handle commands starting with quote (say command)
+    # Choose abbreviations based on the command
     if command_str.startswith('"'):
-        # Create a say command explicitly
-        say_text = command_str[1:].strip()
-        commands = [{"verb": "say", "subject": say_text, "object": None, "instrument": None, "original": command_str}]
-    # First check if it's a single-letter command that could be ambiguous
+        return [{
+            "verb": "say",
+            "subject": command_str[1:].strip(),
+            "object": None,
+            "instrument": None,
+            "original": command_str
+        }]
     elif command_str == "u":
-        # For "u", we prioritize the direction "up" for consistency
         all_abbreviations = {"u": "up"}
-        commands = parse_command_string(command_str, context, all_abbreviations, players_in_room, online_sessions)
     elif command_str in DIRECTION_ALIASES:
-        # For other direction aliases, prioritize them
         all_abbreviations = {command_str: DIRECTION_ALIASES[command_str]}
-        commands = parse_command_string(command_str, context, all_abbreviations, players_in_room, online_sessions)
     else:
-        # For all other commands, combine abbreviations with command abbreviations taking precedence
         all_abbreviations = {**DIRECTION_ALIASES, **COMMAND_ABBREVIATIONS}
-        commands = parse_command_string(command_str, context, all_abbreviations, players_in_room, online_sessions)
     
-    # Special handling for movement commands (go north, north, n, etc.)
-    for cmd in commands:
-        # If the verb is "go", change it to the direction
+    cmds = parse_command_string(command_str, context, all_abbreviations, players_in_room, online_sessions)
+    
+    # Special handling: if the verb is a direction, expand it.
+    for cmd in cmds:
         if cmd["verb"] == "go" and cmd["subject"] in DIRECTION_ALIASES.values():
             cmd["verb"] = cmd["subject"]
             cmd["subject"] = None
-        
-        # If the verb is a direction alias, expand it
         if cmd["verb"] in DIRECTION_ALIASES:
             cmd["verb"] = DIRECTION_ALIASES[cmd["verb"]]
     
-    logger.debug(f"Final parsed commands: {commands}")
-    return commands
+    logger.debug(f"Final parsed commands: {cmds}")
+    return cmds

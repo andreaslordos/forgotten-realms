@@ -313,5 +313,4 @@ command_registry.register("converse", handle_converse, "Toggle converse mode (au
 # Register aliases
 command_registry.register_alias("sh", "shout")
 command_registry.register_alias('"', "say")  # Starting with a quote is a say command
-command_registry.register_alias("t", "tell")
 command_registry.register_alias("whisper", "tell")
