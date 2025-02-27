@@ -172,6 +172,11 @@ def register_handlers(sio, auth_manager, player_manager, game_state, online_sess
                 await sio.emit('setInputType', 'text', room=sid)
                 await post_login(sid, player)
                 return
+    
+    @sio.event
+    async def heartbeat(sid, data):
+        # Just acknowledging the heartbeat is enough
+        pass
 
     @sio.event
     async def connect(sid, environ, auth):

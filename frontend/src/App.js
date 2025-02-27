@@ -35,6 +35,17 @@ function App() {
     }
   }, [messages]);
 
+  useEffect(() => {
+    // Set up a heartbeat to keep the connection alive
+    const heartbeatInterval = setInterval(() => {
+      if (socketRef.current && socketRef.current.connected) {
+        socketRef.current.emit('heartbeat', {});
+      }
+    }, 20000); // Send a heartbeat every 20 seconds
+    
+    return () => clearInterval(heartbeatInterval);
+  }, []);
+
   // Establish Socket.IO connection on mount
   useEffect(() => {
     const SOCKET_URL = process.env.NODE_ENV === 'production' 
