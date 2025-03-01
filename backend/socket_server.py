@@ -57,7 +57,7 @@ ssl_context = None
 if not TEST_MODE:
     ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     # Use absolute paths where your certificates are stored on your VM.
-    ssl_context.load_cert_chain(certfile='/home/andreas/cert.pem', keyfile='/home/andreas/key.pem')
+    ssl_context.load_cert_chain(certfile='/etc/letsencrypt/live/api.realms.lordos.tech/fullchain.pem', keyfile='/etc/letsencrypt/live/api.realms.lordos.tech/privkey.pem')
     print("🔒 Running with SSL enabled (Production Mode)")
 else:
     print("🛠 Running without SSL (Test Mode)")
