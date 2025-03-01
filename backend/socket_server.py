@@ -1,7 +1,9 @@
 # backend/socket_server.py
 
 import os
+import sys
 import asyncio
+import ssl
 import socketio
 from aiohttp import web
 
@@ -16,12 +18,17 @@ from event_handlers import register_handlers
 from tick_service import start_background_tick
 import utils  # This module contains send_message and send_stats_update
 
+# Determine if we're in test mode (skip SSL) using a -test flag
+TEST_MODE = "-test" in sys.argv
+
 # Setup Socket.IO server and the web app.
-sio = socketio.AsyncServer(async_mode='aiohttp', 
-                          cors_allowed_origins='*',
-                          ping_timeout=30,
-                          ping_interval=10,
-                          reconnection=False)
+sio = socketio.AsyncServer(
+    async_mode='aiohttp', 
+    cors_allowed_origins='*',
+    ping_timeout=30,
+    ping_interval=10,
+    reconnection=False
+)
 app = web.Application()
 sio.attach(app)
 
@@ -45,11 +52,21 @@ register_handlers(sio, auth_manager, player_manager, game_state, online_sessions
 # Determine the port.
 port = int(os.environ.get('PORT', 8080))
 
+# Setup SSL only if not in test mode
+ssl_context = None
+if not TEST_MODE:
+    ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    # Use absolute paths where your certificates are stored on your VM.
+    ssl_context.load_cert_chain(certfile='/home/andreas/cert.pem', keyfile='/home/andreas/key.pem')
+    print("🔒 Running with SSL enabled (Production Mode)")
+else:
+    print("🛠 Running without SSL (Test Mode)")
+
 async def main():
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', port)
-    print(f"Server starting at http://0.0.0.0:{port}")
+    site = web.TCPSite(runner, '0.0.0.0', port, ssl_context=ssl_context)
+    print(f"Server starting at {'https' if ssl_context else 'http'}://0.0.0.0:{port}")
     await site.start()
     
     # Start background tick in a separate task.
@@ -63,7 +80,7 @@ async def main():
         await runner.cleanup()
 
 async def handle_root(request):
-    return web.Response(text="Socket.IO server is running.")
+    return web.Response(text="Socket.IO server is running" + (" over HTTPS." if ssl_context else "."))
 
 app.router.add_get('/', handle_root)
 
