@@ -22,6 +22,8 @@ env/
 # Environment variables
 *.env
 
+# Storage
+backend/storage/*
 # -----------------------
 # Node.js
 # -----------------------
