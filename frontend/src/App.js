@@ -75,11 +75,6 @@ function App() {
       setInputType(type);
     });
 
-    // Listen for loginSuccess event to switch to game phase
-    // socketRef.current.on('loginSuccess', () => {
-    //   setPhase("game");
-    // });
-
     // Listen for stats updates (HUD)
     socketRef.current.on('statsUpdate', (data) => {
       setPlayerName(data.name);
@@ -127,54 +122,74 @@ function App() {
     socketRef.current.emit('command', command);
     setCommand("");
   };
-  
 
   return (
-    <div style={{ fontFamily: "monospace", height: "100vh", display: "flex", flexDirection: "column" }}>
-
-      {/* Top bar / HUD */}
-      <div style={{ backgroundColor: "#fe01ff", color: "#000", padding: "0.5rem" }}>
-        {playerName
-          ? <strong>{playerName} | Score: {playerScore}, Stamina: {playerStamina}/{maxStamina}</strong>
-          : <strong>The Forgotten Realms</strong>
+    <>
+      {/* CSS to limit output text width and enforce wrapping */}
+      <style>{`
+        .output-container {
+          width: 50vw;
         }
-      </div>
+        @media (max-width: 768px) {
+          .output-container {
+            width: 100%;
+          }
+        }
+        /* Ensure pre elements wrap text properly */
+        .output-container pre {
+          margin: 0;
+          white-space: pre-wrap;
+          word-wrap: break-word;
+          /* Alternatively, for modern browsers: overflow-wrap: break-word; */
+        }
+      `}</style>
+      <div style={{ fontFamily: "monospace", height: "100vh", display: "flex", flexDirection: "column" }}>
+        {/* Top bar / HUD */}
+        <div style={{ backgroundColor: "#fe01ff", color: "#000", padding: "0.5rem" }}>
+          {playerName
+            ? <strong>{playerName} | Score: {playerScore}, Stamina: {playerStamina}/{maxStamina}</strong>
+            : <strong>The Forgotten Realms</strong>
+          }
+        </div>
 
-      {/* Main text area */}
-      <div
-        style={{
-          flex: 1,
-          backgroundColor: "#02ffff",
-          color: "#000000",
-          padding: "0.5rem",
-          overflowY: "auto",
-          whiteSpace: "pre-wrap"
-        }}
-      >
-        {messages.map((msg, index) => (
-          <pre key={index} style={{ margin: 0 }}>{msg}</pre>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input bar */}
-      <form onSubmit={handleCommandSubmit} style={{ backgroundColor: "#ffff00", padding: "0.5rem" }}>
-        <input
-          type={inputType}
-          placeholder={inputDisabled ? "Connection Closed" : "Type your command...."}
-          value={command}
-          onChange={(e) => setCommand(e.target.value)}
-          disabled={inputDisabled}
+        {/* Main text area (blue screen) */}
+        <div
           style={{
-            width: "100%",
-            border: "none",
-            outline: "none",
-            backgroundColor: "#ffff00",
-            fontFamily: "monospace"
+            flex: 1,
+            backgroundColor: "#02ffff",
+            color: "#000000",
+            padding: "0.5rem",
+            overflowY: "auto"
           }}
-        />
-      </form>
-    </div>
+        >
+          {/* Wrap text output in a container limited to 50% width */}
+          <div className="output-container">
+            {messages.map((msg, index) => (
+              <pre key={index}>{msg}</pre>
+            ))}
+          </div>
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input bar */}
+        <form onSubmit={handleCommandSubmit} style={{ backgroundColor: "#ffff00", padding: "0.5rem" }}>
+          <input
+            type={inputType}
+            placeholder={inputDisabled ? "Connection Closed" : "Type your command...."}
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
+            disabled={inputDisabled}
+            style={{
+              width: "100%",
+              border: "none",
+              outline: "none",
+              backgroundColor: "#ffff00",
+              fontFamily: "monospace"
+            }}
+          />
+        </form>
+      </div>
+    </>
   );
 }
 

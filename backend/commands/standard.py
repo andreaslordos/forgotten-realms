@@ -2,6 +2,7 @@
 
 from commands.registry import command_registry
 from commands.executor import build_look_description
+from models.levels import levels
 
 # ===== LOOK COMMAND =====
 async def handle_look(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
@@ -189,7 +190,6 @@ async def handle_help(cmd, player, game_state, player_manager, visited, online_s
     help_text = (
         "Commands:\n"
         "  shout <message>       - Broadcasts a global shout.\n"
-        "  shout                 - Prompts for a global shout message.\n"
         "  \"<message>           - Sends a message to everyone in your current room.\n"
         "  <recipient> <msg>     - Sends a private message to a specific player.\n"
         "  users                 - Lists online users.\n"
@@ -202,6 +202,7 @@ async def handle_help(cmd, player, game_state, player_manager, visited, online_s
         "  inventory             - Lists items in your inventory (also: i, inv).\n"
         "  exits                 - Lists available exits (also: x).\n"
         "  score                 - Shows your current score and stats (also: sc).\n"
+        "  levels                - Shows the levels of experience\n"
         "  qq                    - Exit the game (two letters to avoid accidental quits).\n"
     )
     return help_text
@@ -223,6 +224,20 @@ async def handle_info(cmd, player, game_state, player_manager, visited, online_s
         "Type 'help' for a list of available commands."
     )
     return info_text
+
+# ===== LEVELS COMMAND =====
+async def handle_levels(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+    return_str = "Levels of experience in Forgotten Realms:\n"
+    # Header row with fixed width for each column
+    return_str += f"{'Level':<10}{'Points':<15}\n"
+    
+    # Iterate over the points in sorted order and assign a numerical level
+    for idx, points in enumerate(sorted(levels.keys()), start=1):
+        details = levels[points]
+        return_str += f"{idx:<10}{points:<15}{details['name']:<25}\n"
+        
+    return return_str
+
 
 
 # ===== USERS COMMAND =====
@@ -257,6 +272,7 @@ command_registry.register("help", handle_help, "Provides help on commands.")
 command_registry.register("info", handle_info, "Provides information about the game and its objectives.")
 command_registry.register("users", handle_users, "Lists online users.")
 command_registry.register("quit", handle_quit, "Exit the game.")
+command_registry.register("levels", handle_levels, "Lists levels of experience.")
 
 # Register aliases
 command_registry.register_alias("l", "look")

@@ -73,7 +73,7 @@ def register_handlers(sio, auth_manager, player_manager, game_state, online_sess
 
             # Check against reserved commands.
             reserved_commands = {"shout", "help", "info", "users", "look", "get", "drop", "inventory", "quit",
-                                "n", "s", "e", "w", "north", "south", "east", "west"}
+                                "n", "s", "e", "w", "north", "south", "east", "west", "levels"}
             if username.lower() in reserved_commands:
                 await utils.send_message(sio, sid, 
                     "That username is reserved. Please choose a different name.")
