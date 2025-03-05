@@ -35,7 +35,9 @@ sio = socketio.AsyncServer(
     cors_allowed_origins='*',
     ping_timeout=30,
     ping_interval=10,
-    reconnection=False
+    reconnection=False,
+    logger=True,
+    engineio_logger=True
 )
 app = web.Application()
 sio.attach(app)
