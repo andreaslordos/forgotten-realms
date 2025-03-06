@@ -4,7 +4,7 @@ from commands.communication import handle_pending_communication
 from commands.parser import parse_command
 import time
 import logging
-
+from services.notifications import broadcast_logout
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -130,6 +130,7 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                 if session.get('should_disconnect'):
                     try:
                         await sio.disconnect(sid)
+                        await broadcast_logout(player)
                     except Exception as e:
                         logger.error(f"Failed to disconnect {player.name}: {str(e)}")
                         print(f"[Error] Failed to disconnect {player.name}: {str(e)}")

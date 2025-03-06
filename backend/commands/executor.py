@@ -147,7 +147,7 @@ def build_look_description(player, game_state, online_sessions=None):
                 continue  # Skip sessions without a player
             if other_player.current_room == current_room.room_id and other_player != player:
                 inv_summary = ", ".join(item.name for item in other_player.inventory) if other_player.inventory else "nothing"
-                players_here.append(f"{other_player.name} is here, carrying {inv_summary}")
+                players_here.append(f"{other_player.name} the {other_player.level} is here, carrying {inv_summary}")
     
     if players_here:
         room_desc += "\n" + "\n".join(players_here)
