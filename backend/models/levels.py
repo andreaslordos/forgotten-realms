@@ -1,7 +1,7 @@
 # backend/models/levels.py
 
 levels = {
-    0: {"name": "Initiate", "stamina": 45, "strength": 45, "dexterity": 45, "carrying_capacity_num": 6},
+    0: {"name": "Neophyte", "stamina": 45, "strength": 45, "dexterity": 45, "carrying_capacity_num": 6},
     400: {"name": "Novice", "stamina": 50, "strength": 50, "dexterity": 50, "carrying_capacity_num": 7},
     800: {"name": "Acolyte", "stamina": 55, "strength": 55, "dexterity": 55, "carrying_capacity_num": 8},
     1600: {"name": "Scholar", "stamina": 60, "strength": 60, "dexterity": 60, "carrying_capacity_num": 9},
