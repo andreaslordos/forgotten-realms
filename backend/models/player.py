@@ -17,6 +17,7 @@ class Player:
         self.dexterity = levels[0]['dexterity']
         self.carrying_capacity_num = levels[0]['carrying_capacity_num']  # Max number of items
         self.level = levels[0]['name']
+        self.visited = set()
         self.current_level_at = 0
         self.next_level_at = 400
         self.created_at = datetime.now()
@@ -36,6 +37,9 @@ class Player:
         self.carrying_capacity_num = new_level['carrying_capacity_num']
         potential_next = self.next_level_at * 2
         self.next_level_at = potential_next if potential_next in levels else -1
+    
+    def add_visited(self, room_id):
+        self.visited.add(room_id)
 
     def add_points(self, points):
         self.points += points

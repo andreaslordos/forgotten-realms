@@ -5,13 +5,13 @@ from commands.executor import build_look_description
 from models.levels import levels
 
 # ===== LOOK COMMAND =====
-async def handle_look(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_look(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle the 'look' command."""
     subject = cmd.get("subject")
     
     # If no subject, look at the room
     if not subject:
-        return build_look_description(player, game_state, online_sessions)
+        return build_look_description(player, game_state, online_sessions, look=True)
     
     # Look at a specific item in inventory
     for item in player.inventory:
@@ -34,7 +34,7 @@ async def handle_look(cmd, player, game_state, player_manager, visited, online_s
 
 
 # ===== INVENTORY COMMAND =====
-async def handle_inventory(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_inventory(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle the 'inventory' command."""
     if not player.inventory:
         return "You aren't carrying anything!"
@@ -45,7 +45,7 @@ async def handle_inventory(cmd, player, game_state, player_manager, visited, onl
 
 
 # ===== EXITS COMMAND =====
-async def handle_exits(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_exits(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle the 'exits' command."""
     current_room = game_state.get_room(player.current_room)
     exit_list = []
@@ -59,7 +59,7 @@ async def handle_exits(cmd, player, game_state, player_manager, visited, online_
 
 
 # ===== GET/TAKE COMMAND =====
-async def handle_get(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_get(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle the 'get' command."""
     subject = cmd.get("subject")
     current_room = game_state.get_room(player.current_room)
@@ -103,7 +103,7 @@ async def handle_get(cmd, player, game_state, player_manager, visited, online_se
 
 
 # ===== DROP COMMAND =====
-async def handle_drop(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_drop(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle the 'drop' command."""
     subject = cmd.get("subject")
     current_room = game_state.get_room(player.current_room)
@@ -167,7 +167,7 @@ async def handle_drop(cmd, player, game_state, player_manager, visited, online_s
 
 
 # ===== SCORE COMMAND =====
-async def handle_score(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_score(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle the 'score' command."""
     return (f"Score: {player.points} points\n"
             f"Level: {player.level}\n"
@@ -178,7 +178,7 @@ async def handle_score(cmd, player, game_state, player_manager, visited, online_
 
 
 # ===== HELP COMMAND =====
-async def handle_help(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_help(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle the 'help' command."""
     subject = cmd.get("subject")
     
@@ -209,7 +209,7 @@ async def handle_help(cmd, player, game_state, player_manager, visited, online_s
 
 
 # ===== INFO COMMAND =====
-async def handle_info(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_info(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle the 'info' command."""
     info_text = (
         "AI MUD: A text-based multiplayer adventure where you explore, solve puzzles, "
@@ -226,7 +226,7 @@ async def handle_info(cmd, player, game_state, player_manager, visited, online_s
     return info_text
 
 # ===== LEVELS COMMAND =====
-async def handle_levels(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_levels(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     return_str = "Levels of experience in Forgotten Realms:\n"
     # Header row with fixed width for each column
     return_str += f"{'Level':<10}{'Points':<15}\n"
@@ -241,7 +241,7 @@ async def handle_levels(cmd, player, game_state, player_manager, visited, online
 
 
 # ===== USERS COMMAND =====
-async def handle_users(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_users(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle the 'users' command."""
     if not online_sessions:
         return "How is this possible?"
@@ -256,7 +256,7 @@ async def handle_users(cmd, player, game_state, player_manager, visited, online_
 
 
 # ===== QUIT COMMAND =====
-async def handle_quit(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_quit(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle the 'quit' command."""
     return "quit"
 

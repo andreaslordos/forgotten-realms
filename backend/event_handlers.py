@@ -39,6 +39,7 @@ def register_handlers(sio, auth_manager, player_manager, game_state, online_sess
         """
         # Ensure the player starts at the spawn room.
         player.set_current_room(player_manager.spawn_room)
+        player.visited = set()
         player_manager.save_players()
         player.last_active = datetime.now()
 
@@ -185,7 +186,6 @@ def register_handlers(sio, auth_manager, player_manager, game_state, online_sess
             'temp_data': {},
             'command_queue': [],
             'last_active': asyncio.get_event_loop().time(),
-            'visited': set(),
             'failedAttempts': 0
         }
         MYSTICAL_SPLASH = f"""\

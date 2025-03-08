@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # ===== SHOUT COMMAND =====
-async def handle_shout(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_shout(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle global shout command.
     
@@ -51,7 +51,7 @@ async def handle_shout(cmd, player, game_state, player_manager, visited, online_
 
 
 # ===== SAY COMMAND (ROOM MESSAGE) =====
-async def handle_say(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_say(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle saying something in the current room.
     
@@ -97,7 +97,7 @@ async def handle_say(cmd, player, game_state, player_manager, visited, online_se
 
 
 # ===== TELL COMMAND (PRIVATE MESSAGE) =====
-async def handle_tell(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_tell(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle sending a private message to another player.
     
@@ -161,7 +161,7 @@ async def handle_tell(cmd, player, game_state, player_manager, visited, online_s
 
 
 # ===== ACT COMMAND =====
-async def handle_act(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_act(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle acting out an emote in the current room.
     
@@ -207,7 +207,7 @@ async def handle_act(cmd, player, game_state, player_manager, visited, online_se
 
 
 # ===== CONVERSE COMMAND =====
-async def handle_converse(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_converse(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Toggle converse mode for a player.
     

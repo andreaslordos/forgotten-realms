@@ -3,7 +3,7 @@
 from commands.registry import command_registry
 
 # ===== USE COMMAND =====
-async def handle_use(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_use(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle using an item, possibly with another item or object.
     
@@ -99,7 +99,7 @@ def handle_use_with_feature(item, feature, player, game_state, player_manager):
 # ===== PUZZLE INTERACTION COMMANDS =====
 # These commands handle specific interactions with puzzles
 
-async def handle_knock(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_knock(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle knocking on something."""
     subject = cmd.get("subject")
     
@@ -125,7 +125,7 @@ async def handle_knock(cmd, player, game_state, player_manager, visited, online_
     return f"You knock on the {subject}, but nothing happens."
 
 
-async def handle_push(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_push(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle pushing something."""
     subject = cmd.get("subject")
     
@@ -147,7 +147,7 @@ async def handle_push(cmd, player, game_state, player_manager, visited, online_s
     return f"You push the {subject}, but nothing happens."
 
 
-async def handle_pull(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_pull(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle pulling something."""
     subject = cmd.get("subject")
     
@@ -169,7 +169,7 @@ async def handle_pull(cmd, player, game_state, player_manager, visited, online_s
     return f"You pull the {subject}, but nothing happens."
 
 
-async def handle_chop(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_chop(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle chopping something with an item."""
     subject = cmd.get("subject")  # What to chop
     instrument = cmd.get("instrument")  # What to chop with
@@ -208,7 +208,7 @@ async def handle_chop(cmd, player, game_state, player_manager, visited, online_s
 # ===== ARCHMAGE COMMANDS =====
 # These commands are only available to players at the Archmage level
 
-async def handle_reset(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_reset(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle the Archmage reset command.
     
@@ -245,7 +245,7 @@ async def handle_reset(cmd, player, game_state, player_manager, visited, online_
     # The actual reset logic would be implemented in the main game loop
 
 
-async def handle_teleport(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_teleport(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle the Archmage teleport command.
     
@@ -254,7 +254,6 @@ async def handle_teleport(cmd, player, game_state, player_manager, visited, onli
         player (Player): The player teleporting
         game_state (GameState): The game state
         player_manager (PlayerManager): The player manager
-        visited (set): Set of visited room IDs
         online_sessions (dict): Online sessions dictionary
         sio (SocketIO): Socket.IO instance
         utils (module): Utilities module
@@ -306,11 +305,7 @@ async def handle_teleport(cmd, player, game_state, player_manager, visited, onli
                     other_player.current_room == underswamp_id and 
                     other_player != player):
                     await utils.send_message(sio, sid, 
-                                          f"{player.name} appears in a flash of light!")
-        
-        if visited is not None:
-            visited.add(underswamp_id)
-        
+                                          f"{player.name} appears in a flash of light!")       
         # Return the new room description
         underswamp_room = game_state.get_room(underswamp_id)
         return f"You teleport to the Underswamp!\n\n{underswamp_room.name}\n{underswamp_room.description}"
@@ -349,10 +344,6 @@ async def handle_teleport(cmd, player, game_state, player_manager, visited, onli
                 other_player != player):
                 await utils.send_message(sio, sid, 
                                       f"{player.name} appears in a flash of light!")
-    
-    if visited is not None:
-        visited.add(destination_id)
-    
     # Return the new room description
     destination_room = game_state.get_room(destination_id)
     return f"You teleport to {destination_room.name}!\n\n{destination_room.description}"

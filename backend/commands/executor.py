@@ -10,7 +10,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def execute_command(command_str, player, game_state, player_manager, visited, online_sessions=None, sio=None, utils=None):
+async def execute_command(command_str, player, game_state, player_manager, online_sessions=None, sio=None, utils=None):
     """
     Execute a command string.
     
@@ -19,7 +19,6 @@ async def execute_command(command_str, player, game_state, player_manager, visit
         player (Player): The player executing the command
         game_state (GameState): The current game state
         player_manager (PlayerManager): The player manager
-        visited (set): Set of room IDs the player has visited
         online_sessions (dict): Optional online sessions dictionary
         sio (SocketIO): Optional Socket.IO instance
         utils (module): Optional utilities module
@@ -52,7 +51,7 @@ async def execute_command(command_str, player, game_state, player_manager, visit
         
         # Check if it's a movement command
         if is_movement_command(verb):
-            result = await handle_movement(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils)
+            result = await handle_movement(cmd, player, game_state, player_manager, online_sessions, sio, utils)
             results.append(result)
             continue
         
@@ -60,7 +59,7 @@ async def execute_command(command_str, player, game_state, player_manager, visit
         handler = command_registry.get_handler(verb)
         if handler:
             # Call the handler with the parsed command and appropriate context
-            result = await handler(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils)
+            result = await handler(cmd, player, game_state, player_manager, online_sessions, sio, utils)
             results.append(result)
         else:
             results.append(f"I don't know how to '{verb}'.")
@@ -68,7 +67,7 @@ async def execute_command(command_str, player, game_state, player_manager, visit
     return "\n".join(filter(None, results))  # Filter out empty results
 
 
-async def handle_movement(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_movement(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle movement commands.
     
@@ -77,7 +76,6 @@ async def handle_movement(cmd, player, game_state, player_manager, visited, onli
         player (Player): The player executing the command
         game_state (GameState): The current game state
         player_manager (PlayerManager): The player manager
-        visited (set): Set of room IDs the player has visited
         online_sessions (dict): Optional online sessions dictionary
         sio (SocketIO): Optional Socket.IO instance
         utils (module): Optional utilities module
@@ -105,15 +103,12 @@ async def handle_movement(cmd, player, game_state, player_manager, visited, onli
         if online_sessions and sio and utils:
             await broadcast_arrival(player)
         
-        # Use build_look_description to include other players immediately
-        if visited is not None:
-            visited.add(new_room.room_id)
         return build_look_description(player, game_state, online_sessions)
     else:
         return "You can't go that way."
 
 
-def build_look_description(player, game_state, online_sessions=None):
+def build_look_description(player, game_state, online_sessions=None, look=False):
     """
     Build a description of the current room, including items and other players.
     
@@ -128,7 +123,11 @@ def build_look_description(player, game_state, online_sessions=None):
     current_room = game_state.get_room(player.current_room)
     
     # Build the room description
-    room_desc = f"{current_room.name}\n{current_room.description}\n"
+    room_desc = f"{current_room.name}"
+    
+    if current_room.room_id not in player.visited or look:
+        room_desc += f"\n{current_room.description}\n"
+        player.visited.add(current_room.room_id)
     
     # List items in the room
     if current_room.items:

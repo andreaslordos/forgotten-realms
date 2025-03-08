@@ -4,7 +4,7 @@ import random
 from commands.registry import command_registry
 
 # ===== ATTACK/KILL COMMAND =====
-async def handle_attack(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_attack(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle attacking a target.
     
@@ -183,7 +183,7 @@ async def handle_player_defeat(attacker, defender, defender_sid, game_state, pla
 
 
 # ===== RETALIATE COMMAND =====
-async def handle_retaliate(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_retaliate(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle retaliating against someone who attacked you.
     This is similar to attack but targets the last person who attacked you.
@@ -216,11 +216,11 @@ async def handle_retaliate(cmd, player, game_state, player_manager, visited, onl
         "original": f"retaliate {subject} with {instrument}" if instrument else f"retaliate {subject}"
     }
     
-    return await handle_attack(attack_cmd, player, game_state, player_manager, visited, online_sessions, sio, utils)
+    return await handle_attack(attack_cmd, player, game_state, player_manager, online_sessions, sio, utils)
 
 
 # ===== FLEE COMMAND =====
-async def handle_flee(cmd, player, game_state, player_manager, visited, online_sessions, sio, utils):
+async def handle_flee(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle fleeing from combat.
     

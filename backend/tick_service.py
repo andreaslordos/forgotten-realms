@@ -108,7 +108,6 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                         player, 
                         game_state, 
                         player_manager, 
-                        session.get('visited', set()), 
                         online_sessions, 
                         sio, 
                         utils
