@@ -48,13 +48,19 @@ async def handle_inventory(cmd, player, game_state, player_manager, online_sessi
 async def handle_exits(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle the 'exits' command."""
     current_room = game_state.get_room(player.current_room)
+    if not current_room.exits:
+        return "No exits from here."
+    
+    # Determine the maximum length of the direction strings
+    max_length = max(len(direction) for direction in current_room.exits)
+    
     exit_list = []
     for direction, dest_room_id in current_room.exits.items():
         dest_room = game_state.get_room(dest_room_id)
         dest_name = dest_room.name if dest_room else "Unknown"
-        exit_list.append(f"{direction}: {dest_name}")
-    if exit_list == []:
-        return "No exits from here."
+        # Format with left-aligned direction so all room names start in the same column
+        exit_list.append(f"{direction:<{max_length}}       {dest_name}")
+    
     return "\n".join(sorted(exit_list))
 
 
