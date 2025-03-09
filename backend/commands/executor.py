@@ -5,6 +5,7 @@ from commands.registry import command_registry
 from services.notifications import broadcast_arrival, broadcast_departure
 import asyncio
 import logging
+from commands.utils import get_player_inventory
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -145,7 +146,9 @@ def build_look_description(player, game_state, online_sessions=None, look=False)
             if not other_player:
                 continue  # Skip sessions without a player
             if other_player.current_room == current_room.room_id and other_player != player:
-                inv_summary = ", ".join(item.name for item in other_player.inventory) if other_player.inventory else "nothing"
+                inv_summary = get_player_inventory(other_player)
+                if inv_summary == "":
+                    inv_summary = "nothing"
                 players_here.append(f"{other_player.name} the {other_player.level} is here, carrying {inv_summary}")
     
     if players_here:

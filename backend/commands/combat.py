@@ -149,7 +149,7 @@ async def handle_player_defeat(attacker, defender, defender_sid, game_state, pla
     defender.stamina = defender.max_stamina // 2
     
     # Save changes
-    game_state.save_rooms()
+    # game_state.save_rooms()
     player_manager.save_players()
     
     # Notify the defender of their defeat
@@ -279,7 +279,7 @@ async def handle_flee(cmd, player, game_state, player_manager, online_sessions, 
     player.points = max(0, player.points - points_lost)
     
     # Save changes
-    game_state.save_rooms()
+    # game_state.save_rooms()
     player_manager.save_players()
     
     # Notify others in the new room

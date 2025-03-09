@@ -53,7 +53,7 @@ if not game_state.rooms:
     new_rooms = generate_village_of_chronos()
     for room in new_rooms.values():
         game_state.add_room(room)
-    game_state.save_rooms()
+    # game_state.save_rooms()
     logger.info("Game rooms generated and saved.")
 else:
     logger.info("Game rooms loaded from existing state.")

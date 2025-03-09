@@ -4,6 +4,7 @@ from commands.registry import command_registry
 from commands.executor import build_look_description
 from models.Levels import levels
 from models.ContainerItem import ContainerItem
+from commands.utils import get_player_inventory
 
 # ===== LOOK COMMAND =====
 async def handle_look(cmd, player, game_state, player_manager, online_sessions, sio, utils):
@@ -35,11 +36,7 @@ async def handle_inventory(cmd, player, game_state, player_manager, online_sessi
         return "You aren't carrying anything!"
     
     return_str = "You are currently holding the following:\n"
-    return_str += " ".join([item.name for item in player.inventory])
-
-    for item in player.inventory:
-        if isinstance(item, ContainerItem):
-            return_str += f"\n{item.get_contained()}"
+    return_str += get_player_inventory(player)
     return return_str
 
 
@@ -69,6 +66,44 @@ async def handle_get(cmd, player, game_state, player_manager, online_sessions, s
     subject = cmd.get("subject")
     current_room = game_state.get_room(player.current_room)
     
+    # Handle get from container
+    if cmd.get("from_container") or (cmd.get("instrument") and "from" in cmd.get("original").lower()):
+        container_name = cmd.get("instrument")
+        
+        # Check if we have this container in inventory
+        container = None
+        for item in player.inventory:
+            if container_name.lower() in item.name.lower() and isinstance(item, ContainerItem):
+                container = item
+                break
+                
+        if not container:
+            return f"You don't have a container called '{container_name}' in your inventory."
+            
+        # Check if container is open
+        if container.state != "open":
+            return f"The {container.name} is closed. You need to open it first."
+            
+        # Find the item in the container
+        item_to_get = None
+        for item in container.items:
+            if subject.lower() in item.name.lower():
+                item_to_get = item
+                break
+                
+        if not item_to_get:
+            return f"There is no '{subject}' in the {container.name}."
+            
+        # Add the item to player's inventory
+        success, message = player.add_item(item_to_get)
+        if success:
+            container.remove_item(item_to_get.id)
+            player_manager.save_players()  # Save player state after changing inventory
+            return f"{item_to_get.name} removed from {container.name}."
+        else:
+            return message
+    
+    # Regular get command continues here
     if not subject:
         return "Specify the item to take (e.g., 'get sword' or 'get all')."
     
@@ -89,7 +124,7 @@ async def handle_get(cmd, player, game_state, player_manager, online_sessions, s
                 if success:
                     current_room.remove_item(item)
                     picked_up.append(item.name)
-        return f"Treasure picked up: {', '.join(picked_up)}." if picked_up else "No treasurew available."
+        return f"Treasure picked up: {', '.join(picked_up)}." if picked_up else "No treasure available."
     
     # Look for a matching item in the room
     found_item = None
@@ -122,7 +157,7 @@ async def handle_drop(cmd, player, game_state, player_manager, online_sessions, 
             for item in dropped_items:
                 player.remove_item(item)
                 current_room.add_item(item)
-            game_state.save_rooms()  # Save room state after changing items
+            # game_state.save_rooms()  # Save room state after changing items
             return f"Dropped all items: {', '.join(i.name for i in dropped_items)}."
         else:
             return "You aren't carrying anything."
@@ -133,7 +168,7 @@ async def handle_drop(cmd, player, game_state, player_manager, online_sessions, 
             for i in dropped_items:
                 player.remove_item(i)
                 current_room.add_item(i)
-            game_state.save_rooms()  # Save room state after changing items
+            # game_state.save_rooms()  # Save room state after changing items
             
             # Check if this is the swamp for point gain
             if "swamp" in current_room.name.lower() or "swamp" in current_room.description.lower():
@@ -157,7 +192,7 @@ async def handle_drop(cmd, player, game_state, player_manager, online_sessions, 
         success, message = player.remove_item(found_item)
         if success:
             current_room.add_item(found_item)
-            game_state.save_rooms()  # Save room state after changing items
+            # game_state.save_rooms()  # Save room state after changing items
             
             # Check if this is the swamp for point gain
             if hasattr(found_item, 'value') and found_item.value > 0:
@@ -203,6 +238,10 @@ async def handle_help(cmd, player, game_state, player_manager, online_sessions, 
         "  <direction>           - Move in a specific direction (n, s, e, w, north, south, etc).\n"
         "  look [<item>]         - Describes your current location or examines something.\n"
         "  get <item>            - Pick up an item (also: g).\n"
+        "  get <item> from <container> - Get an item from a container.\n"
+        "  put <item> in <container> - Put an item into a container.\n"
+        "  open <container>      - Open a container.\n"
+        "  close <container>     - Close a container.\n"
         "  drop <item>           - Drop an item from your inventory (also: dr).\n"
         "  inventory             - Lists items in your inventory (also: i, inv).\n"
         "  exits                 - Lists available exits (also: x).\n"
@@ -270,7 +309,7 @@ async def handle_quit(cmd, player, game_state, player_manager, online_sessions, 
 command_registry.register("look", handle_look, "Describes your current location or an object.")
 command_registry.register("inventory", handle_inventory, "Lists items in your inventory.")
 command_registry.register("exits", handle_exits, "Lists available exits from your current location.")
-command_registry.register("get", handle_get, "Pick up an item from your surroundings.")
+command_registry.register("get", handle_get, "Pick up an item from your surroundings or from a container.")
 command_registry.register("drop", handle_drop, "Drop an item from your inventory.")
 command_registry.register("score", handle_score, "Shows your current score and stats.")
 command_registry.register("help", handle_help, "Provides help on commands.")

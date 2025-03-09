@@ -220,7 +220,7 @@ Welcome! By what name shall I call you?
                     for item in list(player.inventory):
                         player.remove_item(item)
                         current_room.add_item(item)
-                game_state.save_rooms()
+                # game_state.save_rooms()
                 player_manager.save_players()
             del online_sessions[sid]
 

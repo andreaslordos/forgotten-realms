@@ -26,10 +26,19 @@ class PlayerManager:
 
     def save_players(self):
         with open(self.save_file, "w") as f:
-            json.dump({name: p.to_dict() for name, p in self.players.items()}, f, indent=4)
+            # Create a dictionary of player data without inventory
+            player_data = {}
+            for name, player in self.players.items():
+                player_dict = player.to_dict()
+                player_dict['inventory'] = []  # Clear inventory before saving
+                player_data[name] = player_dict
+            json.dump(player_data, f, indent=4)
 
     def load_players(self):
         if os.path.exists(self.save_file):
             with open(self.save_file, "r") as f:
                 data = json.load(f)
                 self.players = {name: Player.from_dict(p_data) for name, p_data in data.items()}
+                # Ensure all loaded players start with empty inventory
+                for player in self.players.values():
+                    player.inventory = []

@@ -11,6 +11,7 @@ logger.info("Initializing commands package")
 from commands import parser
 from commands import registry
 from commands import executor
+from commands import utils
 
 # Export the main functions and objects for easy access
 from commands.parser import parse_command, CommandContext
@@ -22,6 +23,7 @@ try:
     from commands import standard
     from commands import communication
     from commands import combat
+    from commands import container  # Import the new container commands module
     logger.info("All command handlers imported successfully")
 except ImportError as e:
     logger.error(f"Error importing command handlers: {e}")

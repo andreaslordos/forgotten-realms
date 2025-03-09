@@ -142,6 +142,113 @@ def parse_command_string(command_str, command_context=None, abbreviations=None, 
     return [cmd_dict]
 
 
+def parse_container_commands(command_str, context):
+    """
+    Parse special container commands like "put/insert X in Y" or "get/take/remove X from Y".
+    
+    Args:
+        command_str (str): The command string to parse
+        context (CommandContext): Command context for pronouns
+        
+    Returns:
+        dict or None: The parsed command or None if not a container command
+    """
+    # Check for "put/insert X in Y" pattern
+    put_matches = ["put ", "insert "]
+    for prefix in put_matches:
+        if command_str.lower().startswith(prefix):
+            # Split by " in " without the maxsplit parameter
+            parts = command_str.lower().split(" in ")
+            if len(parts) == 2:
+                item_name = parts[0][len(prefix):].strip()  # Remove prefix
+                container_name = parts[1].strip()
+                
+                # Resolve pronouns
+                item_name = context.resolve_pronoun(item_name)
+                container_name = context.resolve_pronoun(container_name)
+                
+                return {
+                    "verb": "put",  # Always use "put" as the verb
+                    "subject": item_name,
+                    "object": None,
+                    "instrument": container_name,
+                    "original": command_str
+                }
+    
+    # Check for "get/take/remove X from Y" pattern
+    get_matches = ["get ", "take ", "remove "]
+    for prefix in get_matches:
+        if command_str.lower().startswith(prefix):
+            # Split by " from " without the maxsplit parameter
+            parts = command_str.lower().split(" from ")
+            if len(parts) == 2:
+                item_name = parts[0][len(prefix):].strip()  # Remove prefix
+                container_name = parts[1].strip()
+                
+                # Resolve pronouns
+                item_name = context.resolve_pronoun(item_name)
+                container_name = context.resolve_pronoun(container_name)
+                
+                # Use "get" as the standard verb with a container flag
+                return {
+                    "verb": "get",  # Always use "get" as the verb
+                    "subject": item_name,
+                    "object": None,
+                    "instrument": container_name,
+                    "original": command_str,
+                    "from_container": True  # Special flag to indicate this is a container retrieval
+                }
+    
+    return None
+
+# Modified parse_command function to include container command parsing
+def parse_command(command_str, context=None, players_in_room=None, online_sessions=None):
+    """
+    Main entry point for command parsing.
+    Returns a list containing a single parsed command dictionary.
+    
+    This version has been updated to include container command parsing.
+    """
+    if not command_str:
+        return []
+    
+    if not context:
+        context = CommandContext()
+    
+    # Check for special container commands first
+    container_cmd = parse_container_commands(command_str, context)
+    if container_cmd:
+        context.update(container_cmd["verb"], container_cmd["subject"], None, container_cmd["instrument"])
+        return [container_cmd]
+    
+    # Original logic follows...
+    if command_str.startswith('"'):
+        return [{
+            "verb": "say",
+            "subject": command_str[1:].strip(),
+            "object": None,
+            "instrument": None,
+            "original": command_str
+        }]
+    elif command_str == "u":
+        all_abbreviations = {"u": "up"}
+    elif command_str in DIRECTION_ALIASES:
+        all_abbreviations = {command_str: DIRECTION_ALIASES[command_str]}
+    else:
+        all_abbreviations = {**DIRECTION_ALIASES, **COMMAND_ABBREVIATIONS}
+    
+    cmds = parse_command_string(command_str, context, all_abbreviations, players_in_room, online_sessions)
+    
+    # Special handling: if the verb is a direction, expand it.
+    for cmd in cmds:
+        if cmd["verb"] == "go" and cmd["subject"] in DIRECTION_ALIASES.values():
+            cmd["verb"] = cmd["subject"]
+            cmd["subject"] = None
+        if cmd["verb"] in DIRECTION_ALIASES:
+            cmd["verb"] = DIRECTION_ALIASES[cmd["verb"]]
+    
+    return cmds
+
 def parse_single_command(command_str, context, abbreviations, players_in_room=None):
     """
     Parses a single command using the format: <verb> <subject> [with <object>]
@@ -298,45 +405,3 @@ COMMAND_ABBREVIATIONS = {
 def is_movement_command(verb):
     """Check if a verb is a movement command."""
     return verb in DIRECTION_ALIASES.values() or verb in DIRECTION_ALIASES.keys()
-
-def parse_command(command_str, context=None, players_in_room=None, online_sessions=None):
-    """
-    Main entry point for command parsing.
-    Returns a list containing a single parsed command dictionary.
-    """
-    logger.debug(f"Main parse_command called with: '{command_str}'")
-    
-    if not command_str:
-        return []
-    
-    if not context:
-        context = CommandContext()
-    
-    # Choose abbreviations based on the command
-    if command_str.startswith('"'):
-        return [{
-            "verb": "say",
-            "subject": command_str[1:].strip(),
-            "object": None,
-            "instrument": None,
-            "original": command_str
-        }]
-    elif command_str == "u":
-        all_abbreviations = {"u": "up"}
-    elif command_str in DIRECTION_ALIASES:
-        all_abbreviations = {command_str: DIRECTION_ALIASES[command_str]}
-    else:
-        all_abbreviations = {**DIRECTION_ALIASES, **COMMAND_ABBREVIATIONS}
-    
-    cmds = parse_command_string(command_str, context, all_abbreviations, players_in_room, online_sessions)
-    
-    # Special handling: if the verb is a direction, expand it.
-    for cmd in cmds:
-        if cmd["verb"] == "go" and cmd["subject"] in DIRECTION_ALIASES.values():
-            cmd["verb"] = cmd["subject"]
-            cmd["subject"] = None
-        if cmd["verb"] in DIRECTION_ALIASES:
-            cmd["verb"] = DIRECTION_ALIASES[cmd["verb"]]
-    
-    logger.debug(f"Final parsed commands: {cmds}")
-    return cmds
