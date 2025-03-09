@@ -126,7 +126,7 @@ def build_look_description(player, game_state, online_sessions=None, look=False)
     room_desc = f"{current_room.name}"
     
     if current_room.room_id not in player.visited or look:
-        room_desc += f"\n{current_room.description}\n"
+        room_desc += f"\n{current_room.description}"
         player.visited.add(current_room.room_id)
     
     # List items in the room
@@ -135,7 +135,7 @@ def build_look_description(player, game_state, online_sessions=None, look=False)
         for item in current_room.items:
             items_desc.append(item.description)
         if items_desc:
-            room_desc += "\n".join(items_desc) + "\n"
+            room_desc += "\n" + "\n".join(items_desc)
     
     # List other players present in the room
     players_here = []

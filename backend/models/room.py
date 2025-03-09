@@ -1,6 +1,6 @@
 # backend/models/room.py
 
-from models.item import Item
+from models.Item import Item
 
 class Room:
     def __init__(self, room_id, name, description, exits=None):

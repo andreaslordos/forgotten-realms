@@ -2,7 +2,7 @@
 
 import json
 import os
-from models.player import Player
+from models.Player import Player
 
 class PlayerManager:
     def __init__(self, save_file="storage/players.json", spawn_room="room_1_1"):

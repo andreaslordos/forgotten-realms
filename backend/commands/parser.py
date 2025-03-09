@@ -272,8 +272,8 @@ DIRECTION_ALIASES = {
     "sw": "southwest",
     "u": "up",
     "d": "down",
-    # Removed "i": "in" as requested
-    # Removed "o": "out" as requested
+    "out": "out",
+    "in": "in",
 }
 
 # Command abbreviations

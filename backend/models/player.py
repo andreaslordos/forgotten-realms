@@ -1,8 +1,8 @@
 # backend/models/player.py
 
 from datetime import datetime
-from models.levels import levels
-from models.item import Item
+from models.Levels import levels
+from models.Item import Item
 
 class Player:
     def __init__(self, name, sex='M', email=None, spawn_room="village_center"):
@@ -50,6 +50,8 @@ class Player:
         return sum(item.weight for item in self.inventory)
 
     def add_item(self, item):
+        if item.takeable == False:
+            return False, "Don't be ridiculous!"
         # Check number capacity
         if len(self.inventory) >= self.carrying_capacity_num:
             return False, "You are carrying too many items."

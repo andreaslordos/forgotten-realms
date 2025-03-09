@@ -229,7 +229,6 @@ async def handle_flee(cmd, player, game_state, player_manager, online_sessions, 
         player (Player): The player fleeing
         game_state (GameState): The game state
         player_manager (PlayerManager): The player manager
-        visited (set): Set of visited room IDs
         online_sessions (dict): Online sessions dictionary
         sio (SocketIO): Socket.IO instance
         utils (module): Utilities module
@@ -292,9 +291,6 @@ async def handle_flee(cmd, player, game_state, player_manager, online_sessions, 
                 other_player != player):
                 await utils.send_message(sio, sid, 
                                        f"{player.name} runs in, panting heavily!")
-    
-    if visited is not None:
-        visited.add(new_room_id)
     
     # Return result message including the room description
     return (f"You flee {direction}, dropping all your items and losing {points_lost} points!\n\n"

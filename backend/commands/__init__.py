@@ -22,7 +22,6 @@ try:
     from commands import standard
     from commands import communication
     from commands import combat
-    from commands import puzzle
     logger.info("All command handlers imported successfully")
 except ImportError as e:
     logger.error(f"Error importing command handlers: {e}")

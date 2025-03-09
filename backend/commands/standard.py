@@ -2,7 +2,8 @@
 
 from commands.registry import command_registry
 from commands.executor import build_look_description
-from models.levels import levels
+from models.Levels import levels
+from models.ContainerItem import ContainerItem
 
 # ===== LOOK COMMAND =====
 async def handle_look(cmd, player, game_state, player_manager, online_sessions, sio, utils):
@@ -16,19 +17,13 @@ async def handle_look(cmd, player, game_state, player_manager, online_sessions, 
     # Look at a specific item in inventory
     for item in player.inventory:
         if subject.lower() in item.name.lower():
-            return f"{item.name}: {item.description}"
+            return f"{item.description}"
     
     # Look at a specific item in the room
     current_room = game_state.get_room(player.current_room)
     for item in current_room.items:
         if subject.lower() in item.name.lower():
             return f"{item.name}: {item.description}"
-    
-    # Look in a specific direction
-    if subject in current_room.exits:
-        next_room_id = current_room.exits[subject]
-        next_room = game_state.get_room(next_room_id)
-        return f"Looking {subject}: {next_room.name}"
     
     return f"You don't see '{subject}' here."
 
@@ -41,6 +36,10 @@ async def handle_inventory(cmd, player, game_state, player_manager, online_sessi
     
     return_str = "You are currently holding the following:\n"
     return_str += " ".join([item.name for item in player.inventory])
+
+    for item in player.inventory:
+        if isinstance(item, ContainerItem):
+            return_str += f"\n{item.get_contained()}"
     return return_str
 
 
@@ -80,7 +79,7 @@ async def handle_get(cmd, player, game_state, player_manager, online_sessions, s
             if success:
                 current_room.remove_item(item)
                 picked_up.append(item.name)
-        return f"Picked up: {', '.join(picked_up)}." if picked_up else "Couldn't pick up anything."
+        return f"Picked up: {', '.join(picked_up)}." if picked_up else "Nothing to pick up."
     
     if subject.lower() == "treasure" or subject.lower() == "t":
         picked_up = []
@@ -90,7 +89,7 @@ async def handle_get(cmd, player, game_state, player_manager, online_sessions, s
                 if success:
                     current_room.remove_item(item)
                     picked_up.append(item.name)
-        return f"Treasure picked up: {', '.join(picked_up)}." if picked_up else "No treasure items available."
+        return f"Treasure picked up: {', '.join(picked_up)}." if picked_up else "No treasurew available."
     
     # Look for a matching item in the room
     found_item = None
@@ -202,7 +201,7 @@ async def handle_help(cmd, player, game_state, player_manager, online_sessions, 
         "  help [<topic>]        - Displays this help information.\n"
         "  info                  - Provides information about the game and its objectives.\n"
         "  <direction>           - Move in a specific direction (n, s, e, w, north, south, etc).\n"
-        "  look [<item/direction>] - Describes your current location or examines something.\n"
+        "  look [<item>]         - Describes your current location or examines something.\n"
         "  get <item>            - Pick up an item (also: g).\n"
         "  drop <item>           - Drop an item from your inventory (also: dr).\n"
         "  inventory             - Lists items in your inventory (also: i, inv).\n"

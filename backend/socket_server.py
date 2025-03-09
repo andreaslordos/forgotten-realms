@@ -19,6 +19,7 @@ from managers.auth import AuthManager
 from managers.player import PlayerManager
 from managers.game_state import GameState
 from managers.map_generator import generate_3x3_grid
+from managers.village_generator import generate_village_of_chronos
 from globals import online_sessions
 from services.notifications import set_context
 from event_handlers import register_handlers
@@ -45,14 +46,13 @@ sio.attach(app)
 # Initialize managers and game state.
 logger.info("Initializing game managers and state...")
 auth_manager = AuthManager()
-player_manager = PlayerManager(spawn_room="room_1_1")
+player_manager = PlayerManager(spawn_room="spawn")
 game_state = GameState()
 if not game_state.rooms:
     logger.info("No game rooms found. Generating a new 3x3 grid...")
-    new_rooms = generate_3x3_grid()
+    new_rooms = generate_village_of_chronos()
     for room in new_rooms.values():
         game_state.add_room(room)
-    # (Add items to rooms as needed...)
     game_state.save_rooms()
     logger.info("Game rooms generated and saved.")
 else:

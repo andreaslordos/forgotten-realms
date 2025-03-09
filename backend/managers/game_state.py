@@ -2,7 +2,7 @@
 
 import json
 import os
-from models.room import Room
+from models.Room import Room
 
 class GameState:
     def __init__(self, save_file="storage/rooms.json"):
