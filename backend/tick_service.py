@@ -20,9 +20,9 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
         try:
             await asyncio.sleep(0.5)
             
-            # Inactivity reset check (2 hours)
+            # Inactivity reset check (30 minutes)
             current_time = time.time()
-            if online_sessions and (current_time - last_activity) > 7200:
+            if online_sessions and (current_time - last_activity) > (120*30):
                 print("[Tick] Triggering inactivity reset after 2 hours...")
                 logger.info("Triggering inactivity reset after 2 hours")
                 # TODO: Implement mid-week reset here

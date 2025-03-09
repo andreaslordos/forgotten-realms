@@ -34,8 +34,8 @@ logger.info("Initializing Socket.IO server and web app.")
 sio = socketio.AsyncServer(
     async_mode='aiohttp', 
     cors_allowed_origins='*',
-    ping_timeout=30,
-    ping_interval=10,
+    ping_timeout=180,
+    ping_interval=60,
     reconnection=False,
     logger=True,
     engineio_logger=True

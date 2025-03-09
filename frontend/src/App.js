@@ -44,8 +44,8 @@ function App() {
     socketRef.current = io(SOCKET_URL, {
       transports: ['websocket'],
       reconnection: false,   // Disable auto-reconnection
-      pingInterval: 10000,   // 10 seconds (in ms)
-      pingTimeout: 30000,    // 30 seconds (in ms)
+      pingInterval: 60000,   // 60 seconds (in ms)
+      pingTimeout: 180000,    // 180 seconds (in ms)
     });
 
     // On successful connect
