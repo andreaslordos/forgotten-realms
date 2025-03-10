@@ -15,6 +15,7 @@ class Player:
         self.max_stamina = levels[0]['stamina']
         self.strength = levels[0]['strength']  # Strength determines max weight (in kg)
         self.dexterity = levels[0]['dexterity']
+        self.magic = levels[0]['magic']
         self.carrying_capacity_num = levels[0]['carrying_capacity_num']  # Max number of items
         self.level = levels[0]['name']
         self.visited = set()
