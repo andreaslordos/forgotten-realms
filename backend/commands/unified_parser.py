@@ -1,4 +1,32 @@
 # backend/commands/unified_parser.py
+"""
+Unified Command Parser System
+
+This module implements a flexible, extensible command parsing system for text-based games.
+It uses a middleware pipeline architecture to process commands through a series of steps,
+allowing for gradual transformation from raw text input to structured command objects.
+
+Key features:
+- Middleware pipeline for command processing
+- Support for various command syntaxes (standard, reversed, container commands)
+- Command chaining via comma separation
+- Context tracking for pronoun resolution
+- Pattern-based command matching
+
+Architecture Overview:
+1. Raw input → CommandParser.parse()
+2. Command chaining detection/splitting
+3. Tokenization
+4. Processing through middleware pipeline:
+   - Message command detection (say, tell)
+   - Abbreviation resolution
+   - Container command detection
+   - Interaction syntax detection
+   - Pronoun resolution
+5. Final command object creation
+
+Author: AI MUD Development Team
+"""
 
 import re
 import logging
@@ -7,16 +35,45 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class SyntaxPattern:
-    """Defines a command syntax pattern that can be matched against input."""
+    """
+    Defines a command syntax pattern that can be matched against input.
+    
+    This class allows defining formal syntax structures for commands using a simple
+    pattern language. Variables are represented by uppercase words (VERB, SUBJECT, INSTRUMENT),
+    while literals are represented by lowercase words.
+    
+    Example patterns:
+    - "VERB SUBJECT" - Simple command like "look sword"
+    - "VERB SUBJECT with INSTRUMENT" - Standard syntax like "unlock door with key"
+    - "VERB INSTRUMENT to SUBJECT" - Reversed syntax like "tie rope to tree"
+    
+    Patterns have a priority value to resolve ambiguities. Higher priority patterns
+    are matched first when multiple patterns could apply.
+    """
     def __init__(self, pattern_str, priority=0, handler=None):
-        self.pattern_str = pattern_str  # e.g. "VERB SUBJECT with INSTRUMENT"
-        self.priority = priority  # Higher numbers take precedence
-        self.handler = handler  # Optional custom parser function
+        # The raw pattern string (e.g., "VERB SUBJECT with INSTRUMENT")
+        self.pattern_str = pattern_str  
+        # Higher priority patterns take precedence if multiple patterns match
+        self.priority = priority
+        # Optional custom handler function for specialized parsing
+        self.handler = handler
+        # Parsed representation of the pattern components
         self.components = self._parse_pattern()
     
     def _parse_pattern(self):
-        """Convert pattern string to structured representation."""
+        """
+        Convert the pattern string to a structured representation for matching.
+        
+        This breaks the pattern into components, distinguishing between:
+        - Variables (UPPERCASE words) - representing command parts like VERB, SUBJECT
+        - Literals (lowercase words) - representing specific words like "with", "to"
+        
+        Returns:
+            list: A list of component dictionaries, each with either a "type" key 
+                 (for variables) or a "value" key (for literals)
+        """
         parts = self.pattern_str.split()
         components = []
         
@@ -30,8 +87,18 @@ class SyntaxPattern:
     
     def matches(self, tokens):
         """
-        Check if tokens match this pattern and extract components.
-        Returns (success, components_dict)
+        Check if a sequence of tokens matches this pattern and extract the components.
+        
+        This implements a simple state machine that walks through the pattern and
+        tokens in parallel, binding variable components to spans of tokens.
+        
+        Args:
+            tokens (list): List of token strings from the input command
+            
+        Returns:
+            tuple: (success, components_dict) where:
+                - success (bool): True if pattern matched, False otherwise
+                - components_dict (dict): Extracted components (verb, subject, instrument)
         """
         if not tokens:
             return False, {}
@@ -45,7 +112,7 @@ class SyntaxPattern:
             component = self.components[pattern_index]
             
             if "value" in component:
-                # Check for literal match
+                # Literal matching - must match exact word
                 if token_index < len(tokens) and tokens[token_index].lower() == component["value"]:
                     token_index += 1
                     pattern_index += 1
@@ -53,7 +120,7 @@ class SyntaxPattern:
                     # Failed to match literal
                     return False, {}
             elif "type" in component:
-                # Variable component
+                # Variable component matching - captures spans of tokens
                 component_type = component["type"]
                 
                 if component_type == "VERB":
@@ -117,8 +184,16 @@ class SyntaxPattern:
 
 class CommandContext:
     """
-    Stores the context of previously executed commands.
-    This allows for command chaining and using pronouns like IT, HIM, HER, THEM.
+    Stores the context of previously executed commands for reference resolution.
+    
+    This class maintains a history of command elements (verbs, subjects, objects)
+    that enables the resolution of pronouns like IT, HIM, HER, THEM to their 
+    actual referents. This allows for more natural command sequences like:
+    
+    > look at sword
+    > take it
+    
+    Where "it" refers back to "sword" from the previous command.
     """
     def __init__(self):
         self.last_verb = None
@@ -131,7 +206,20 @@ class CommandContext:
         self.last_it = None      # Last non-player referenced (for IT)
 
     def update(self, verb=None, subject=None, obj=None, instrument=None, player=None, gender=None):
-        """Updates the command context with new values."""
+        """
+        Updates the command context with new values from the current command.
+        
+        This method is called after each command is processed to update the
+        context for future pronoun resolution.
+        
+        Args:
+            verb (str): The main command verb
+            subject (str): The primary noun/target of the command
+            obj (str): The secondary object (rarely used)
+            instrument (str): The tool or item used with the command
+            player (object): Player object if subject refers to a player
+            gender (str): Gender of referenced player ('M' or 'F')
+        """
         logger.debug(f"Updating context: verb={verb}, subject={subject}, obj={obj}, instrument={instrument}")
         if verb:
             self.last_verb = verb
@@ -153,6 +241,16 @@ class CommandContext:
     def resolve_pronoun(self, word, players_in_room=None):
         """
         Resolves pronouns like IT, HIM, HER, THEM to their actual referents.
+        
+        This looks up the appropriate referent from the command history
+        and substitutes it for the pronoun.
+        
+        Args:
+            word (str): The word to check if it's a pronoun
+            players_in_room (list): Optional list of players in the room
+            
+        Returns:
+            str: The resolved referent or the original word if not a pronoun
         """
         if not word:
             return word
@@ -172,27 +270,61 @@ class CommandContext:
 
 
 class CommandParser:
-    """Unified command parser with middleware pipeline architecture."""
+    """
+    Main parser class that implements the middleware pipeline architecture.
+    
+    The CommandParser handles the overall flow of command processing:
+    1. Tokenization of input
+    2. Command chaining detection and processing
+    3. Running the command through the middleware pipeline
+    4. Finalizing the command object
+    
+    The parser is designed to be extensible through middleware functions that
+    can be added to the pipeline to handle specific command types or transformations.
+    """
     def __init__(self, command_registry):
+        # Reference to the command registry for command validation and alias resolution
         self.registry = command_registry
+        # List of middleware functions for the processing pipeline
         self.middleware = []
     
     def add_middleware(self, func):
-        """Add a processing step to the parser pipeline."""
+        """
+        Add a processing step to the parser pipeline.
+        
+        Middleware functions are called in sequence, each receiving the command
+        object and context, and returning a potentially modified command object.
+        
+        Args:
+            func (callable): Function with signature (cmd, context, registry) -> cmd
+        """
         self.middleware.append(func)
     
     def parse(self, command_str, context=None, players_in_room=None, online_sessions=None):
         """
         Parse a command string into structured command objects.
-        Returns a list of parsed commands (for handling chained commands).
+        
+        This is the main entry point for command parsing. It handles:
+        - Command chaining (comma-separated commands)
+        - Tokenization
+        - Running the command through the middleware pipeline
+        
+        Args:
+            command_str (str): The raw command string from the user
+            context (CommandContext): Optional context from previous commands
+            players_in_room (list): Optional list of players in the room
+            online_sessions (dict): Optional online session data
+            
+        Returns:
+            list: A list of parsed command objects (dictionaries)
         """
         if not context:
             context = CommandContext()
         
-        # Step 1: Check for chained commands first
+        # Step 1: Check for chained commands first (comma-separated)
         chained_commands = self._detect_chained_commands(command_str)
         if len(chained_commands) > 1:
-            # Process each command separately
+            # Process each command separately and combine results
             results = []
             for cmd in chained_commands:
                 # Recursively parse each part
@@ -201,7 +333,7 @@ class CommandParser:
             return results
         
         # Not a chained command, process normally
-        # Initialize command object with original text
+        # Initialize command object with original text and tokenize
         cmd = {
             "original": command_str,
             "tokens": self._tokenize(command_str),
@@ -216,16 +348,32 @@ class CommandParser:
         # Run command through middleware pipeline
         for middleware_func in self.middleware:
             cmd = middleware_func(cmd, context, self.registry)
+            # If a middleware function sets abort_pipeline, stop processing
             if cmd.get("abort_pipeline"):
                 break
         
         return [self._finalize_command(cmd, context)]
     
     def _tokenize(self, command_str):
-        """Split command into tokens, preserving quoted strings."""
+        """
+        Split command into tokens, preserving quoted strings.
+        
+        This tokenizer handles quoted strings as single tokens, which is important
+        for commands like 'say "hello there"' where the quoted message should be
+        preserved as a single unit.
+        
+        Args:
+            command_str (str): The raw command string
+            
+        Returns:
+            list: A list of token strings
+        """
         tokens = []
         
-        # Simple tokenizer that preserves quoted strings
+        # Regular expression pattern that preserves quoted strings
+        # Matches either:
+        # - A quoted string: "any text inside quotes"
+        # - Any non-whitespace sequence: word
         pattern = r'("[^"]*"|\S+)'
         matches = re.finditer(pattern, command_str)
         
@@ -239,8 +387,20 @@ class CommandParser:
         return tokens
     
     def _finalize_command(self, cmd, context):
-        """Convert internal command representation to the final format."""
-        # Make sure the command is in the expected format
+        """
+        Convert internal command representation to the final format.
+        
+        This creates the standard command object format expected by
+        the command execution system.
+        
+        Args:
+            cmd (dict): The processed command object
+            context (CommandContext): The command context
+            
+        Returns:
+            dict: Standardized command object
+        """
+        # Assemble the final command object with standard keys
         result = {
             "verb": cmd.get("verb"),
             "subject": cmd.get("subject"),
@@ -255,14 +415,26 @@ class CommandParser:
         if "from_container" in cmd:
             result["from_container"] = cmd["from_container"]
         
-        # Update context
+        # Update context with this command's components
         context.update(result["verb"], result["subject"], result["object"], result["instrument"])
         
         return result
     
     def _detect_chained_commands(self, command_str):
-        """Detect and split comma-separated commands."""
-        # Split by commas, preserving quoted strings
+        """
+        Detect and split comma-separated commands.
+        
+        Handles comma chaining like "get sword, look at it, drop it"
+        while preserving commas inside quoted strings.
+        
+        Args:
+            command_str (str): The raw command string
+            
+        Returns:
+            list: A list of individual command strings
+        """
+        # Split by commas, but preserve commas inside quoted strings
+        # The regex pattern uses a negative lookahead to ensure we're not inside quotes
         pattern = r',\s*(?=(?:[^"]*"[^"]*")*[^"]*$)'
         parts = re.split(pattern, command_str)
         
@@ -270,7 +442,11 @@ class CommandParser:
         return [part.strip() for part in parts if part.strip()]
 
 
-# Lists of prepositions for syntax detection
+# -------------------------------------------------------------------------
+# Preposition dictionaries for syntax detection
+# -------------------------------------------------------------------------
+
+# Prepositions that indicate standard syntax (verb X with Y)
 STANDARD_PREPOSITIONS = {
     "with": "with", "w": "with", "wi": "with", 
     "using": "using", "u": "using",
@@ -278,17 +454,36 @@ STANDARD_PREPOSITIONS = {
     "underneath": "underneath", "beneath": "beneath", "under": "under"
 }
 
+# Prepositions that indicate reversed syntax (verb X to/on/in Y)
 REVERSED_PREPOSITIONS = {
-    "to": "to", "onto": "onto", "toward": "toward", "towards": "towards",
+    "to": "to", "t": "to", "onto": "onto", "toward": "toward", "towards": "towards",
     "on": "on", "upon": "upon", "over": "over",
     "in": "in", "i": "in", "into": "into", "inside": "inside", 
     "at": "at", "around": "around", "about": "about"
 }
 
-# Standard middleware functions
+# -------------------------------------------------------------------------
+# Middleware functions for the parser pipeline
+# -------------------------------------------------------------------------
 
 def detect_message_commands(cmd, context, registry):
-    """Identify special message commands (say, tell, shout)."""
+    """
+    Identify special message commands (say, tell, shout).
+    
+    This middleware detects two special command formats:
+    1. "TEXT" - A quoted string at the beginning becomes a say command
+    2. PLAYER TEXT - A player name followed by text becomes a tell command
+    
+    These are detected early in the pipeline to bypass normal parsing.
+    
+    Args:
+        cmd (dict): The command object being built
+        context (CommandContext): The command context
+        registry: The command registry
+        
+    Returns:
+        dict: The potentially modified command object
+    """
     original = cmd["original"]
     tokens = cmd["tokens"]
     online_sessions = cmd.get("online_sessions")
@@ -327,7 +522,21 @@ def detect_message_commands(cmd, context, registry):
     return cmd
 
 def resolve_abbreviations(cmd, context, registry):
-    """Expand command abbreviations to their full form."""
+    """
+    Expand command abbreviations to their full form.
+    
+    This middleware identifies abbreviations for commands (like 'n' for 'north')
+    and expands them to their full form. It handles both direction aliases and
+    general command aliases.
+    
+    Args:
+        cmd (dict): The command object being built
+        context (CommandContext): The command context
+        registry: The command registry with alias information
+        
+    Returns:
+        dict: The modified command object with expanded verb
+    """
     tokens = cmd["tokens"]
     if not tokens:
         return cmd
@@ -347,7 +556,23 @@ def resolve_abbreviations(cmd, context, registry):
     return cmd
 
 def detect_container_commands(cmd, context, registry):
-    """Detect special container commands like put X in Y and get X from Y."""
+    """
+    Detect special container commands like put X in Y and get X from Y.
+    
+    This middleware identifies container-related command patterns with complex structure:
+    - put/insert X in Y
+    - get/take/remove X from Y
+    
+    It handles abbreviations and produces a standardized command format.
+    
+    Args:
+        cmd (dict): The command object being built
+        context (CommandContext): The command context
+        registry: The command registry
+        
+    Returns:
+        dict: The potentially modified command object
+    """
     tokens = cmd["tokens"]
     if not tokens:
         return cmd
@@ -424,12 +649,28 @@ def detect_container_commands(cmd, context, registry):
     return cmd
 
 def detect_interaction_syntax(cmd, context, registry):
-    """Handle interaction syntax with prepositions."""
+    """
+    Handle interaction syntax with prepositions.
+    
+    This middleware detects and parses two main command syntaxes:
+    - Standard syntax: verb subject with instrument (open door with key)
+    - Reversed syntax: verb instrument to subject (tie rope to tree)
+    
+    It identifies prepositions and properly assigns subjects and instruments.
+    
+    Args:
+        cmd (dict): The command object being built
+        context (CommandContext): The command context
+        registry: The command registry
+        
+    Returns:
+        dict: The modified command object with parsed components
+    """
     tokens = cmd["tokens"]
     if not tokens or cmd.get("abort_pipeline"):
         return cmd
     
-    # Look for prepositions
+    # Look for prepositions (skip the verb)
     standard_index = -1
     reversed_index = -1
     
@@ -460,21 +701,21 @@ def detect_interaction_syntax(cmd, context, registry):
     
     return cmd
 
-def is_movement_command(verb):
-    """Check if a verb is a movement command."""
-    if not verb:
-        return False
-    
-    # Movement commands are directions
-    directions = list(REVERSED_PREPOSITIONS.keys()) + list(REVERSED_PREPOSITIONS.values())
-    directions.extend(["north", "south", "east", "west", 
-                       "northeast", "northwest", "southeast", "southwest",
-                       "up", "down", "in", "out"])
-    
-    return verb.lower() in directions
-
 def resolve_pronouns(cmd, context, registry):
-    """Replace pronouns (it, him, her, them) with their referents."""
+    """
+    Replace pronouns (it, him, her, them) with their referents.
+    
+    This middleware performs pronoun resolution by checking with the command
+    context for appropriate referents from previous commands.
+    
+    Args:
+        cmd (dict): The command object being built
+        context (CommandContext): The command context
+        registry: The command registry
+        
+    Returns:
+        dict: The command object with resolved pronouns
+    """
     if cmd.get("abort_pipeline"):
         return cmd
     
@@ -486,16 +727,57 @@ def resolve_pronouns(cmd, context, registry):
     
     return cmd
 
+def is_movement_command(verb):
+    """
+    Check if a verb is a movement command.
+    
+    Movement commands are directional verbs like "north", "south", "up", etc.
+    
+    Args:
+        verb (str): The command verb to check
+        
+    Returns:
+        bool: True if it's a movement command, False otherwise
+    """
+    if not verb:
+        return False
+    
+    # Movement commands are directions
+    directions = ["north", "south", "east", "west", 
+                 "northeast", "northwest", "southeast", "southwest",
+                 "up", "down", "in", "out"]
+    
+    # Also check abbreviations
+    direction_abbrevs = ["n", "s", "e", "w", "ne", "nw", "se", "sw", "u", "d"]
+    
+    return verb.lower() in directions or verb.lower() in direction_abbrevs
+
 # Factory function to create a parser with default middleware
 def create_default_parser(registry):
-    """Create a parser instance with the standard middleware."""
+    """
+    Create a parser instance with the standard middleware pipeline.
+    
+    This configures a CommandParser with the standard middleware functions
+    in the appropriate processing order.
+    
+    Args:
+        registry: The command registry to use
+        
+    Returns:
+        CommandParser: A configured parser instance
+    """
     parser = CommandParser(registry)
     
-    # Add middleware in processing order
+    # Add middleware in processing order - the sequence matters!
+    # 1. First detect special message commands
     parser.add_middleware(detect_message_commands)
+    # 2. Resolve command abbreviations
     parser.add_middleware(resolve_abbreviations)
+    # 3. Check for container commands
     parser.add_middleware(detect_container_commands)
+    # 4. Detect interaction syntax
     parser.add_middleware(detect_interaction_syntax)
+    # 5. Finally resolve pronouns
     parser.add_middleware(resolve_pronouns)
     
     return parser
