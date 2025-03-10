@@ -110,9 +110,8 @@ def register_handlers(sio, auth_manager, player_manager, game_state, online_sess
             session['player'] = player
             del session['auth_state']
             await sio.emit('setInputType', 'text', room=sid)
-            masked = '*' * len(password)
             last_login = player.last_active.strftime("%H:%M:%S")
-            login_message = (f"*{masked}\n\n"
+            login_message = (f"\n\n"
                              f"Yes!\n"
                              f"Your last game was today at {last_login}.\n\n"
                              f"Hello again, {player.name} the {player.level}!\n\n")
@@ -251,14 +250,6 @@ Welcome! By what name shall I call you?
         if 'auth_state' in session:
             await process_auth_flow(sid, command_text, session)
         else:
-            session['last_active'] = asyncio.get_event_loop().time()
-            
-            # Check if we're in the middle of a password change
-            if 'pwd_change' in session:
-                # Echo masked password input back to the user
-                if command_text.strip():  # Only if not empty
-                    masked_password = '*' * len(command_text)
-                    await utils.send_message(sio, sid, f"{masked_password}")
-            
+            session['last_active'] = asyncio.get_event_loop().time()            
             # Add command to the queue for processing
             session['command_queue'].append(command_text)

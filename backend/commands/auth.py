@@ -135,7 +135,7 @@ async def handle_password(cmd, player, game_state, player_manager, online_sessio
                 # Reset input type to text
                 await sio.emit('setInputType', 'text', room=current_sid)
                 
-                return "Password changed successfully. Your new password will be active when you next login."
+                return "Password changed successfully."
                 
             except Exception as e:
                 logger.error(f"Failed to change password: {str(e)}")
@@ -146,7 +146,7 @@ async def handle_password(cmd, player, game_state, player_manager, online_sessio
             # Passwords don't match
             del online_sessions[current_sid]['pwd_change']
             await sio.emit('setInputType', 'text', room=current_sid)
-            return "No, they're different - password remains unchanged.\nYour password will be updated when you leave the game."
+            return "No, they're different - password remains unchanged."
     
     return ""  # Empty string because we've already sent the appropriate messages
 
