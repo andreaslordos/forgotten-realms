@@ -91,28 +91,30 @@ class Player:
     def add_visited(self, room_id):
         self.visited.add(room_id)
 
-    def add_points(self, points, sio=None, online_sessions=None):
+    def add_points(self, points, sio=None, online_sessions=None, send_notification=True):
         """
         Add points to the player's score and update level if needed.
-        Sends points notification and triggers level-up notification if applicable.
         
         Args:
             points (int): The number of points to add
             sio (SocketIO, optional): Socket.IO instance for sending messages
             online_sessions (dict, optional): Dictionary of online sessions
+            send_notification (bool): Whether to send the notification or return it
             
         Returns:
-            bool: Whether the player leveled up
+            tuple: (leveled_up, notification_text) - Whether the player leveled up and the notification text
         """
         self.points += points
         
-        # Send points notification
-        if sio and online_sessions:
+        # Create the points notification
+        notification = f"[{self.points}]"
+        
+        # Send points notification if requested
+        if send_notification and sio and online_sessions:
             # Find the player's session ID
             for sid, session in online_sessions.items():
                 if session.get('player') == self:
                     # Send just the points notification to the player
-                    notification = f"[{self.points}]"
                     asyncio.create_task(sio.emit('message', notification, room=sid))
                     break
         
@@ -120,7 +122,7 @@ class Player:
         # Pass sio and online_sessions so level_up can send its own notification
         leveled_up = self.level_up(sio, online_sessions)
             
-        return leveled_up
+        return leveled_up, notification
 
     def total_inventory_weight(self):
         return sum(item.weight for item in self.inventory)

@@ -194,7 +194,8 @@ async def handle_drop(cmd, player, game_state, player_manager, online_sessions, 
         
         messages = []
         for item in dropped_items:
-            messages.append(await drop_single_item(item))
+            message = await drop_single_item(item)
+            messages.append(message)
         
         return "\n".join(messages)
     
@@ -208,7 +209,8 @@ async def handle_drop(cmd, player, game_state, player_manager, online_sessions, 
         
         messages = []
         for item in treasure_items:
-            messages.append(await drop_single_item(item))
+            message = await drop_single_item(item)
+            messages.append(message)
         
         return "\n".join(messages)
     

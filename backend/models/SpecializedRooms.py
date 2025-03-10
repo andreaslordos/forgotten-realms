@@ -37,21 +37,25 @@ class SwampRoom(Room):
         Returns:
             tuple: (bool, str) indicating success and a message
         """
-        points_awarded = 0
-        
         # Move the item to the destination room if specified
         if self.treasure_destination:
             dest_room = game_state.get_room(self.treasure_destination)
             if dest_room:
                 dest_room.add_item(item)
-            
+        
         # Award points if enabled
         if self.awards_points and hasattr(item, 'value') and item.value > 0:
             points_awarded = item.value
-            if player_manager:
-                player.add_points(points_awarded, sio, online_sessions)
+            if player and player_manager:
+                # Don't send notification, just get the text
+                _, points_notification = player.add_points(points_awarded, sio, online_sessions, send_notification=False)
                 player_manager.save_players()
+                
+                # Build a combined message with the drop and points notification
+                combined_message = f"{item.name.capitalize()} dropped.\n{points_notification}"
+                return True, combined_message
         
+        # Return standard message for items without value
         return True, f"{item.name.capitalize()} dropped."
     
     def to_dict(self):
