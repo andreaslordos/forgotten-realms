@@ -4,6 +4,7 @@ from models.Room import Room
 from models.Item import Item
 from models.StatefulItem import StatefulItem
 from models.ContainerItem import ContainerItem
+from models.SpecializedRooms import SwampRoom
 
 def generate_village_of_chronos():
     """
@@ -97,7 +98,7 @@ def generate_rooms(rooms):
         "Oddly, many of the same items appear day after day despite being sold. The smell of fresh bread and "
         "exotic spices fills the air. To the west lies the village center, while north stands the imposing "
         "Mystic's Tower. A narrow alley leads east toward the edge of the village, where mist rises from the "
-        "Whispering Swamp."
+        "Swamp."
     )
     
     curiosity_shop = Room(
@@ -326,30 +327,13 @@ def generate_rooms(rooms):
         "of the village and events yet to come."
     )
     
-    # Swamp areas
-    whispering_swamp = Room(
-        "whispering_swamp",
-        "Whispering Swamp Edge",
-        "A perpetual mist hangs over this murky swamp at the village's eastern edge. The ground gradually transforms "
-        "from solid earth to soggy terrain as you leave the marketplace behind. The air feels thinner here, as if "
-        "the boundary between dimensions wears thin. Twisted trees rise from the murky water, their branches "
-        "reaching like gnarled fingers toward the sky."
-    )
-    
-    swamp_depths = Room(
-        "swamp_depths",
-        "Swamp Depths",
-        "Deep within the swamp, reality feels particularly fragile. A small island of relatively dry land is surrounded "
-        "by pools of iridescent water. The mist is thicker here, sometimes parting to reveal glimpses of other worlds. "
-        "A worn stone obelisk rises from the center of the island, covered in warnings about dimensional instability."
-    )
-    
-    forest_swamp_trail = Room(
-        "forest_swamp_trail",
-        "Overgrown Trail",
-        "This narrow trail winds along the boundary between the Whispering Forest and the swamp. Vegetation from both "
-        "regions intermingles here, creating strange hybrid plants. Signs of animal passage are visible in the soft ground, "
-        "though the tracks sometimes vanish mid-step, as if the creatures phase in and out of existence."
+    # Swamp areas - now using SwampRoom class
+    swamp1 = SwampRoom(
+        "swamp1",
+        "Treacherous Swamp",
+        "You are waylaid in a treacherous swamp.",
+        treasure_destination="underswamp",
+        awards_points=True
     )
     
     # Golden Door
@@ -365,7 +349,7 @@ def generate_rooms(rooms):
     underswamp = Room(
         "underswamp",
         "The Underswamp",
-        "This vast cavern hidden beneath the Whispering Swamp can only be accessed by those with the highest "
+        "This vast cavern hidden beneath the Swamp can only be accessed by those with the highest "
         "dimensional awareness. The chamber glitters with accumulated treasures from countless cycles. "
         "Crystalline formations grow from the ceiling, each containing what appears to be a frozen moment "
         "from a different potential timeline. There is no physical entrance or exit - only Archmages can teleport here."
@@ -404,9 +388,7 @@ def generate_rooms(rooms):
     rooms["forest_clearing"] = forest_clearing
     rooms["forest_hideaway"] = forest_hideaway
     rooms["yew_tree_hollow"] = yew_tree_hollow
-    rooms["whispering_swamp"] = whispering_swamp
-    rooms["swamp_depths"] = swamp_depths
-    rooms["forest_swamp_trail"] = forest_swamp_trail
+    rooms["swamp1"] = swamp1
     rooms["golden_door"] = golden_door
     rooms["underswamp"] = underswamp
 
@@ -452,7 +434,7 @@ def connect_exits(rooms):
     rooms["marketplace"].exits = {
         "west": "spawn", 
         "north": "mystics_tower", 
-        "east": "whispering_swamp"
+        "east": "swamp1"
         # "shop" exit will be handled by the curiosity stall object
     }
     
@@ -583,7 +565,6 @@ def connect_exits(rooms):
     rooms["forest_clearing"].exits = {
         "south": "forest_edge",
         "west": "forest_hideaway",
-        "east": "forest_swamp_trail"
     }
     
     rooms["forest_hideaway"].exits = {
@@ -595,24 +576,14 @@ def connect_exits(rooms):
     }
     
     # Swamp areas
-    rooms["whispering_swamp"].exits = {
+    rooms["swamp1"].exits = {
         "west": "marketplace",
-        "east": "swamp_depths",
-        "northeast": "forest_swamp_trail"
+        "south": "golden_door"
+        
     }
-    
-    rooms["swamp_depths"].exits = {
-        "west": "whispering_swamp",
-        "east": "golden_door"
-    }
-    
-    rooms["forest_swamp_trail"].exits = {
-        "southwest": "whispering_swamp",
-        "northeast": "forest_clearing"
-    }
-    
+        
     rooms["golden_door"].exits = {
-        "west": "swamp_depths"
+        "north": "swamp1"
         # "north" exit will be dynamically added by AI generation 
     }
     
@@ -937,46 +908,6 @@ def add_stateful_items(rooms):
     )
     
     rooms["golden_door"].add_item(golden_door_obj)
-    
-    # Swamp pool
-    # ---------
-    swamp_pool = StatefulItem(
-        "pool",
-        "pool",
-        "A pool of shimmering water ripples without cause.",
-        weight=5000,
-        value=0,
-        takeable=False,
-        state="active"
-    )
-    swamp_pool.add_state_description("active", "A pool of shimmering water ripples without cause.")
-    swamp_pool.add_state_description("swirling", "The pool's water swirls violently, forming a miniature whirlpool.")
-    swamp_pool.add_state_description("calm", "The pool's water has become mysteriously still and mirror-like.")
-    swamp_pool.set_room_id("swamp_depths")
-    
-    # Register swamp pool interactions
-    swamp_pool.add_interaction(
-        verb="touch",
-        target_state="swirling",
-        message="As you touch the water, it begins to swirl violently, forming a whirlpool that soon calms itself.",
-        from_state="active"
-    )
-    swamp_pool.add_interaction(
-        verb="drop",
-        target_state="swirling",
-        message="As the object hits the water, the pool begins to swirl, absorbing the item into its depths.",
-        from_state="active"
-    )
-    swamp_pool.add_interaction(
-        verb="drink",
-        message="You taste a single drop of the water. It tastes normal but leaves your tongue tingling with strange energy."
-    )
-    swamp_pool.add_interaction(
-        verb="examine",
-        message="The pool's water shimmers with an inner light, occasionally revealing glimpses of other landscapes far below its surface."
-    )
-    
-    rooms["swamp_depths"].add_item(swamp_pool)
 
 # Update add_regular_items in village_generator.py to include readable content
 

@@ -5,6 +5,7 @@ from commands.executor import build_look_description
 from models.Levels import levels
 from models.ContainerItem import ContainerItem
 from commands.utils import get_player_inventory
+from models.SpecializedRooms import SwampRoom
 
 # ===== LOOK COMMAND =====
 async def handle_look(cmd, player, game_state, player_manager, online_sessions, sio, utils):
@@ -166,55 +167,55 @@ async def handle_drop(cmd, player, game_state, player_manager, online_sessions, 
     if not subject:
         return "Specify the item to drop (e.g., 'drop shield' or 'drop all')."
     
-    if subject.lower() == "all" or subject.lower() == "everything":
+    # Import here since this will work reliably according to the requirements
+    from models.SpecializedRooms import SwampRoom
+    is_swamp_room = isinstance(current_room, SwampRoom)
+    
+    # Helper function to handle dropping a single item
+    async def drop_single_item(item):
+        player.remove_item(item)
+        
+        # Special handling for treasure in swamp rooms
+        if is_swamp_room and hasattr(item, 'value') and item.value > 0:
+            success, message = current_room.handle_treasure_drop(
+                item, player, game_state, player_manager, sio, online_sessions
+            )
+            return message
+        else:
+            # Standard drop behavior
+            current_room.add_item(item)
+            return f"{item.name.capitalize()} dropped."
+    
+    # Case 1: Drop all items
+    if subject.lower() in ["all", "everything"]:
         dropped_items = list(player.inventory)
-        if dropped_items:
-            for item in dropped_items:
-                player.remove_item(item)
-                current_room.add_item(item)
-            # game_state.save_rooms()  # Save room state after changing items
-            return f"Dropped all items: {', '.join(i.name for i in dropped_items)}."
-        else:
+        if not dropped_items:
             return "You aren't carrying anything."
+        
+        messages = []
+        for item in dropped_items:
+            messages.append(await drop_single_item(item))
+        
+        return "\n".join(messages)
     
-    if subject.lower() == "treasure" or subject.lower() == "t":
-        dropped_items = [i for i in player.inventory if hasattr(i, 'value') and i.value > 0]
-        if dropped_items:
-            for i in dropped_items:
-                player.remove_item(i)
-                current_room.add_item(i)
-            # game_state.save_rooms()  # Save room state after changing items
-            
-            # Check if this is the swamp for point gain
-            if "swamp" in current_room.name.lower() or "swamp" in current_room.description.lower():
-                total_value = sum(i.value for i in dropped_items)
-                player.add_points(total_value)
-                player_manager.save_players()  # Save player state after gaining points
-            
-            return f"Dropped all treasure: {', '.join(i.name for i in dropped_items)}."
-        else:
-            return "You have no treasure items to drop."
+    # Case 2: Drop all treasure
+    if subject.lower() in ["treasure", "t"]:
+        treasure_items = [item for item in player.inventory 
+                         if hasattr(item, 'value') and item.value > 0]
+        
+        if not treasure_items:
+            return "You have no treasure to drop."
+        
+        messages = []
+        for item in treasure_items:
+            messages.append(await drop_single_item(item))
+        
+        return "\n".join(messages)
     
-    # Look for a matching item in inventory
-    found_item = None
+    # Case 3: Drop a specific item
     for item in player.inventory:
         if subject.lower() in item.name.lower():
-            found_item = item
-            break
-    
-    if found_item:
-        success, message = player.remove_item(found_item)
-        if success:
-            current_room.add_item(found_item)
-            # game_state.save_rooms()  # Save room state after changing items
-            
-            # Check if this is the swamp for point gain
-            if hasattr(found_item, 'value') and found_item.value > 0:
-                if "swamp" in current_room.name.lower() or "swamp" in current_room.description.lower():
-                    # Call add_points with sio and online_sessions to handle points and level-up notifications
-                    player.add_points(found_item.value, sio, online_sessions)
-                    player_manager.save_players()  # Save player state after gaining points
-        return message
+            return await drop_single_item(item)
     
     return f"You don't have '{subject}' in your inventory."
 
