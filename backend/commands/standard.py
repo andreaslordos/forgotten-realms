@@ -190,7 +190,6 @@ async def handle_drop(cmd, player, game_state, player_manager, online_sessions, 
                 total_value = sum(i.value for i in dropped_items)
                 player.add_points(total_value)
                 player_manager.save_players()  # Save player state after gaining points
-                return f"You swamp treasure worth {total_value} points! New score: {player.points}"
             
             return f"Dropped all treasure: {', '.join(i.name for i in dropped_items)}."
         else:
@@ -212,10 +211,9 @@ async def handle_drop(cmd, player, game_state, player_manager, online_sessions, 
             # Check if this is the swamp for point gain
             if hasattr(found_item, 'value') and found_item.value > 0:
                 if "swamp" in current_room.name.lower() or "swamp" in current_room.description.lower():
-                    player.add_points(found_item.value)
+                    # Call add_points with sio and online_sessions to handle points and level-up notifications
+                    player.add_points(found_item.value, sio, online_sessions)
                     player_manager.save_players()  # Save player state after gaining points
-                    return f"You swamp {found_item.name} for {found_item.value} points! New score: {player.points}"
-        
         return message
     
     return f"You don't have '{subject}' in your inventory."

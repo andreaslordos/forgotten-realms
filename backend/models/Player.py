@@ -1,5 +1,6 @@
-# backend/models/player.py
+# backend/models/Player.py
 
+import asyncio
 from datetime import datetime
 from models.Levels import levels
 from models.Item import Item
@@ -25,10 +26,17 @@ class Player:
         self.current_room = spawn_room  # Always start at spawn room on login/restart
         self.last_active = datetime.now()
 
-    def level_up(self):
+    def level_up(self, sio=None, online_sessions=None):
         """
         Calculate the appropriate level based on current points.
         This version supports jumping multiple levels up or down.
+        
+        Args:
+            sio (SocketIO, optional): Socket.IO instance for sending messages
+            online_sessions (dict, optional): Dictionary of online sessions
+            
+        Returns:
+            bool: Whether the level changed
         """
         # Get a sorted list of all level thresholds
         level_thresholds = sorted(levels.keys())
@@ -40,6 +48,9 @@ class Player:
                 current_threshold = threshold
             else:
                 break
+        
+        # Store the old level name for comparison
+        old_level = self.level
         
         # Update player stats based on the determined level
         new_level = levels[current_threshold]
@@ -60,17 +71,56 @@ class Player:
             self.next_level_at = level_thresholds[next_index]
         else:
             self.next_level_at = -1  # No next level (at max level)
+        
+        # Check if level changed
+        leveled_up = old_level != self.level
+            
+        # Send level up notification if level changed
+        if leveled_up and sio and online_sessions:
+            # Find the player's session ID
+            for sid, session in online_sessions.items():
+                if session.get('player') == self:
+                    # Send the level up notification to the player
+                    notification = f"Your level of experience is now {self.level}."
+                    asyncio.create_task(sio.emit('message', notification, room=sid))
+                    break
+                    
+        # Return whether the level changed
+        return leveled_up
     
     def add_visited(self, room_id):
         self.visited.add(room_id)
 
-    def add_points(self, points):
+    def add_points(self, points, sio=None, online_sessions=None):
         """
         Add points to the player's score and update level if needed.
+        Sends points notification and triggers level-up notification if applicable.
+        
+        Args:
+            points (int): The number of points to add
+            sio (SocketIO, optional): Socket.IO instance for sending messages
+            online_sessions (dict, optional): Dictionary of online sessions
+            
+        Returns:
+            bool: Whether the player leveled up
         """
         self.points += points
+        
+        # Send points notification
+        if sio and online_sessions:
+            # Find the player's session ID
+            for sid, session in online_sessions.items():
+                if session.get('player') == self:
+                    # Send just the points notification to the player
+                    notification = f"[{self.points}]"
+                    asyncio.create_task(sio.emit('message', notification, room=sid))
+                    break
+        
         # Call level_up to recalculate level based on new point total
-        self.level_up()
+        # Pass sio and online_sessions so level_up can send its own notification
+        leveled_up = self.level_up(sio, online_sessions)
+            
+        return leveled_up
 
     def total_inventory_weight(self):
         return sum(item.weight for item in self.inventory)
