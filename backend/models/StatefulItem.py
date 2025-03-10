@@ -1,8 +1,7 @@
-# models/StatefulItem.py with debugging enhancements
+# Enhancement to models/StatefulItem.py to support linked items
 
 from models.Item import Item
 import logging
-import json
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -15,19 +14,15 @@ class StatefulItem(Item):
         self.state_descriptions = {}
         self.interactions = {}  # Maps verbs to required instruments and effects
         self.room_id = None  # Track which room this item is in
-        
-        logger.debug(f"StatefulItem created: {name} (ID: {id})")
-        logger.debug(f"Initial state: {state}")
+        self.linked_items = []  # IDs of linked items (like other side of a door)
         
         if state:
             # When a state is provided, use the given description for that state.
             self.state_descriptions[state] = description
-            logger.debug(f"Added initial state description for {state}")
 
     def add_state_description(self, state, description):
         """Add a description for a specific state."""
         self.state_descriptions[state] = description
-        logger.debug(f"Added state description for {state}: {description[:30]}...")
 
     def get_state(self):
         """Get the current state of the item."""
@@ -35,24 +30,40 @@ class StatefulItem(Item):
 
     def set_room_id(self, room_id):
         """Set the room ID where this item is located."""
-        logger.debug(f"Setting room_id for {self.name} to {room_id}")
         self.room_id = room_id
+
+    def link_item(self, item_id):
+        """
+        Link this item to another item (e.g., door with another door).
+        Linked items change state together.
+        
+        Args:
+            item_id (str): ID of the item to link with
+        """
+        if item_id not in self.linked_items:
+            self.linked_items.append(item_id)
+            logger.debug(f"Linked {self.id} with {item_id}")
 
     def add_interaction(self, verb, required_instrument=None, target_state=None, 
                        message=None, add_exit=None, remove_exit=None, 
                        conditional_fn=None, from_state=None):
         """
-        Register an interaction for this item with debug information.
+        Register an interaction for this item.
+        
+        Args:
+            verb (str): The verb that triggers this interaction (e.g., 'open', 'light')
+            required_instrument (str, optional): Item required to perform the action
+            target_state (str, optional): State to change to if action succeeds
+            message (str, optional): Message to display on success
+            add_exit (tuple, optional): (direction, room_id) to add to room exits
+            remove_exit (str, optional): Direction to remove from room exits
+            conditional_fn (callable, optional): Additional condition function
+            from_state (str, optional): Only allow this interaction when item is in this state
         """
         verb = verb.lower()
-        logger.debug(f"Adding interaction for {self.name}, verb: {verb}")
-        logger.debug(f"  From state: {from_state}")
-        logger.debug(f"  Target state: {target_state}")
-        logger.debug(f"  Required instrument: {required_instrument}")
         
         # Create a list for this verb if it doesn't exist
         if verb not in self.interactions:
-            logger.debug(f"  Creating new interaction list for verb: {verb}")
             self.interactions[verb] = []
             
         # Create the new interaction dictionary explicitly
@@ -72,25 +83,13 @@ class StatefulItem(Item):
         if from_state is not None:
             interaction['from_state'] = from_state
             
-        logger.debug(f"  Interaction created: {interaction}")
-        
-        # Verify it's a proper dictionary
-        logger.debug(f"  Type of interaction: {type(interaction)}")
-        logger.debug(f"  Keys: {list(interaction.keys())}")
-            
         # Add the interaction to the list
         self.interactions[verb].append(interaction)
-        logger.debug(f"  Interaction added to list. Current interactions for {verb}: {self.interactions[verb]}")
-        
-        # Print out the entire interactions dictionary for this verb
-        try:
-            logger.debug(f"  Full interactions structure: {json.dumps(self.interactions[verb])}")
-        except:
-            logger.debug(f"  Could not serialize interactions (possibly due to conditional_fn)")
 
     def set_state(self, new_state, game_state=None):
         """
         Change the state of the item and update room exits if needed.
+        Also update any linked items to maintain consistency.
         
         Args:
             new_state (str): The new state to set
@@ -99,57 +98,66 @@ class StatefulItem(Item):
         Returns:
             bool: True if state was changed, False if invalid
         """
-        logger.debug(f"Attempting to set state of {self.name} from {self.state} to {new_state}")
-        
         if new_state not in self.state_descriptions:
-            logger.debug(f"  Failed: {new_state} is not a valid state")
             return False
             
+        # Change this item's state
         old_state = self.state
         self.state = new_state
         self.description = self.state_descriptions[new_state]
-        logger.debug(f"  State changed from {old_state} to {new_state}")
-        logger.debug(f"  New description: {self.description[:30]}...")
         
-        # If we have game_state and a room_id, update any room exits
-        if game_state and self.room_id:
-            logger.debug(f"  Updating room exits for room {self.room_id}")
+        # If we have game_state, update room exits and linked items
+        if game_state:
+            # Process exit changes for this item
+            self._process_exit_changes(game_state, old_state, new_state)
+            
+            # Update any linked items (e.g., the other side of a door)
+            self._update_linked_items(game_state, new_state)
+            
+        return True
+    
+    def _process_exit_changes(self, game_state, old_state, new_state):
+        """Process exit changes based on state change."""
+        if self.room_id:
             room = game_state.get_room(self.room_id)
             if room:
-                logger.debug(f"  Room found: {room.name}")
                 # Check if this state change should add/remove exits
                 if hasattr(self, 'interactions'):
-                    logger.debug(f"  Checking for exit changes in interactions")
                     for verb in self.interactions:
                         interactions_list = self.interactions[verb]
-                        logger.debug(f"  Checking verb {verb}, interactions: {interactions_list}")
                         
                         if not isinstance(interactions_list, list):
-                            logger.debug(f"  Converting to list for backwards compatibility")
                             interactions_list = [interactions_list]
                         
                         for interaction in interactions_list:
-                            logger.debug(f"  Checking interaction: {interaction}")
-                            
                             if not isinstance(interaction, dict):
-                                logger.debug(f"  Skipping: not a dictionary")
                                 continue
                                 
                             if 'target_state' in interaction and interaction['target_state'] == new_state:
-                                logger.debug(f"  Found interaction with matching target state: {new_state}")
-                                
                                 if 'add_exit' in interaction:
-                                    logger.debug(f"  Adding exit: {interaction['add_exit']}")
                                     direction, target_room = interaction['add_exit']
                                     room.exits[direction] = target_room
                                     
                                 if 'remove_exit' in interaction and interaction['remove_exit'] in room.exits:
-                                    logger.debug(f"  Removing exit: {interaction['remove_exit']}")
                                     del room.exits[interaction['remove_exit']]
-        else:
-            logger.debug(f"  No game_state or room_id provided, skipping exit updates")
-        
-        return True
+
+    def _update_linked_items(self, game_state, new_state):
+        """Update all linked items to maintain consistency."""
+        for item_id in self.linked_items:
+            # Find the linked item in all rooms
+            for room_id, room in game_state.rooms.items():
+                for item in room.items:
+                    if hasattr(item, 'id') and item.id == item_id:
+                        # Found the linked item - update its state without triggering another link update
+                        if hasattr(item, 'state') and item.state != new_state:
+                            # Set state directly without calling set_state to avoid infinite recursion
+                            item.state = new_state
+                            if new_state in item.state_descriptions:
+                                item.description = item.state_descriptions[new_state]
+                            # Process exit changes for the linked item
+                            if hasattr(item, '_process_exit_changes'):
+                                item._process_exit_changes(game_state, item.state, new_state)
+                        break
 
     def to_dict(self):
         """Convert the stateful item to a dictionary including its state data."""
@@ -159,13 +167,12 @@ class StatefulItem(Item):
             data["state_descriptions"] = self.state_descriptions
             data["interactions"] = self.interactions
             data["room_id"] = self.room_id
+            data["linked_items"] = self.linked_items
         return data
 
     @staticmethod
     def from_dict(data):
         """Create a stateful item from a dictionary representation."""
-        logger.debug(f"Creating StatefulItem from dict: {data['name']}")
-        
         item = StatefulItem(
             name=data["name"],
             id=data["id"],
@@ -177,30 +184,10 @@ class StatefulItem(Item):
         )
         if "state_descriptions" in data:
             item.state_descriptions = data["state_descriptions"]
-            logger.debug(f"  Added state descriptions: {list(item.state_descriptions.keys())}")
-            
         if "interactions" in data:
-            # Convert interaction data back to proper format if needed
-            interactions_data = data["interactions"]
-            logger.debug(f"  Loading interactions from data: {interactions_data}")
-            
-            for verb, interactions in interactions_data.items():
-                if not isinstance(interactions, list):
-                    interactions = [interactions]
-                
-                for interaction in interactions:
-                    # Make sure each interaction is a proper dictionary
-                    if isinstance(interaction, dict):
-                        if verb not in item.interactions:
-                            item.interactions[verb] = []
-                        item.interactions[verb].append(interaction)
-                    else:
-                        logger.error(f"  Invalid interaction format for {verb}: {interaction}")
-            
-            logger.debug(f"  Loaded interactions: {list(item.interactions.keys())}")
-            
+            item.interactions = data["interactions"]
         if "room_id" in data:
             item.room_id = data["room_id"]
-            logger.debug(f"  Set room_id: {item.room_id}")
-            
+        if "linked_items" in data:
+            item.linked_items = data["linked_items"]
         return item

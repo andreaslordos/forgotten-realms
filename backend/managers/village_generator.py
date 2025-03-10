@@ -651,48 +651,20 @@ def add_container_items(rooms):
     
     rooms["elders_cottage"].add_item(bag)
 def add_stateful_items(rooms):
-    """Add stateful interactive objects to rooms."""
+    """
+    Add all stateful interactive objects to rooms.
     
-    # Cottage door
-    cottage_door = StatefulItem(
-        "door", 
-        "cottage_door",
-        "A sturdy wooden door stands closed.",
-        weight=100,
-        value=0,
-        takeable=False,
-        state="closed"
-    )
-    cottage_door.add_state_description("closed", "A sturdy wooden door stands closed.")
-    cottage_door.add_state_description("open", "A sturdy wooden door stands open.")
-    cottage_door.set_room_id("elders_cottage")
+    Args:
+        rooms (dict): Dictionary mapping room_id to Room objects
+    """
+    from models.StatefulItem import StatefulItem
     
-    # Register cottage door interactions
-    cottage_door.add_interaction(
-        verb="open", 
-        target_state="open",
-        message="You open the sturdy wooden door.",
-        add_exit=("in", "cottage_interior")
-    )
-    cottage_door.add_interaction(
-        verb="close", 
-        target_state="closed",
-        message="You close the sturdy wooden door.",
-        remove_exit="in"
-    )
-    cottage_door.add_interaction(
-        verb="knock",
-        message="You knock on the door. After a moment, you hear shuffling inside, but nobody answers."
-    )
+    # First add all the linked doors
+    add_linked_doors(rooms)
     
-    rooms["elders_cottage"].add_item(cottage_door)
-    
-    # Add the exit if door is open
-    if cottage_door.get_state() == "open":
-        rooms["elders_cottage"].exits["in"] = "cottage_interior"
-    
-    # Example implementation for rug and trapdoor as separate items
-    # Create the rug item that can be moved
+    # Cottage trapdoor and rug
+    # ------------------------
+    # Create the rug that covers the trapdoor
     cottage_rug = StatefulItem(
         "rug",
         "cottage_rug",
@@ -705,9 +677,8 @@ def add_stateful_items(rooms):
     cottage_rug.add_state_description("covering", "A worn circular rug lies in the center of the room.")
     cottage_rug.add_state_description("moved", "A worn circular rug has been moved aside.")
     cottage_rug.set_room_id("cottage_interior")
-
-    # Register rug interactions - now with state-specific actions
-    # When rug is covering, allow moving it aside
+    
+    # Register rug interactions
     cottage_rug.add_interaction(
         verb="move",
         target_state="moved",
@@ -720,8 +691,6 @@ def add_stateful_items(rooms):
         message="You pull back the rug, revealing a wooden trapdoor underneath.",
         from_state="covering"
     )
-
-    # When rug is moved, allow putting it back
     cottage_rug.add_interaction(
         verb="move",
         target_state="covering",
@@ -731,19 +700,10 @@ def add_stateful_items(rooms):
     cottage_rug.add_interaction(
         verb="replace",
         target_state="covering",
-        message="You replace the rug to its original position, covering the trapdoor.",
+        message="You replace the rug, covering the trapdoor.",
         from_state="moved"
     )
-
-    # Examining the rug gives information without changing state
-    cottage_rug.add_interaction(
-        verb="examine",
-        message="It's a worn circular rug with faded geometric patterns. It looks like it's been moved frequently."
-    )
-
-    # Add the rug as a visible item
-    rooms["cottage_interior"].add_item(cottage_rug)
-
+    
     # Create the trapdoor as a separate item
     cottage_trapdoor = StatefulItem(
         "trapdoor",
@@ -757,9 +717,8 @@ def add_stateful_items(rooms):
     cottage_trapdoor.add_state_description("closed", "A wooden trapdoor is set into the floor.")
     cottage_trapdoor.add_state_description("open", "An open trapdoor reveals stone steps leading down.")
     cottage_trapdoor.set_room_id("cottage_interior")
-
-    # Register trapdoor interactions with state-specific actions
-    # Open the closed trapdoor
+    
+    # Register trapdoor interactions
     cottage_trapdoor.add_interaction(
         verb="open",
         target_state="open",
@@ -767,8 +726,6 @@ def add_stateful_items(rooms):
         add_exit=("down", "cottage_cellar"),
         from_state="closed"
     )
-
-    # Close the open trapdoor
     cottage_trapdoor.add_interaction(
         verb="close",
         target_state="closed",
@@ -776,14 +733,11 @@ def add_stateful_items(rooms):
         remove_exit="down",
         from_state="open"
     )
-
-    # Examining the trapdoor (both states)
-    cottage_trapdoor.add_interaction(
-        verb="examine",
-        message="The trapdoor is made of solid oak with iron hinges. It appears to lead to some kind of cellar."
-    )
-
-    # Add the trapdoor as a hidden item that only appears when the rug is moved
+    
+    # Add the rug as a visible item
+    rooms["cottage_interior"].add_item(cottage_rug)
+    
+    # Add the trapdoor as a hidden item
     rooms["cottage_interior"].add_hidden_item(
         cottage_trapdoor,
         lambda game_state: any(
@@ -791,12 +745,9 @@ def add_stateful_items(rooms):
             for item in game_state.get_room("cottage_interior").items
         )
     )
-
-    # Add the exit if trapdoor is already open (for game initialization)
-    if cottage_trapdoor.get_state() == "open":
-        rooms["cottage_interior"].exits["down"] = "cottage_cellar"
-
-    # Yew tree that can be chopped with an axe
+    
+    # Yew tree in the forest
+    # ---------------------
     yew_tree = StatefulItem(
         "tree",
         "yew_tree",
@@ -816,14 +767,16 @@ def add_stateful_items(rooms):
         required_instrument="axe",
         target_state="cut",
         message="You swing the axe at the ancient yew tree. The trunk folds inward, revealing a hidden passage.",
-        add_exit=("in", "yew_tree_hollow")
+        add_exit=("in", "yew_tree_hollow"),
+        from_state="intact"
     )
     yew_tree.add_interaction(
         verb="cut",
         required_instrument="axe",
         target_state="cut",
         message="You cut into the yew tree with the axe, revealing a hidden passage.",
-        add_exit=("in", "yew_tree_hollow")
+        add_exit=("in", "yew_tree_hollow"),
+        from_state="intact"
     )
     yew_tree.add_interaction(
         verb="examine",
@@ -832,11 +785,8 @@ def add_stateful_items(rooms):
     
     rooms["forest_edge"].add_item(yew_tree)
     
-    # Add the exit if tree is cut
-    if yew_tree.get_state() == "cut":
-        rooms["forest_edge"].exits["in"] = "yew_tree_hollow"
-    
-    # Old well with a locked lid
+    # Old well in the courtyard
+    # ------------------------
     old_well = StatefulItem(
         "well",
         "well",
@@ -847,7 +797,8 @@ def add_stateful_items(rooms):
         state="locked"
     )
     old_well.add_state_description("locked", "A stone well with a locked wooden lid sits here.")
-    old_well.add_state_description("unlocked", "A stone well with its wooden lid removed stands open.")
+    old_well.add_state_description("unlocked", "A stone well with its wooden lid sits here.")
+    old_well.add_state_description("open", "A stone well with its wooden lid removed stands open.")
     old_well.add_state_description("with_rope", "A stone well with a rope descending into darkness.")
     old_well.set_room_id("old_well")
     
@@ -856,13 +807,48 @@ def add_stateful_items(rooms):
         verb="unlock",
         required_instrument="key",
         target_state="unlocked",
-        message="You unlock the well's lid with the bronze key."
+        message="You unlock the well's lid with the bronze key.",
+        from_state="locked"
     )
     old_well.add_interaction(
         verb="open",
+        required_instrument="key",
+        target_state="open",
+        message="You open the well's lid, revealing a dark pit below.",
+        from_state="locked",
+    )
+    old_well.add_interaction(
+        verb="open",
+        target_state="open",
+        message="You open the well's lid, revealing a dark pit below.",
+        from_state="unlocked"
+    )
+    old_well.add_interaction(
+        verb="close",
         target_state="unlocked",
-        message="You remove the well's lid, revealing a dark pit below.",
-        conditional_fn=lambda player, game_state: old_well.state == "unlocked"
+        message="You put back the well's lid.",
+        from_state="open",
+    )
+    old_well.add_interaction(
+        verb="lock",
+        required_instrument="key",
+        target_state="locked",
+        message="You lock the well's lid with the key.",
+        from_state="unlocked",
+    )
+    old_well.add_interaction(
+        verb="close",
+        required_instrument="key",
+        target_state="locked",
+        message="You lock the well's lid with the key.",
+        from_state="open",
+    )
+    old_well.add_interaction(
+        verb="lock",
+        required_instrument="key",
+        target_state="locked",
+        message="You lock the well's lid with the key.",
+        from_state="open",
     )
     old_well.add_interaction(
         verb="use",
@@ -870,7 +856,7 @@ def add_stateful_items(rooms):
         target_state="with_rope",
         message="You secure the rope to the well's edge, providing a way down.",
         add_exit=("down", "well_bottom"),
-        conditional_fn=lambda player, game_state: old_well.state == "unlocked"
+        from_state="open"
     )
     old_well.add_interaction(
         verb="tie",
@@ -878,16 +864,17 @@ def add_stateful_items(rooms):
         target_state="with_rope",
         message="You tie the rope to the well's edge, providing a way down.",
         add_exit=("down", "well_bottom"),
-        conditional_fn=lambda player, game_state: old_well.state == "unlocked"
+        from_state="open"
+    )
+    old_well.add_interaction(
+        verb="examine",
+        message="The stone well has a wooden lid that's secured with a small bronze lock. It looks quite old but sturdy."
     )
     
     rooms["old_well"].add_item(old_well)
     
-    # Add the exit if well has rope
-    if old_well.get_state() == "with_rope":
-        rooms["old_well"].exits["down"] = "well_bottom"
-    
     # Shrine altar with rune stones
+    # ----------------------------
     shrine_altar = StatefulItem(
         "altar",
         "altar",
@@ -907,8 +894,13 @@ def add_stateful_items(rooms):
         verb="place",
         required_instrument="stone",
         message="You place the rune stone in a matching indentation. It begins to glow softly.",
-        # Note: The actual change to partial/complete state would be handled by custom logic
-        conditional_fn=lambda player, game_state: shrine_altar.state != "complete"
+        from_state="empty"
+    )
+    shrine_altar.add_interaction(
+        verb="place",
+        required_instrument="stone",
+        message="You place another rune stone in its matching indentation. The altar pulses with energy.",
+        from_state="partial"
     )
     shrine_altar.add_interaction(
         verb="touch",
@@ -922,6 +914,7 @@ def add_stateful_items(rooms):
     rooms["shrine_interior"].add_item(shrine_altar)
     
     # Golden door in archway
+    # ---------------------
     golden_door_obj = StatefulItem(
         "door",
         "golden_door",
@@ -940,14 +933,15 @@ def add_stateful_items(rooms):
         verb="open",
         target_state="open",
         message="As you reach for the door, it dissolves into golden mist before reforming as an open portal.",
-        add_exit=("north", "ai_generated_zone")  # This would connect to an AI-generated area
+        add_exit=("north", "ai_generated_zone"),  # This would connect to an AI-generated area
+        from_state="closed"
     )
     golden_door_obj.add_interaction(
         verb="close",
         target_state="closed",
         message="The doorway of light gradually shrinks until it's once again a closed door.",
         remove_exit="north",
-        conditional_fn=lambda player, game_state: golden_door_obj.state == "open"
+        from_state="open"
     )
     golden_door_obj.add_interaction(
         verb="touch",
@@ -960,115 +954,8 @@ def add_stateful_items(rooms):
     
     rooms["golden_door"].add_item(golden_door_obj)
     
-    # Tower door
-    tower_door = StatefulItem(
-        "door",
-        "tower_door",
-        "Massive wooden doors decorated with chronometric symbols stand closed.",
-        weight=500,
-        value=0,
-        takeable=False,
-        state="closed"
-    )
-    tower_door.add_state_description("closed", "Massive wooden doors decorated with chronometric symbols stand closed.")
-    tower_door.add_state_description("open", "Massive wooden doors decorated with chronometric symbols stand open.")
-    tower_door.set_room_id("mystics_tower")
-    
-    # Register tower door interactions
-    tower_door.add_interaction(
-        verb="open",
-        target_state="open",
-        message="You push open the heavy doors, revealing the interior of the mystic's tower.",
-        add_exit=("in", "tower_interior")
-    )
-    tower_door.add_interaction(
-        verb="close",
-        target_state="closed",
-        message="You close the tower doors with considerable effort.",
-        remove_exit="in",
-        conditional_fn=lambda player, game_state: tower_door.state == "open"
-    )
-    tower_door.add_interaction(
-        verb="examine",
-        message="The wooden doors are carved with intricate symbols representing time and space. Small gears are embedded in the wood, turning at different speeds."
-    )
-    
-    rooms["mystics_tower"].add_item(tower_door)
-    
-    # Set to initial open state and add exit
-    tower_door.set_state("open")
-    rooms["mystics_tower"].exits["in"] = "tower_interior"
-    
-    # Library doors
-    library_doors = StatefulItem(
-        "doors",
-        "library_doors",
-        "Massive bronze doors inscribed with scenes of knowledge stand closed.",
-        weight=800,
-        value=0,
-        takeable=False,
-        state="closed"
-    )
-    library_doors.add_state_description("closed", "Massive bronze doors inscribed with scenes of knowledge stand closed.")
-    library_doors.add_state_description("open", "Massive bronze doors inscribed with scenes of knowledge stand open.")
-    library_doors.set_room_id("ancient_library")
-    
-    # Register library door interactions
-    library_doors.add_interaction(
-        verb="open",
-        target_state="open",
-        message="The bronze doors swing open smoothly, despite their apparent weight.",
-        add_exit=("in", "library_main")
-    )
-    library_doors.add_interaction(
-        verb="close",
-        target_state="closed",
-        message="You push the bronze doors closed with a resonant boom.",
-        remove_exit="in",
-        conditional_fn=lambda player, game_state: library_doors.state == "open"
-    )
-    library_doors.add_interaction(
-        verb="examine",
-        message="The bronze doors are covered in intricate bas-reliefs depicting the acquisition and preservation of knowledge throughout the ages."
-    )
-    
-    rooms["ancient_library"].add_item(library_doors)
-    
-    # Set to initial open state and add exit
-    library_doors.set_state("open")
-    rooms["ancient_library"].exits["in"] = "library_main"
-    
-    # Curiosity shop entry
-    curiosity_stall = StatefulItem(
-        "stall",
-        "curiosity_stall",
-        "A peculiar stall draped in violet cloth stands here.",
-        weight=300,
-        value=0,
-        takeable=False,
-        state="open"
-    )
-    curiosity_stall.add_state_description("open", "A peculiar stall draped in violet cloth stands here, its entrance invitingly open.")
-    curiosity_stall.add_state_description("closed", "A peculiar stall draped in violet cloth stands here, its entrance closed by a curtain.")
-    curiosity_stall.set_room_id("marketplace")
-    
-    # Register curiosity stall interactions
-    curiosity_stall.add_interaction(
-        verb="enter",
-        message="You step through the curtained entrance of the curiosity shop.",
-        conditional_fn=lambda player, game_state: curiosity_stall.state == "open"
-    )
-    curiosity_stall.add_interaction(
-        verb="examine",
-        message="The stall seems larger on the inside than its exterior would suggest. Strange trinkets and oddities hang from every available space."
-    )
-    
-    rooms["marketplace"].add_item(curiosity_stall)
-    
-    # Add the shop exit since stall is open
-    rooms["marketplace"].exits["shop"] = "curiosity_shop"
-    
     # Swamp pool
+    # ---------
     swamp_pool = StatefulItem(
         "pool",
         "pool",
@@ -1087,12 +974,14 @@ def add_stateful_items(rooms):
     swamp_pool.add_interaction(
         verb="touch",
         target_state="swirling",
-        message="As you touch the water, it begins to swirl violently, forming a whirlpool that soon calms itself."
+        message="As you touch the water, it begins to swirl violently, forming a whirlpool that soon calms itself.",
+        from_state="active"
     )
     swamp_pool.add_interaction(
         verb="drop",
         target_state="swirling",
-        message="As the object hits the water, the pool begins to swirl, absorbing the item into its depths."
+        message="As the object hits the water, the pool begins to swirl, absorbing the item into its depths.",
+        from_state="active"
     )
     swamp_pool.add_interaction(
         verb="drink",
@@ -1292,3 +1181,104 @@ def add_regular_items(rooms):
         value=40
     )
     rooms["forest_hideaway"].add_item(enchanted_axe)
+
+
+def add_linked_doors(rooms):
+    """
+    Create all linked doors between rooms in the village.
+    
+    Args:
+        rooms (dict): Dictionary mapping room_id to Room objects
+    """
+    from utils import create_linked_doors
+    
+    # Cottage doors (exterior to interior)
+    create_linked_doors(
+        room1_id="elders_cottage",
+        room2_id="cottage_interior",
+        door1_id="cottage_exterior_door",
+        door2_id="cottage_interior_door",
+        door_name="sturdy wooden door",
+        dir1to2="in",
+        dir2to1="out",
+        initial_state="closed",
+        rooms=rooms
+    )
+    
+    # Tower doors (exterior to interior)
+    create_linked_doors(
+        room1_id="mystics_tower",
+        room2_id="tower_interior",
+        door1_id="tower_exterior_door", 
+        door2_id="tower_interior_door",
+        door_name="massive wooden door",
+        dir1to2="in",
+        dir2to1="out",
+        initial_state="open",
+        rooms=rooms
+    )
+    
+    # Library doors (exterior to interior)
+    create_linked_doors(
+        room1_id="ancient_library",
+        room2_id="library_main",
+        door1_id="library_exterior_door",
+        door2_id="library_interior_door",
+        door_name="bronze library door",
+        dir1to2="in",
+        dir2to1="out",
+        initial_state="open",
+        rooms=rooms
+    )
+    
+    # Workshop door (tower interior to workshop)
+    create_linked_doors(
+        room1_id="tower_interior",
+        room2_id="tower_workshop",
+        door1_id="workshop_exterior_door",
+        door2_id="workshop_interior_door",
+        door_name="ornate workshop door",
+        dir1to2="west",
+        dir2to1="east",
+        initial_state="open",
+        rooms=rooms
+    )
+    
+    # Reading room door (library main to reading room)
+    create_linked_doors(
+        room1_id="library_main",
+        room2_id="library_reading",
+        door1_id="reading_room_exterior_door",
+        door2_id="reading_room_interior_door",
+        door_name="polished oak door",
+        dir1to2="east",
+        dir2to1="west",
+        initial_state="open",
+        rooms=rooms
+    )
+    
+    # Shrine doors (exterior to interior)
+    create_linked_doors(
+        room1_id="forgotten_shrine",
+        room2_id="shrine_interior",
+        door1_id="shrine_exterior_door",
+        door2_id="shrine_interior_door",
+        door_name="ancient stone door",
+        dir1to2="east",
+        dir2to1="west",
+        initial_state="open",
+        rooms=rooms
+    )
+    
+    # Curiosity shop entry (marketplace to shop)
+    create_linked_doors(
+        room1_id="marketplace",
+        room2_id="curiosity_shop",
+        door1_id="shop_exterior_curtain",
+        door2_id="shop_interior_curtain",
+        door_name="violet curtain",
+        dir1to2="in",
+        dir2to1="out",
+        initial_state="open",
+        rooms=rooms
+    )
