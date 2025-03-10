@@ -46,7 +46,8 @@ class StatefulItem(Item):
 
     def add_interaction(self, verb, required_instrument=None, target_state=None, 
                        message=None, add_exit=None, remove_exit=None, 
-                       conditional_fn=None, from_state=None):
+                       conditional_fn=None, from_state=None, consume_instrument=False,
+                       drop_instrument=False, reciprocal_exit=None):
         """
         Register an interaction for this item.
         
@@ -59,6 +60,9 @@ class StatefulItem(Item):
             remove_exit (str, optional): Direction to remove from room exits
             conditional_fn (callable, optional): Additional condition function
             from_state (str, optional): Only allow this interaction when item is in this state
+            consume_instrument (bool, optional): Whether to consume (delete) the instrument after use
+            drop_instrument (bool, optional): Whether to force dropping the instrument after use
+            reciprocal_exit (tuple, optional): (room_id, direction, target_room_id) for return path
         """
         verb = verb.lower()
         
@@ -82,6 +86,12 @@ class StatefulItem(Item):
             interaction['conditional_fn'] = conditional_fn
         if from_state is not None:
             interaction['from_state'] = from_state
+        if consume_instrument:
+            interaction['consume_instrument'] = True
+        if drop_instrument:
+            interaction['drop_instrument'] = True
+        if reciprocal_exit is not None:
+            interaction['reciprocal_exit'] = reciprocal_exit
             
         # Add the interaction to the list
         self.interactions[verb].append(interaction)

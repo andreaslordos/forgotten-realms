@@ -801,7 +801,7 @@ def add_stateful_items(rooms):
     old_well.add_state_description("open", "A stone well with its wooden lid removed stands open.")
     old_well.add_state_description("with_rope", "A stone well with a rope descending into darkness.")
     old_well.set_room_id("old_well")
-    
+
     # Register well interactions
     old_well.add_interaction(
         verb="unlock",
@@ -836,39 +836,23 @@ def add_stateful_items(rooms):
         message="You lock the well's lid with the key.",
         from_state="unlocked",
     )
-    old_well.add_interaction(
-        verb="close",
-        required_instrument="key",
-        target_state="locked",
-        message="You lock the well's lid with the key.",
-        from_state="open",
-    )
-    old_well.add_interaction(
-        verb="lock",
-        required_instrument="key",
-        target_state="locked",
-        message="You lock the well's lid with the key.",
-        from_state="open",
-    )
-    old_well.add_interaction(
-        verb="use",
-        required_instrument="rope",
-        target_state="with_rope",
-        message="You secure the rope to the well's edge, providing a way down.",
-        add_exit=("down", "well_bottom"),
-        from_state="open"
-    )
+    # Updated version with consume_instrument and reciprocal_exit
     old_well.add_interaction(
         verb="tie",
         required_instrument="rope",
         target_state="with_rope",
         message="You tie the rope to the well's edge, providing a way down.",
         add_exit=("down", "well_bottom"),
-        from_state="open"
+        from_state="open",
+        consume_instrument=True,  # The rope is consumed when used
+        reciprocal_exit=("well_bottom", "up", "old_well")  # Creates the return path
     )
     old_well.add_interaction(
-        verb="examine",
-        message="The stone well has a wooden lid that's secured with a small bronze lock. It looks quite old but sturdy."
+        verb="close",
+        target_state="unlocked",
+        message="You put back the well's lid, making the rope inaccessible.",
+        from_state="with_rope",
+        remove_exit="down"  # Remove the downward exit when well is closed
     )
     
     rooms["old_well"].add_item(old_well)

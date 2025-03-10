@@ -12,10 +12,11 @@ logger = logging.getLogger(__name__)
 
 async def handle_interaction(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
-    Handle specific verb-object interactions with better support for:
-    - 'open door with key' (traditional)
-    - 'tie rope to well' (reversed format)
-    - 'unlock chest using key' (with preposition variants)
+    Handle specific verb-object interactions with enhanced features:
+    - Consuming items after use
+    - Dropping items after use
+    - Creating bidirectional exits
+    - Support for both syntax formats
     """
     try:
         verb = cmd.get("verb")
@@ -27,14 +28,6 @@ async def handle_interaction(cmd, player, game_state, player_manager, online_ses
         if not subject:
             return f"What do you want to {verb}?"
         
-        # In REVERSED syntax (tie rope to well), we need:
-        # - primary_item = well (the item with the interaction)
-        # - secondary_item = rope (the instrument used)
-        
-        # In STANDARD syntax (unlock door with key), we need:
-        # - primary_item = door (the item with the interaction)
-        # - secondary_item = key (the instrument used)
-            
         # Initialize our search variables
         primary_item = None
         secondary_item = None
@@ -159,6 +152,8 @@ async def handle_interaction(cmd, player, game_state, player_manager, online_ses
                 return f"You can't {verb} the {primary_item.name} right now."
         
         # All conditions met, perform the interaction
+        
+        # First, handle state change
         if 'target_state' in valid_interaction and valid_interaction['target_state']:
             target_state = valid_interaction['target_state']
             primary_item.set_state(target_state, game_state)
@@ -171,26 +166,53 @@ async def handle_interaction(cmd, player, game_state, player_manager, online_ses
                 # Use the notifications service to broadcast
                 await broadcast_room(primary_item.room_id, change_message, exclude_player=[player.name])
         
+        # Handle adding an exit
+        if 'add_exit' in valid_interaction:
+            direction, target_room_id = valid_interaction['add_exit']
+            if current_room:
+                current_room.exits[direction] = target_room_id
+        
+        # Handle removing an exit
+        if 'remove_exit' in valid_interaction:
+            direction = valid_interaction['remove_exit']
+            if current_room and direction in current_room.exits:
+                del current_room.exits[direction]
+        
+        # Handle the reciprocal exit (creating the return path)
+        if 'reciprocal_exit' in valid_interaction:
+            source_room_id, direction, target_room_id = valid_interaction['reciprocal_exit']
+            source_room = game_state.get_room(source_room_id)
+            if source_room:
+                source_room.exits[direction] = target_room_id
+        
+        # Handle consuming the instrument
+        if 'consume_instrument' in valid_interaction and valid_interaction['consume_instrument'] and secondary_item:
+            player.remove_item(secondary_item)
+            # No need to add to room since it's consumed
+        
+        # Handle dropping the instrument
+        if 'drop_instrument' in valid_interaction and valid_interaction['drop_instrument'] and secondary_item:
+            player.remove_item(secondary_item)
+            current_room.add_item(secondary_item)
+        
+        # Save changes to player and game state
+        player_manager.save_players()
+        # game_state.save_rooms()  # Uncomment if you're saving rooms
+        
         # Get the success message
         message = valid_interaction.get('message', f"You {verb} the {primary_item.name}.")
         
-        # Handle exit modifications
-        add_exit = valid_interaction.get('add_exit')
-        remove_exit = valid_interaction.get('remove_exit')
-        show_room_desc = valid_interaction.get('show_room_desc', False)
-        
-        if add_exit or remove_exit:
-            if show_room_desc:
-                return f"{message}\n\n{build_look_description(player, game_state, online_sessions)}"
+        # For exit modifications, mention the new direction
+        exit_msg = ""
+        if 'add_exit' in valid_interaction:
+            direction, _ = valid_interaction['add_exit']
+            exit_msg = f" You can now go {direction}."
             
-            # Otherwise just mention the exit change
-            exit_msg = ""
-            if add_exit:
-                direction, _ = add_exit
-                exit_msg = f" You can now go {direction}."
-            return f"{message}{exit_msg}"
-        
-        return message
+        # If requested, show the full room description
+        if valid_interaction.get('show_room_desc', False):
+            return f"{message}{exit_msg}\n\n{build_look_description(player, game_state, online_sessions)}"
+            
+        return f"{message}{exit_msg}"
         
     except Exception as e:
         error_trace = traceback.format_exc()
