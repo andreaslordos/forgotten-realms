@@ -139,10 +139,17 @@ def register_handlers(sio, auth_manager, player_manager, game_state, online_sess
             await utils.send_message(sio, sid, "Select a password:")
             await sio.emit('setInputType', 'password', room=sid)
             return
-
+        
         # Stage 5: Registration – Enter Password
         elif session['auth_state'] == 'register_password':
-            session['temp_data']['password'] = command_text.strip()
+            password = command_text.strip()
+            # Don't allow blank passwords
+            if not password:
+                await utils.send_message(sio, sid, "Password cannot be blank. Please enter a password:")
+                await sio.emit('setInputType', 'password', room=sid)
+                return
+            
+            session['temp_data']['password'] = password
             session['auth_state'] = 'register_confirm_password'
             await utils.send_message(sio, sid, "Confirm your password:")
             await sio.emit('setInputType', 'password', room=sid)
@@ -150,13 +157,20 @@ def register_handlers(sio, auth_manager, player_manager, game_state, online_sess
 
         # Stage 6: Registration – Confirm Password
         elif session['auth_state'] == 'register_confirm_password':
-            if command_text.strip() != session['temp_data']['password']:
+            confirm_password = command_text.strip()
+            # Don't allow blank confirmation passwords
+            if not confirm_password:
+                await utils.send_message(sio, sid, "Password confirmation cannot be blank. Please confirm your password:")
+                await sio.emit('setInputType', 'password', room=sid)
+                return
+                
+            if confirm_password != session['temp_data']['password']:
                 await utils.send_message(sio, sid, "Passwords do not match. Please enter your password again:")
                 session['auth_state'] = 'register_password'
                 await sio.emit('setInputType', 'password', room=sid)
                 return
             else:
-                password = command_text.strip()
+                password = confirm_password
                 username = session['temp_data']['username']
                 sex = session['temp_data']['sex']
                 email = session['temp_data']['email']
@@ -235,9 +249,16 @@ Welcome! By what name shall I call you?
             return
 
         if 'auth_state' in session:
-            await process_auth_flow(sio, command_text, session) if False else await process_auth_flow(sid, command_text, session)
-            # The above line calls process_auth_flow with (sid, command_text, session).
-            # (We pass only sid, command_text, session here because process_auth_flow doesn't need sio.)
+            await process_auth_flow(sid, command_text, session)
         else:
             session['last_active'] = asyncio.get_event_loop().time()
+            
+            # Check if we're in the middle of a password change
+            if 'pwd_change' in session:
+                # Echo masked password input back to the user
+                if command_text.strip():  # Only if not empty
+                    masked_password = '*' * len(command_text)
+                    await utils.send_message(sio, sid, f"{masked_password}")
+            
+            # Add command to the queue for processing
             session['command_queue'].append(command_text)

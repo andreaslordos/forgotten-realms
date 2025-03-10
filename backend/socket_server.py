@@ -46,7 +46,7 @@ sio.attach(app)
 # Initialize managers and game state.
 logger.info("Initializing game managers and state...")
 auth_manager = AuthManager()
-player_manager = PlayerManager(spawn_room="spawn")
+player_manager = PlayerManager(spawn_room="spawn", auth_manager=auth_manager)
 game_state = GameState()
 if not game_state.rooms:
     logger.info("No game rooms found. Generating a new 3x3 grid...")

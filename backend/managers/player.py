@@ -5,10 +5,11 @@ import os
 from models.Player import Player
 
 class PlayerManager:
-    def __init__(self, save_file="storage/players.json", spawn_room="room_1_1"):
+    def __init__(self, save_file="storage/players.json", spawn_room="spawn", auth_manager=None):
         self.save_file = save_file
         self.players = {}
         self.spawn_room = spawn_room
+        self.auth_manager = auth_manager  # Store reference to auth_manager
         self.load_players()
 
     def register(self, name, sex='M', email=None):

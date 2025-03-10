@@ -47,6 +47,19 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                 logger.info(f"Processing command: {cmd} for player {player.name}")
                 
                 try:
+                    # Check for pending communications (add this new check for password flow)
+                    if 'pwd_change' in session:
+                        # We're in the middle of a password change, keep routing through the password handler
+                        from commands.auth import handle_password
+                        pwd_cmd = {
+                            "verb": "password",
+                            "original": cmd
+                        }
+                        result = await handle_password(pwd_cmd, player, game_state, player_manager, online_sessions, sio, utils)
+                        if result:  # Only send if there's a message to send
+                            await utils.send_message(sio, sid, result)
+                        continue
+                    
                     # Check for pending communications
                     if 'pending_comm' in session:
                         pending_result = await handle_pending_communication(

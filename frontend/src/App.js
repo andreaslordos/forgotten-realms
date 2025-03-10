@@ -92,19 +92,25 @@ function App() {
   }, []);
 
   // Handle command submission
-  const handleCommandSubmit = (e) => {
+// This update modifies the handleCommandSubmit function in App.js to prevent blank password submissions
+const handleCommandSubmit = (e) => {
     e.preventDefault();
     if (inputDisabled) {
       return;
     }
-  
+
     // In game phase, if blank input is entered, just add a new prompt line and do nothing else.
     if (command.trim() === "" && phase === "game") {
       setMessages((prev) => [...prev, "* "]);
       setCommand("");
       return;
     }
-  
+
+    // For password input, never allow blank submissions
+    if (command.trim() === "" && inputType === "password") {
+      return; // Simply do nothing - don't send blank passwords
+    }
+    
     // For login phase, blank input is allowed and sent to the server.
     let outputCommand = command;
     if (inputType === "password") {
