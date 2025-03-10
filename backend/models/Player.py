@@ -26,26 +26,51 @@ class Player:
         self.last_active = datetime.now()
 
     def level_up(self):
-        if self.next_level_at == -1:
-            return
-        self.current_level_at = self.next_level_at
-        new_level = levels[self.next_level_at]
+        """
+        Calculate the appropriate level based on current points.
+        This version supports jumping multiple levels up or down.
+        """
+        # Get a sorted list of all level thresholds
+        level_thresholds = sorted(levels.keys())
+        
+        # Find the highest threshold that the player's points exceed
+        current_threshold = 0
+        for threshold in level_thresholds:
+            if self.points >= threshold:
+                current_threshold = threshold
+            else:
+                break
+        
+        # Update player stats based on the determined level
+        new_level = levels[current_threshold]
         self.level = new_level['name']
         self.stamina = new_level['stamina']
         self.max_stamina = new_level['stamina']
         self.strength = new_level['strength']
         self.dexterity = new_level['dexterity']
+        self.magic = new_level['magic']
         self.carrying_capacity_num = new_level['carrying_capacity_num']
-        potential_next = self.next_level_at * 2
-        self.next_level_at = potential_next if potential_next in levels else -1
+        
+        # Set current and next level thresholds
+        self.current_level_at = current_threshold
+        
+        # Find the next level threshold
+        next_index = level_thresholds.index(current_threshold) + 1
+        if next_index < len(level_thresholds):
+            self.next_level_at = level_thresholds[next_index]
+        else:
+            self.next_level_at = -1  # No next level (at max level)
     
     def add_visited(self, room_id):
         self.visited.add(room_id)
 
     def add_points(self, points):
+        """
+        Add points to the player's score and update level if needed.
+        """
         self.points += points
-        if self.next_level_at != -1 and self.points >= self.next_level_at:
-            self.level_up()
+        # Call level_up to recalculate level based on new point total
+        self.level_up()
 
     def total_inventory_weight(self):
         return sum(item.weight for item in self.inventory)

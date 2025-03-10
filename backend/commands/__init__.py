@@ -25,7 +25,8 @@ try:
     from commands import combat
     from commands import container  # Import the container commands module
     from commands import interaction  # Import the interaction module
-    from commands import auth  # Import the new auth commands module
+    from commands import auth  # Import the auth commands module
+    from commands import archmage  # Import the new archmage commands module
     logger.info("All command handlers imported successfully")
 except ImportError as e:
     logger.error(f"Error importing command handlers: {e}")

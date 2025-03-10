@@ -177,9 +177,12 @@ def parse_command_string(command_str, command_context=None, abbreviations=None, 
     return [cmd_dict]
 
 
+# Updated parse_container_commands function for commands/parser.py
+
 def parse_container_commands(command_str, context):
     """
     Parse special container commands like "put/insert X in Y" or "get/take/remove X from Y".
+    Supports abbreviations like 'g' for 'get' and 'fr' for 'from'.
     
     Args:
         command_str (str): The command string to parse
@@ -188,12 +191,24 @@ def parse_container_commands(command_str, context):
     Returns:
         dict or None: The parsed command or None if not a container command
     """
+    # Normalize command_str (apply common abbreviations)
+    normalized_cmd = command_str.lower()
+    
+    # Apply abbreviations at the start of the command
+    if normalized_cmd.startswith("g "):
+        normalized_cmd = "get " + normalized_cmd[2:]
+    elif normalized_cmd.startswith("t "):
+        normalized_cmd = "take " + normalized_cmd[2:]
+    
+    # Handle "fr" as abbreviation for "from"
+    normalized_cmd = normalized_cmd.replace(" fr ", " from ")
+    
     # Check for "put/insert X in Y" pattern
     put_matches = ["put ", "insert "]
     for prefix in put_matches:
-        if command_str.lower().startswith(prefix):
+        if normalized_cmd.startswith(prefix):
             # Split by " in " without the maxsplit parameter
-            parts = command_str.lower().split(" in ")
+            parts = normalized_cmd.split(" in ")
             if len(parts) == 2:
                 item_name = parts[0][len(prefix):].strip()  # Remove prefix
                 container_name = parts[1].strip()
@@ -213,9 +228,9 @@ def parse_container_commands(command_str, context):
     # Check for "get/take/remove X from Y" pattern
     get_matches = ["get ", "take ", "remove "]
     for prefix in get_matches:
-        if command_str.lower().startswith(prefix):
+        if normalized_cmd.startswith(prefix):
             # Split by " from " without the maxsplit parameter
-            parts = command_str.lower().split(" from ")
+            parts = normalized_cmd.split(" from ")
             if len(parts) == 2:
                 item_name = parts[0][len(prefix):].strip()  # Remove prefix
                 container_name = parts[1].strip()
