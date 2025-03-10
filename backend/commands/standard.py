@@ -20,9 +20,10 @@ async def handle_look(cmd, player, game_state, player_manager, online_sessions, 
         if subject.lower() in item.name.lower():
             return f"{item.description}"
     
-    # Look at a specific item in the room
+    # Look at a specific item in the room - UPDATE THIS PART
     current_room = game_state.get_room(player.current_room)
-    for item in current_room.items:
+    all_visible_items = current_room.get_items(game_state)  # Get visible items including hidden ones
+    for item in all_visible_items:
         if subject.lower() in item.name.lower():
             return f"{item.name}: {item.description}"
     
@@ -61,6 +62,8 @@ async def handle_exits(cmd, player, game_state, player_manager, online_sessions,
 
 
 # ===== GET/TAKE COMMAND =====
+# Update to commands/standard.py - handle_get function
+
 async def handle_get(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """Handle the 'get' command."""
     subject = cmd.get("subject")
@@ -109,26 +112,35 @@ async def handle_get(cmd, player, game_state, player_manager, online_sessions, s
     
     if subject.lower() == "all":
         picked_up = []
-        for item in list(current_room.items):
+        all_visible_items = current_room.get_items(game_state)  # Get visible items including hidden ones
+        for item in list(all_visible_items):
             success, message = player.add_item(item)
             if success:
-                current_room.remove_item(item)
+                current_room.remove_item(item)  # This removes from visible items
+                # Also remove from hidden_items if it's there
+                if hasattr(item, 'id') and item.id in current_room.hidden_items:
+                    current_room.remove_hidden_item(item.id)
                 picked_up.append(item.name)
         return f"Picked up: {', '.join(picked_up)}." if picked_up else "Nothing to pick up."
     
     if subject.lower() == "treasure" or subject.lower() == "t":
         picked_up = []
-        for item in list(current_room.items):
+        all_visible_items = current_room.get_items(game_state)  # Get visible items including hidden ones
+        for item in list(all_visible_items):
             if hasattr(item, 'value') and item.value > 0:
                 success, message = player.add_item(item)
                 if success:
                     current_room.remove_item(item)
+                    # Also remove from hidden_items if it's there
+                    if hasattr(item, 'id') and item.id in current_room.hidden_items:
+                        current_room.remove_hidden_item(item.id)
                     picked_up.append(item.name)
         return f"Treasure picked up: {', '.join(picked_up)}." if picked_up else "No treasure available."
     
     # Look for a matching item in the room
     found_item = None
-    for item in current_room.items:
+    all_visible_items = current_room.get_items(game_state)  # Get visible items including hidden ones
+    for item in all_visible_items:
         if subject.lower() in item.name.lower():
             found_item = item
             break
@@ -137,6 +149,9 @@ async def handle_get(cmd, player, game_state, player_manager, online_sessions, s
         success, message = player.add_item(found_item)
         if success:
             current_room.remove_item(found_item)
+            # Also remove from hidden_items if it's there
+            if hasattr(found_item, 'id') and found_item.id in current_room.hidden_items:
+                current_room.remove_hidden_item(found_item.id)
         return message
     
     return f"You don't see '{subject}' here."
@@ -238,8 +253,6 @@ async def handle_help(cmd, player, game_state, player_manager, online_sessions, 
         "  <direction>           - Move in a specific direction (n, s, e, w, north, south, etc).\n"
         "  look [<item>]         - Describes your current location or examines something.\n"
         "  get <item>            - Pick up an item (also: g).\n"
-        "  get <item> from <container> - Get an item from a container.\n"
-        "  put <item> in <container> - Put an item into a container.\n"
         "  open <container>      - Open a container.\n"
         "  close <container>     - Close a container.\n"
         "  drop <item>           - Drop an item from your inventory (also: dr).\n"
@@ -330,3 +343,83 @@ command_registry.register_alias("sc", "score")
 command_registry.register_alias("x", "exits")
 command_registry.register_alias("qq", "quit")  # Changed from "exit" to "qq"
 command_registry.register_alias("who", "users")
+
+
+# Add this to commands/standard.py
+
+async def handle_diagnostic(cmd, player, game_state, player_manager, online_sessions, sio, utils):
+    """Debug command to print information about items in the room."""
+    import json
+    
+    subject = cmd.get("subject")
+    current_room = game_state.get_room(player.current_room)
+    
+    result = f"=== DIAGNOSTIC INFO ===\n"
+    result += f"Current room: {current_room.room_id} ({current_room.name})\n"
+    result += f"Visible items: {len(current_room.items)}\n"
+    
+    # List all items in the room
+    result += "\nROOM ITEMS:\n"
+    for item in current_room.items:
+        result += f"- {item.name} (ID: {getattr(item, 'id', 'unknown')})\n"
+        
+        # Check if it's a StatefulItem
+        if hasattr(item, 'state'):
+            result += f"  State: {item.state}\n"
+            
+        # Check for interactions
+        if hasattr(item, 'interactions'):
+            result += f"  Has interactions: YES\n"
+            result += f"  Verbs: {list(item.interactions.keys())}\n"
+            
+            # Check structure of interaction lists
+            for verb, interactions in item.interactions.items():
+                result += f"  Verb: {verb}\n"
+                if isinstance(interactions, list):
+                    result += f"    Is a list: YES\n"
+                    result += f"    Number of interactions: {len(interactions)}\n"
+                    for i, inter in enumerate(interactions):
+                        result += f"    Interaction {i}:\n"
+                        if isinstance(inter, dict):
+                            result += f"      Is a dictionary: YES\n"
+                            result += f"      Keys: {list(inter.keys())}\n"
+                        else:
+                            result += f"      Is a dictionary: NO - TYPE: {type(inter)}\n"
+                else:
+                    result += f"    Is a list: NO - TYPE: {type(interactions)}\n"
+        else:
+            result += f"  Has interactions: NO\n"
+    
+    # Check inventory items
+    result += "\nINVENTORY ITEMS:\n"
+    for item in player.inventory:
+        result += f"- {item.name} (ID: {getattr(item, 'id', 'unknown')})\n"
+        
+        # Check if it's a container
+        if hasattr(item, 'items'):
+            result += f"  Is container: YES\n"
+            result += f"  Container state: {getattr(item, 'state', 'unknown')}\n"
+            result += f"  Contains: {len(item.items)} items\n"
+            
+            # Check for interactions
+            if hasattr(item, 'interactions'):
+                result += f"  Has interactions: YES\n"
+                result += f"  Verbs: {list(item.interactions.keys())}\n"
+                
+                # Check open/close
+                for verb in ['open', 'close']:
+                    if verb in item.interactions:
+                        result += f"  Has {verb} verb: YES\n"
+                        interactions = item.interactions[verb]
+                        if isinstance(interactions, list):
+                            result += f"    {verb} is a list: YES\n"
+                            result += f"    Number of interactions: {len(interactions)}\n"
+                        else:
+                            result += f"    {verb} is a list: NO - TYPE: {type(interactions)}\n"
+            else:
+                result += f"  Has interactions: NO\n"
+    
+    return result
+
+# Add this entry:
+command_registry.register("debug", handle_diagnostic, "Show diagnostic info for debugging.")

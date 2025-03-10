@@ -1,10 +1,11 @@
-# backend/commands/container.py
+# Update container.py to properly handle container states with the new interaction system
 
 from commands.registry import command_registry
 from models.ContainerItem import ContainerItem
 import logging
 
 # Set up logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ===== PUT COMMAND =====
@@ -130,7 +131,7 @@ async def handle_get_from(cmd, player, game_state, player_manager, online_sessio
         player_manager.save_players()  # Save player state after changing inventory
         return f"You get {item_to_get.name} from the {container.name}."
     else:
-        return message  # Return the error message from player.add_item
+        return message
 
 
 # ===== OPEN/CLOSE COMMANDS =====
@@ -151,7 +152,7 @@ async def handle_open(cmd, player, game_state, player_manager, online_sessions, 
     # If not in inventory, check the room
     if not container:
         current_room = game_state.get_room(player.current_room)
-        for item in current_room.items:
+        for item in current_room.get_items(game_state):
             if subject.lower() in item.name.lower() and isinstance(item, ContainerItem):
                 container = item
                 break
@@ -184,7 +185,7 @@ async def handle_close(cmd, player, game_state, player_manager, online_sessions,
     # If not in inventory, check the room
     if not container:
         current_room = game_state.get_room(player.current_room)
-        for item in current_room.items:
+        for item in current_room.get_items(game_state):
             if subject.lower() in item.name.lower() and isinstance(item, ContainerItem):
                 container = item
                 break

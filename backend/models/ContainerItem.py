@@ -1,3 +1,5 @@
+# Update in models/ContainerItem.py
+
 from models.StatefulItem import StatefulItem
 from models.Item import Item
 
@@ -22,6 +24,29 @@ class ContainerItem(StatefulItem):
         self.items = []  # List to hold contained items
         self.update_weight()  # Set the initial total weight (base_weight + contained items)
         self.update_description()  # Set the initial description
+        
+        # Add default open/close interactions
+        self.setup_default_interactions()
+    
+    def setup_default_interactions(self):
+        """Set up the default open and close interactions for containers."""
+        # Only add these if we have the add_interaction method (from StatefulItem)
+        if hasattr(self, 'add_interaction'):
+            # Add open interaction for closed state
+            self.add_interaction(
+                verb="open",
+                target_state="open",
+                message=f"You open the {self.name}.",
+                from_state="closed"
+            )
+            
+            # Add close interaction for open state
+            self.add_interaction(
+                verb="close",
+                target_state="closed",
+                message=f"You close the {self.name}.",
+                from_state="open"
+            )
 
     def update_weight(self):
         """Update the container's total weight to be its own base weight plus the weight of its contents."""
@@ -29,7 +54,7 @@ class ContainerItem(StatefulItem):
 
     def get_contained(self):
         """Used in inventory command."""
-        return_str = "    The bag contains "
+        return_str = f"    The {self.name} contains "
         if len(self.items) > 0:
             if self.state == "open":
                 items_str = ", ".join(item.name for item in self.items)
@@ -56,17 +81,39 @@ class ContainerItem(StatefulItem):
         full_desc += self.get_contained()
         self.description = full_desc
 
-    def set_state(self, new_state):
+    def set_state(self, new_state, game_state=None):
         """
         Change the state of the container to "open" or "closed" and update its description.
         
         :param new_state: Must be either "open" or "closed".
+        :param game_state: Optional game state for updating room exits.
         :return: True if state was changed, False otherwise.
         """
         if new_state not in ["open", "closed"]:
             return False
+            
+        old_state = self.state
         self.state = new_state
         self.update_description()
+        
+        # Handle any exits or other state change effects from parent class
+        if game_state and hasattr(self, 'room_id') and self.room_id:
+            room = game_state.get_room(self.room_id)
+            if room:
+                # Check if this state change should add/remove exits
+                if hasattr(self, 'interactions'):
+                    for verb, interactions in self.interactions.items():
+                        if not isinstance(interactions, list):
+                            interactions = [interactions]
+                        
+                        for interaction in interactions:
+                            if interaction.get('target_state') == new_state:
+                                if interaction.get('add_exit'):
+                                    direction, target_room = interaction['add_exit']
+                                    room.exits[direction] = target_room
+                                if interaction.get('remove_exit') and interaction['remove_exit'] in room.exits:
+                                    del room.exits[interaction['remove_exit']]
+        
         return True
 
     def add_item(self, item):

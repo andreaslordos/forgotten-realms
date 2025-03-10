@@ -249,6 +249,8 @@ def parse_command(command_str, context=None, players_in_room=None, online_sessio
     
     return cmds
 
+# Update to commands/parser.py
+
 def parse_single_command(command_str, context, abbreviations, players_in_room=None):
     """
     Parses a single command using the format: <verb> <subject> [with <object>]
@@ -304,9 +306,9 @@ def parse_single_command(command_str, context, abbreviations, players_in_room=No
             context.update(full_verb, result["subject"], None, result["instrument"])
             return result
     
-    # Look for "with" (or equivalent) to separate subject from instrument
+    # Look for "with" or "w" (or equivalent) to separate subject from instrument
     with_index = -1
-    with_equivalents = ["with", "wi", "using", "by", "via", "at", "to", "from"]
+    with_equivalents = ["with", "w", "wi", "using", "by", "via", "at", "to", "from"]
     for i, token in enumerate(remaining_tokens):
         if token.lower() in with_equivalents:
             with_index = i

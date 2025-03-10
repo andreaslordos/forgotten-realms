@@ -109,6 +109,8 @@ async def handle_movement(cmd, player, game_state, player_manager, online_sessio
         return "You can't go that way."
 
 
+# In commands/executor.py, update the build_look_description function
+
 def build_look_description(player, game_state, online_sessions=None, look=False):
     """
     Build a description of the current room, including items and other players.
@@ -117,6 +119,7 @@ def build_look_description(player, game_state, online_sessions=None, look=False)
         player (Player): The player looking
         game_state (GameState): The current game state
         online_sessions (dict): Optional online sessions dictionary
+        look (bool): Whether this is from an explicit "look" command
         
     Returns:
         str: The room description
@@ -130,10 +133,13 @@ def build_look_description(player, game_state, online_sessions=None, look=False)
         room_desc += f"\n{current_room.description}"
         player.visited.add(current_room.room_id)
     
+    # Get all visible items (including those that become visible due to conditions)
+    visible_items = current_room.get_items(game_state)
+    
     # List items in the room
-    if current_room.items:
+    if visible_items:
         items_desc = []
-        for item in current_room.items:
+        for item in visible_items:
             items_desc.append(item.description)
         if items_desc:
             room_desc += "\n" + "\n".join(items_desc)
