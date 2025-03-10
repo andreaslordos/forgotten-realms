@@ -16,7 +16,7 @@ async def execute_command(cmd, player, game_state, player_manager, online_sessio
     Execute a command.
     
     Args:
-        cmd (dict or str): The command to execute (either a parsed command dict or string)
+        cmd (dict): The parsed command dictionary
         player (Player): The player executing the command
         game_state (GameState): The current game state
         player_manager (PlayerManager): The player manager
@@ -27,22 +27,6 @@ async def execute_command(cmd, player, game_state, player_manager, online_sessio
     Returns:
         str: The result of the command execution
     """
-    # Get players in the current room
-    players_in_room = []
-    if online_sessions:
-        for sid, session_data in online_sessions.items():
-            other_player = session_data.get('player')
-            if other_player and other_player.current_room == player.current_room:
-                players_in_room.append(other_player)
-    
-    # Handle string command (backward compatibility)
-    if isinstance(cmd, str):
-        # Parse the command string
-        parsed_commands = parse_command(cmd, command_registry.command_context, players_in_room, online_sessions)
-        if not parsed_commands:
-            return "Huh? I didn't understand that."
-        cmd = parsed_commands[0]
-    
     # Get the verb from the command dictionary
     verb = cmd.get("verb")
     

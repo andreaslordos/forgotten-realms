@@ -96,13 +96,13 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                                 players_in_room.append(other_player)
                     session['players_in_room'] = players_in_room
                     
-                    # Parse the command using the new unified parser
+                    # Parse the command using the unified parser
                     parsed_cmds = parse_command(cmd_str, None, players_in_room, online_sessions)
                     
                     # Handle command chaining (from comma-separated commands)
                     if len(parsed_cmds) > 1:
                         # Echo the original chained command
-                        await utils.send_message(sio, sid, f"> {cmd_str}")
+                        await utils.send_message(sio, sid, f"{cmd_str}")
                         
                         # Process first command now
                         first_cmd = parsed_cmds[0]
@@ -124,11 +124,12 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                         continue
                     
                     # Echo the individual command before executing it
-                    await utils.send_message(sio, sid, f"> {cmd.get('original', cmd_str)}")
+                    if len(parsed_cmds) <= 1:  # Only echo if not a chained command
+                        await utils.send_message(sio, sid, f"{cmd.get('original', cmd_str)}")
                     
                     # Process the command
                     result = await execute_command(
-                        cmd,  # Now passing the parsed command object 
+                        cmd,  # Pass the parsed command object directly
                         player, 
                         game_state, 
                         player_manager, 

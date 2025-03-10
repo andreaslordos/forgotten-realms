@@ -279,7 +279,7 @@ STANDARD_PREPOSITIONS = {
 }
 
 REVERSED_PREPOSITIONS = {
-    "to": "to", "t": "to", "onto": "onto", "toward": "toward", "towards": "towards",
+    "to": "to", "onto": "onto", "toward": "toward", "towards": "towards",
     "on": "on", "upon": "upon", "over": "over",
     "in": "in", "i": "in", "into": "into", "inside": "inside", 
     "at": "at", "around": "around", "about": "about"
@@ -460,6 +460,19 @@ def detect_interaction_syntax(cmd, context, registry):
     
     return cmd
 
+def is_movement_command(verb):
+    """Check if a verb is a movement command."""
+    if not verb:
+        return False
+    
+    # Movement commands are directions
+    directions = list(REVERSED_PREPOSITIONS.keys()) + list(REVERSED_PREPOSITIONS.values())
+    directions.extend(["north", "south", "east", "west", 
+                       "northeast", "northwest", "southeast", "southwest",
+                       "up", "down", "in", "out"])
+    
+    return verb.lower() in directions
+
 def resolve_pronouns(cmd, context, registry):
     """Replace pronouns (it, him, her, them) with their referents."""
     if cmd.get("abort_pipeline"):
@@ -486,3 +499,6 @@ def create_default_parser(registry):
     parser.add_middleware(resolve_pronouns)
     
     return parser
+
+# Create a default parser instance for direct use
+default_parser = create_default_parser(None)  # Will be initialized properly in __init__.py
