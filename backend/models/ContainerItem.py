@@ -1,5 +1,3 @@
-# Update in models/ContainerItem.py
-
 from models.StatefulItem import StatefulItem
 from models.Item import Item
 
@@ -124,6 +122,10 @@ class ContainerItem(StatefulItem):
         :param item: An instance of Item (or subclass) to add.
         :return: True if the item was added, False otherwise.
         """
+        # Check if the item is a container - prevent nesting containers
+        if isinstance(item, ContainerItem):
+            return False  # Cannot put containers inside other containers
+            
         if len(self.items) >= self.capacity_limit:
             return False  # Exceeds maximum item count
         if self.current_weight() + item.weight > self.capacity_weight:

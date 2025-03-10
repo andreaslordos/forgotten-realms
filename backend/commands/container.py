@@ -59,6 +59,10 @@ async def handle_put(cmd, player, game_state, player_manager, online_sessions, s
     if container.state != "open":
         return f"The {container.name} is closed. You need to open it first."
     
+    # Check if the item is a container (nested containers not allowed)
+    if isinstance(item_to_put, ContainerItem):
+        return f"Infinite recursion doesn't exist in this realm."
+    
     # Add the item to the container
     if container.add_item(item_to_put):
         player.remove_item(item_to_put)
