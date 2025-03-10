@@ -6,6 +6,41 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Add these at the top of parser.py with the other constants
+
+# Prepositions that indicate reversed syntax (verb X to/on/in Y)
+REVERSED_PREPOSITIONS = {
+    "to": "to", "t": "to", "onto": "onto", "toward": "toward", "towards": "towards",
+    "on": "on", "upon": "upon", "over": "over",
+    "in": "in", "i": "in", "into": "into", "inside": "inside", 
+    "at": "at", "around": "around", "about": "about"
+}
+
+# Prepositions that indicate standard syntax (verb X with/using Y)
+STANDARD_PREPOSITIONS = {
+    "with": "with", "w": "with", "wi": "with", 
+    "using": "using", "u": "using",
+    "by": "by", "via": "via", "through": "through", 
+    "underneath": "underneath", "beneath": "beneath", "under": "under"
+}
+
+def is_reversed_preposition(word):
+    """Check if a word is a preposition indicating reversed syntax."""
+    return word.lower() in REVERSED_PREPOSITIONS
+
+def is_standard_preposition(word):
+    """Check if a word is a preposition indicating standard syntax."""
+    return word.lower() in STANDARD_PREPOSITIONS
+
+def get_full_preposition(word):
+    """Get the full form of an abbreviated preposition."""
+    word_lower = word.lower()
+    if word_lower in REVERSED_PREPOSITIONS:
+        return REVERSED_PREPOSITIONS[word_lower]
+    if word_lower in STANDARD_PREPOSITIONS:
+        return STANDARD_PREPOSITIONS[word_lower]
+    return word_lower
+
 class CommandContext:
     """
     Stores the context of previously executed commands.
@@ -202,12 +237,14 @@ def parse_container_commands(command_str, context):
     return None
 
 # Modified parse_command function to include container command parsing
+# Modified parse_command function to include container command parsing and use our new syntax
 def parse_command(command_str, context=None, players_in_room=None, online_sessions=None):
     """
     Main entry point for command parsing.
     Returns a list containing a single parsed command dictionary.
     
-    This version has been updated to include container command parsing.
+    This version has been updated to include container command parsing
+    and support for reversed syntax (tie rope to well).
     """
     if not command_str:
         return []
@@ -221,7 +258,7 @@ def parse_command(command_str, context=None, players_in_room=None, online_sessio
         context.update(container_cmd["verb"], container_cmd["subject"], None, container_cmd["instrument"])
         return [container_cmd]
     
-    # Original logic follows...
+    # Original logic for say commands (starting with a quote)
     if command_str.startswith('"'):
         return [{
             "verb": "say",
@@ -230,13 +267,16 @@ def parse_command(command_str, context=None, players_in_room=None, online_sessio
             "instrument": None,
             "original": command_str
         }]
-    elif command_str == "u":
+    
+    # Original logic for abbreviations
+    if command_str == "u":
         all_abbreviations = {"u": "up"}
     elif command_str in DIRECTION_ALIASES:
         all_abbreviations = {command_str: DIRECTION_ALIASES[command_str]}
     else:
         all_abbreviations = {**DIRECTION_ALIASES, **COMMAND_ABBREVIATIONS}
     
+    # Parse the command string using the enhanced parser
     cmds = parse_command_string(command_str, context, all_abbreviations, players_in_room, online_sessions)
     
     # Special handling: if the verb is a direction, expand it.
@@ -249,11 +289,11 @@ def parse_command(command_str, context=None, players_in_room=None, online_sessio
     
     return cmds
 
-# Update to commands/parser.py
-
 def parse_single_command(command_str, context, abbreviations, players_in_room=None):
     """
-    Parses a single command using the format: <verb> <subject> [with <object>]
+    Parses a single command supporting both:
+    - <verb> <subject> with <instrument> format
+    - <verb> <instrument> to/on/in <subject> format
     
     Args:
         command_str (str): The command string to parse.
@@ -281,93 +321,78 @@ def parse_single_command(command_str, context, abbreviations, players_in_room=No
         "subject": None,
         "object": None,
         "instrument": None,
+        "preposition": "with",  # Default preposition
+        "reversed_syntax": False,  # Flag for reversed syntax
         "original": command_str
     }
     
     remaining_tokens = tokens[1:]
     logger.debug(f"Remaining tokens: {remaining_tokens}")
     
-    # Special handling for pronouns in communication commands
-    if len(remaining_tokens) >= 2 and remaining_tokens[0] in ["him", "her", "them", "it"]:
-        if full_verb in ["tell", "ask", "whisper"]:
-            pronoun = remaining_tokens[0]
-            message = " ".join(remaining_tokens[1:])
-            if pronoun == "him" and context.last_male:
-                result["subject"] = context.last_male
-            elif pronoun == "her" and context.last_female:
-                result["subject"] = context.last_female
-            elif pronoun == "them" and context.last_player:
-                result["subject"] = context.last_player
-            elif pronoun == "it" and context.last_it:
-                result["subject"] = context.last_it
-            else:
-                result["subject"] = pronoun
-            result["instrument"] = message
-            context.update(full_verb, result["subject"], None, result["instrument"])
-            return result
-    
-    # Look for "with" or "w" (or equivalent) to separate subject from instrument
-    with_index = -1
-    with_equivalents = ["with", "w", "wi", "using", "by", "via", "at", "to", "from"]
+    # Look for reversed prepositions (to, on, in, etc.)
+    reversed_index = -1
     for i, token in enumerate(remaining_tokens):
-        if token.lower() in with_equivalents:
-            with_index = i
+        if is_reversed_preposition(token):
+            reversed_index = i
+            result["preposition"] = get_full_preposition(token)
             break
     
-    logger.debug(f"'With' token found at index: {with_index}")
+    # Look for standard prepositions (with, using, by, etc.)
+    standard_index = -1
+    for i, token in enumerate(remaining_tokens):
+        if is_standard_preposition(token):
+            standard_index = i
+            result["preposition"] = get_full_preposition(token)
+            break
     
-    if with_index >= 0:
-        subject_part = " ".join(remaining_tokens[:with_index]) if with_index > 0 else None
-        instrument_part = " ".join(remaining_tokens[with_index+1:]) if with_index < len(remaining_tokens) - 1 else None
-        logger.debug(f"Subject part: '{subject_part}', Instrument part: '{instrument_part}'")
-        
-        if subject_part in ["him", "her", "it", "them"]:
-            if subject_part == "him" and context.last_male:
-                result["subject"] = context.last_male
-            elif subject_part == "her" and context.last_female:
-                result["subject"] = context.last_female
-            elif subject_part == "it" and context.last_it:
-                result["subject"] = context.last_it
-            elif subject_part == "them" and context.last_player:
-                result["subject"] = context.last_player
-            else:
-                result["subject"] = subject_part
+    # Determine if we're using reversed syntax
+    if reversed_index >= 0 and (standard_index < 0 or reversed_index < standard_index):
+        # Using reversed syntax (e.g., "tie rope to well")
+        instrument_part = " ".join(remaining_tokens[:reversed_index]) if reversed_index > 0 else None
+        subject_part = " ".join(remaining_tokens[reversed_index+1:]) if reversed_index < len(remaining_tokens) - 1 else None
+        result["reversed_syntax"] = True
+    elif standard_index >= 0:
+        # Using standard syntax (e.g., "open door with key")
+        subject_part = " ".join(remaining_tokens[:standard_index]) if standard_index > 0 else None
+        instrument_part = " ".join(remaining_tokens[standard_index+1:]) if standard_index < len(remaining_tokens) - 1 else None
+    else:
+        # No preposition, just a subject
+        subject_part = " ".join(remaining_tokens) if remaining_tokens else None
+        instrument_part = None
+    
+    # Process pronoun substitutions for subject
+    if subject_part in ["him", "her", "it", "them"]:
+        if subject_part == "him" and context.last_male:
+            result["subject"] = context.last_male
+        elif subject_part == "her" and context.last_female:
+            result["subject"] = context.last_female
+        elif subject_part == "it" and context.last_it:
+            result["subject"] = context.last_it
+        elif subject_part == "them" and context.last_player:
+            result["subject"] = context.last_player
         else:
             result["subject"] = subject_part
-        
-        if instrument_part in ["him", "her", "it", "them"]:
-            if instrument_part == "him" and context.last_male:
-                result["instrument"] = context.last_male
-            elif instrument_part == "her" and context.last_female:
-                result["instrument"] = context.last_female
-            elif instrument_part == "it" and context.last_it:
-                result["instrument"] = context.last_it
-            elif instrument_part == "them" and context.last_player:
-                result["instrument"] = context.last_player
-            else:
-                result["instrument"] = instrument_part
+    else:
+        result["subject"] = subject_part
+    
+    # Process pronoun substitutions for instrument
+    if instrument_part in ["him", "her", "it", "them"]:
+        if instrument_part == "him" and context.last_male:
+            result["instrument"] = context.last_male
+        elif instrument_part == "her" and context.last_female:
+            result["instrument"] = context.last_female
+        elif instrument_part == "it" and context.last_it:
+            result["instrument"] = context.last_it
+        elif instrument_part == "them" and context.last_player:
+            result["instrument"] = context.last_player
         else:
             result["instrument"] = instrument_part
-    elif remaining_tokens:
-        subject_part = " ".join(remaining_tokens)
-        if subject_part in ["him", "her", "it", "them"]:
-            if subject_part == "him" and context.last_male:
-                result["subject"] = context.last_male
-            elif subject_part == "her" and context.last_female:
-                result["subject"] = context.last_female
-            elif subject_part == "it" and context.last_it:
-                result["subject"] = context.last_it
-            elif subject_part == "them" and context.last_player:
-                result["subject"] = context.last_player
-            else:
-                result["subject"] = subject_part
-        else:
-            result["subject"] = subject_part
+    else:
+        result["instrument"] = instrument_part
     
     logger.debug(f"Final result: {result}")
     context.update(full_verb, result["subject"], None, result["instrument"])
     return result
-
 
 # Mapping of direction abbreviations to full directions
 DIRECTION_ALIASES = {

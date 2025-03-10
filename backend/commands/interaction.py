@@ -12,54 +12,110 @@ logger = logging.getLogger(__name__)
 
 async def handle_interaction(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
-    Handle specific verb-object interactions like 'open door with key', 'light torch with match'.
+    Handle specific verb-object interactions with better support for:
+    - 'open door with key' (traditional)
+    - 'tie rope to well' (reversed format)
+    - 'unlock chest using key' (with preposition variants)
     """
     try:
-        verb = cmd["verb"]
+        verb = cmd.get("verb")
         subject = cmd.get("subject")
         instrument = cmd.get("instrument")
+        preposition = cmd.get("preposition", "with")  # Default preposition
+        reversed_syntax = cmd.get("reversed_syntax", False)  # Flag for reversed syntax
         
         if not subject:
             return f"What do you want to {verb}?"
         
-        # Look for the target item in the room or inventory
-        target_item = None
-        instrument_item = None
+        # In REVERSED syntax (tie rope to well), we need:
+        # - primary_item = well (the item with the interaction)
+        # - secondary_item = rope (the instrument used)
         
-        # Check player's inventory for subject
-        for item in player.inventory:
-            if subject.lower() in item.name.lower():
-                target_item = item
-                break
-        
-        # If not in inventory, check the room
-        current_room = None
-        if not target_item:
-            current_room = game_state.get_room(player.current_room)
+        # In STANDARD syntax (unlock door with key), we need:
+        # - primary_item = door (the item with the interaction)
+        # - secondary_item = key (the instrument used)
             
-            # Check all visible items in the room
-            visible_items = current_room.get_items(game_state)
-            for item in visible_items:
-                if subject.lower() in item.name.lower():
-                    target_item = item
-                    # Set the room_id for the item if it has the attribute
-                    if hasattr(item, 'set_room_id'):
-                        item.set_room_id(current_room.room_id)
+        # Initialize our search variables
+        primary_item = None
+        secondary_item = None
+        current_room = game_state.get_room(player.current_room)
+        
+        if reversed_syntax:
+            # In reversed syntax, first find the intended target in either:
+            # 1. instrument field (which was originally the subject but is now in instrument field)
+            # 2. subject field (if the reversal was incorrect)
+            
+            # Try to find the item with interactions in the room based on instrument field
+            for item in current_room.get_items(game_state):
+                if instrument and instrument.lower() in item.name.lower() and hasattr(item, 'interactions'):
+                    primary_item = item
+                    secondary_item_name = subject  # The subject is actually the instrument in reversed syntax
+                    if hasattr(primary_item, 'set_room_id'):
+                        primary_item.set_room_id(current_room.room_id)
                     break
+            
+            # If not found, check if subject is actually the item with interactions
+            if not primary_item:
+                for item in current_room.get_items(game_state):
+                    if subject.lower() in item.name.lower() and hasattr(item, 'interactions'):
+                        primary_item = item
+                        secondary_item_name = instrument  # Keep the original instrument
+                        if hasattr(primary_item, 'set_room_id'):
+                            primary_item.set_room_id(current_room.room_id)
+                        break
+                        
+            # If still not found, check player's inventory
+            if not primary_item:
+                for item in player.inventory:
+                    if instrument and instrument.lower() in item.name.lower() and hasattr(item, 'interactions'):
+                        primary_item = item
+                        secondary_item_name = subject
+                        break
+                    
+            # One last attempt with subject field
+            if not primary_item:
+                for item in player.inventory:
+                    if subject.lower() in item.name.lower() and hasattr(item, 'interactions'):
+                        primary_item = item
+                        secondary_item_name = instrument
+                        break
+        else:
+            # Standard syntax, subject contains the target item, instrument contains the tool
+            
+            # First check player inventory for subject
+            for item in player.inventory:
+                if subject.lower() in item.name.lower() and hasattr(item, 'interactions'):
+                    primary_item = item
+                    secondary_item_name = instrument
+                    break
+            
+            # If not in inventory, check the room items
+            if not primary_item:
+                for item in current_room.get_items(game_state):
+                    if subject.lower() in item.name.lower() and hasattr(item, 'interactions'):
+                        primary_item = item
+                        secondary_item_name = instrument
+                        if hasattr(primary_item, 'set_room_id'):
+                            primary_item.set_room_id(current_room.room_id)
+                        break
         
-        if not target_item:
-            return f"You don't see '{subject}' here."
-        
-        # If it's not a StatefulItem or doesn't have interactions attribute
-        if not hasattr(target_item, 'interactions'):
+        # If we couldn't find primary item with interactions                    
+        if not primary_item:
             return f"You can't {verb} that."
         
-        # Check if the verb is supported for this item
-        if verb not in target_item.interactions:
-            return f"You can't {verb} the {target_item.name}."
+        # If we found a primary item, but it doesn't support this verb
+        if verb not in primary_item.interactions:
+            return f"You can't {verb} the {primary_item.name}."
+            
+        # Now get the secondary item (the instrument) if needed
+        if secondary_item_name:
+            for item in player.inventory:
+                if secondary_item_name.lower() in item.name.lower():
+                    secondary_item = item
+                    break
         
         # Get all possible interactions for this verb
-        possible_interactions = target_item.interactions[verb]
+        possible_interactions = primary_item.interactions[verb]
         
         # Make sure we're dealing with a list
         if not isinstance(possible_interactions, list):
@@ -75,7 +131,7 @@ async def handle_interaction(cmd, player, game_state, player_manager, online_ses
             # Check if this interaction is valid for the current state
             if 'from_state' in interaction:
                 from_state = interaction['from_state']
-                if from_state is not None and from_state != target_item.state:
+                if from_state is not None and from_state != primary_item.state:
                     continue
             
             # We found a match for the current state (or one with no state requirement)
@@ -84,48 +140,39 @@ async def handle_interaction(cmd, player, game_state, player_manager, online_ses
         
         # If no valid interaction was found
         if not valid_interaction:
-            return f"You can't {verb} the {target_item.name} in its current state."
+            return f"You can't {verb} the {primary_item.name} in its current state."
         
-        # If an instrument is required, find it
+        # If an instrument is required, check if we have it
         if 'required_instrument' in valid_interaction and valid_interaction['required_instrument']:
             required_instrument = valid_interaction['required_instrument']
             
-            if not instrument:
-                return f"You need something to {verb} the {target_item.name} with."
-            
-            # Look for the instrument in inventory
-            for item in player.inventory:
-                if instrument.lower() in item.name.lower():
-                    instrument_item = item
-                    break
-            
-            if not instrument_item:
-                return f"You don't have '{instrument}'."
+            if not secondary_item:
+                return f"You need {required_instrument} to {verb} the {primary_item.name}."
             
             # Check if it's the right type of instrument
-            if required_instrument.lower() not in instrument_item.name.lower():
-                return f"You can't {verb} the {target_item.name} with that."
+            if required_instrument.lower() not in secondary_item.name.lower():
+                return f"You can't {verb} the {primary_item.name} with that."
         
         # Check any additional conditions
         if 'conditional_fn' in valid_interaction and valid_interaction['conditional_fn']:
             if not valid_interaction['conditional_fn'](player, game_state):
-                return f"You can't {verb} the {target_item.name} right now."
+                return f"You can't {verb} the {primary_item.name} right now."
         
         # All conditions met, perform the interaction
         if 'target_state' in valid_interaction and valid_interaction['target_state']:
             target_state = valid_interaction['target_state']
-            target_item.set_state(target_state, game_state)
+            primary_item.set_state(target_state, game_state)
             
             # Broadcast state change to other players in the room
-            if hasattr(target_item, 'room_id') and target_item.room_id:
+            if hasattr(primary_item, 'room_id') and primary_item.room_id:
                 # Create a message that describes what happened
-                change_message = f"{player.name} {verb}s the {target_item.name}."
+                change_message = f"{player.name} {verb}s the {primary_item.name}."
                 
                 # Use the notifications service to broadcast
-                await broadcast_room(target_item.room_id, change_message, exclude_player=[player.name])
+                await broadcast_room(primary_item.room_id, change_message, exclude_player=[player.name])
         
         # Get the success message
-        message = valid_interaction.get('message', f"You {verb} the {target_item.name}.")
+        message = valid_interaction.get('message', f"You {verb} the {primary_item.name}.")
         
         # Handle exit modifications
         add_exit = valid_interaction.get('add_exit')

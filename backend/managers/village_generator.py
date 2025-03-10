@@ -540,8 +540,8 @@ def connect_exits(rooms):
     }
     
     rooms["well_bottom"].exits = {
-        "up": "old_well",
         "east": "underground_junction"
+        # up exit will be handled by well object
     }
     
     rooms["underground_junction"].exits = {
