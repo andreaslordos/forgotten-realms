@@ -11,12 +11,12 @@ from commands.utils import get_player_inventory
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def execute_command(command_str, player, game_state, player_manager, online_sessions=None, sio=None, utils=None):
+async def execute_command(cmd, player, game_state, player_manager, online_sessions=None, sio=None, utils=None):
     """
-    Execute a command string.
+    Execute a command.
     
     Args:
-        command_str (str): The command string to execute
+        cmd (dict or str): The command to execute (either a parsed command dict or string)
         player (Player): The player executing the command
         game_state (GameState): The current game state
         player_manager (PlayerManager): The player manager
@@ -35,37 +35,34 @@ async def execute_command(command_str, player, game_state, player_manager, onlin
             if other_player and other_player.current_room == player.current_room:
                 players_in_room.append(other_player)
     
-    # Parse the command string - now passing online_sessions to access all players
-    parsed_commands = parse_command(command_str, command_registry.command_context, players_in_room, online_sessions)
+    # Handle string command (backward compatibility)
+    if isinstance(cmd, str):
+        # Parse the command string
+        parsed_commands = parse_command(cmd, command_registry.command_context, players_in_room, online_sessions)
+        if not parsed_commands:
+            return "Huh? I didn't understand that."
+        cmd = parsed_commands[0]
     
-    if not parsed_commands:
-        return "Huh? I didn't understand that."
+    # Get the verb from the command dictionary
+    verb = cmd.get("verb")
     
-    # Execute each command and collect results
-    results = []
-    for cmd in parsed_commands:
-        verb = cmd["verb"]
-        
-        # Special case for "quit"
-        if verb.lower() == "quit":
-            return "quit"
-        
-        # Check if it's a movement command
-        if is_movement_command(verb):
-            result = await handle_movement(cmd, player, game_state, player_manager, online_sessions, sio, utils)
-            results.append(result)
-            continue
-        
-        # Get the handler for this verb
-        handler = command_registry.get_handler(verb)
-        if handler:
-            # Call the handler with the parsed command and appropriate context
-            result = await handler(cmd, player, game_state, player_manager, online_sessions, sio, utils)
-            results.append(result)
-        else:
-            results.append(f"I don't know how to '{verb}'.")
+    # Special case for "quit"
+    if verb and verb.lower() == "quit":
+        return "quit"
     
-    return "\n".join(filter(None, results))  # Filter out empty results
+    # Check if it's a movement command
+    if verb and is_movement_command(verb):
+        result = await handle_movement(cmd, player, game_state, player_manager, online_sessions, sio, utils)
+        return result
+    
+    # Get the handler for this verb
+    handler = command_registry.get_handler(verb)
+    if handler:
+        # Call the handler with the parsed command and appropriate context
+        result = await handler(cmd, player, game_state, player_manager, online_sessions, sio, utils)
+        return result
+    else:
+        return f"I don't know how to '{verb}'."
 
 
 async def handle_movement(cmd, player, game_state, player_manager, online_sessions, sio, utils):
@@ -108,8 +105,6 @@ async def handle_movement(cmd, player, game_state, player_manager, online_sessio
     else:
         return "You can't go that way."
 
-
-# In commands/executor.py, update the build_look_description function
 
 def build_look_description(player, game_state, online_sessions=None, look=False):
     """

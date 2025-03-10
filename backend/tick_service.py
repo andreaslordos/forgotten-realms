@@ -1,3 +1,5 @@
+# backend/tick_service.py
+
 import asyncio
 from commands.executor import execute_command
 from commands.communication import handle_pending_communication
@@ -5,6 +7,7 @@ from commands.parser import parse_command
 import time
 import logging
 from services.notifications import broadcast_logout
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -43,8 +46,8 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                     continue
                 
                 # Process one command per tick
-                cmd = session['command_queue'].pop(0)
-                logger.info(f"Processing command: {cmd} for player {player.name}")
+                cmd_str = session['command_queue'].pop(0)
+                logger.info(f"Processing command: {cmd_str} for player {player.name}")
                 
                 try:
                     # Check for pending communications (add this new check for password flow)
@@ -53,7 +56,7 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                         from commands.auth import handle_password
                         pwd_cmd = {
                             "verb": "password",
-                            "original": cmd
+                            "original": cmd_str
                         }
                         result = await handle_password(pwd_cmd, player, game_state, player_manager, online_sessions, sio, utils)
                         if result:  # Only send if there's a message to send
@@ -64,7 +67,7 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                     if 'pending_comm' in session:
                         pending_result = await handle_pending_communication(
                             session['pending_comm'], 
-                            cmd, 
+                            cmd_str, 
                             player, 
                             sid, 
                             online_sessions, 
@@ -76,48 +79,56 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                     
                     # Handle converse mode
                     if session.get('converse_mode'):
-                        if cmd.startswith('*') or cmd.startswith('>'):
+                        if cmd_str.startswith('*') or cmd_str.startswith('>'):
                             session['converse_mode'] = False
                             await utils.send_message(sio, sid, "Converse mode OFF.")
                             continue
                         else:
                             # For converse mode, prepend "say" (and do no further splitting)
-                            cmd = f"say {cmd}"
+                            cmd_str = f"say {cmd_str}"
+
+                    # Set players in room for context
+                    players_in_room = []
+                    if online_sessions:
+                        for osid, osession in online_sessions.items():
+                            other_player = osession.get('player')
+                            if other_player and other_player.current_room == player.current_room:
+                                players_in_room.append(other_player)
+                    session['players_in_room'] = players_in_room
                     
-                    # Use the parser to detect if this is a message command.
-                    # For example, if the command starts with a player's name, the parser should return a "tell" command.
-                    parsed_cmds = parse_command(cmd, None, session.get('players_in_room'), online_sessions)
-                    is_message_cmd = False
-                    if parsed_cmds:
-                        # We assume the parser returns a list with one command.
-                        verb = parsed_cmds[0].get("verb", "")
-                        if verb in {"say", "tell", "shout", "whisper"}:
-                            is_message_cmd = True
+                    # Parse the command using the new unified parser
+                    parsed_cmds = parse_command(cmd_str, None, players_in_room, online_sessions)
                     
-                    # If not a message command and it contains chaining tokens, split it.
-                    conjunctions = [" and ", " then ", ",", "."]
-                    if not is_message_cmd and any(conj in cmd for conj in conjunctions):
-                        # Echo the original chained command for clarity.
-                        await utils.send_message(sio, sid, f"> {cmd}")
+                    # Handle command chaining (from comma-separated commands)
+                    if len(parsed_cmds) > 1:
+                        # Echo the original chained command
+                        await utils.send_message(sio, sid, f"> {cmd_str}")
                         
-                        command_parts = [cmd]
-                        for conj in conjunctions:
-                            new_parts = []
-                            for part in command_parts:
-                                new_parts.extend(part.split(conj))
-                            command_parts = new_parts
-                        valid_parts = [part.strip() for part in command_parts if part.strip()]
-                        # Re-add the split parts to the front of the queue (in reverse order).
-                        for part in reversed(valid_parts):
-                            session['command_queue'].insert(0, part)
-                        continue  # Process the next tick (which will process the first split command)
+                        # Process first command now
+                        first_cmd = parsed_cmds[0]
+                        
+                        # Push the remaining commands back to the front of the queue
+                        for i in range(len(parsed_cmds) - 1, 0, -1):
+                            cmd_to_requeue = parsed_cmds[i].get('original', '')
+                            if cmd_to_requeue:
+                                session['command_queue'].insert(0, cmd_to_requeue)
+                        
+                        # Continue with just the first command
+                        parsed_cmds = [first_cmd]
                     
-                    # Echo the individual command before executing it.
-                    await utils.send_message(sio, sid, f"{cmd}")
+                    # Get the command to process
+                    cmd = parsed_cmds[0] if parsed_cmds else None
                     
-                    # Process the command.
+                    if not cmd:
+                        await utils.send_message(sio, sid, "Huh? I didn't understand that.")
+                        continue
+                    
+                    # Echo the individual command before executing it
+                    await utils.send_message(sio, sid, f"> {cmd.get('original', cmd_str)}")
+                    
+                    # Process the command
                     result = await execute_command(
-                        cmd, 
+                        cmd,  # Now passing the parsed command object 
                         player, 
                         game_state, 
                         player_manager, 
@@ -131,8 +142,8 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                     if result == "quit":
                         session['should_disconnect'] = True
                 except Exception as e:
-                    logger.error(f"Command '{cmd}' failed for {player.name}: {str(e)}")
-                    print(f"[Error] Command '{cmd}' failed for {player.name}: {str(e)}")
+                    logger.error(f"Command '{cmd_str}' failed for {player.name}: {str(e)}")
+                    print(f"[Error] Command '{cmd_str}' failed for {player.name}: {str(e)}")
                     await utils.send_message(sio, sid, f"Error processing command: {str(e)}")
                 
                 # Update player stats after each command
