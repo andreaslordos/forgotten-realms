@@ -72,12 +72,13 @@ async def handle_password(cmd, player, game_state, player_manager, online_sessio
             pwd_change['stage'] = 'new_password'
             
             # Prompt for new password
-            await utils.send_message(sio, current_sid, "\nNew password for persona - up to 9 letters please.")
+            await utils.send_message(sio, current_sid, "\nNew password for persona.")
             await sio.emit('setInputType', 'password', room=current_sid)
             
         except Exception as e:
-            await utils.send_message(sio, current_sid, "Sorry, incorrect.\n\nWhat is your present password?")
-            # Keep stage as 'old_password'
+            del online_sessions[current_sid]['pwd_change']
+            await sio.emit('setInputType', 'text', room=current_sid)
+            return "Incorrect, sorry. Password remains unchanged."
             
     elif pwd_change['stage'] == 'new_password':
         # Store the new password
@@ -87,12 +88,7 @@ async def handle_password(cmd, player, game_state, player_manager, online_sessio
         if not new_password:
             await utils.send_message(sio, current_sid, "Password cannot be blank. Please enter a new password:")
             return ""
-            
-        # Check if the password is too long
-        if len(new_password) > 9:
-            await utils.send_message(sio, current_sid, "Password too long (9 characters max). Try another.")
-            await sio.emit('setInputType', 'password', room=current_sid)
-            return ""
+
             
         pwd_change['new_password'] = new_password
         pwd_change['stage'] = 'confirm_password'
