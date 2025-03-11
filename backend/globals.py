@@ -1,4 +1,4 @@
 # backend/globals.py
 
 online_sessions = {}
-version = "0.2"
+version = "0.21"
