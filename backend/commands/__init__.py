@@ -42,6 +42,7 @@ try:
     from commands import auth
     from commands import archmage
     from commands import rest  # Import the new rest module with sleep commands
+    from commands import player_interaction
     logger.info("All command handlers imported successfully")
 except ImportError as e:
     logger.error(f"Error importing command handlers: {e}")
