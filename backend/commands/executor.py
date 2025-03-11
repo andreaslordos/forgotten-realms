@@ -3,6 +3,7 @@
 from commands.parser import parse_command, is_movement_command
 from commands.registry import command_registry
 from services.notifications import broadcast_arrival, broadcast_departure
+from commands.combat import check_command_restrictions, is_in_combat
 import asyncio
 import logging
 from commands.utils import get_player_inventory
@@ -32,7 +33,23 @@ async def execute_command(cmd, player, game_state, player_manager, online_sessio
     
     # Special case for "quit"
     if verb and verb.lower() == "quit":
+        # Check if player is in combat
+        if is_in_combat(player.name):
+            return "You can't quit while in combat! That would be cowardice."
         return "quit"
+    
+    # Get session ID if available
+    sid = None
+    if online_sessions:
+        for s, session in online_sessions.items():
+            if session.get('player') == player:
+                sid = s
+                break
+    
+    # Check command restrictions (combat, etc.)
+    allowed, message = check_command_restrictions(cmd, player, sio, sid, utils)
+    if not allowed:
+        return message
     
     # Check if it's a movement command
     if verb and is_movement_command(verb):
@@ -134,7 +151,13 @@ def build_look_description(player, game_state, online_sessions=None, look=False)
                 inv_summary = get_player_inventory(other_player)
                 if inv_summary == "":
                     inv_summary = "nothing"
-                players_here.append(f"{other_player.name} the {other_player.level} is here, carrying {inv_summary}")
+                
+                # Check if the player is in combat
+                combat_status = ""
+                if is_in_combat(other_player.name):
+                    combat_status = " (in combat)"
+                
+                players_here.append(f"{other_player.name} the {other_player.level}{combat_status} is here, carrying {inv_summary}")
     
     if players_here:
         room_desc += "\n" + "\n".join(players_here)

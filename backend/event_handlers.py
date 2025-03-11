@@ -11,7 +11,8 @@ and dispatches in-game commands.
 import asyncio
 from datetime import datetime
 from commands.executor import build_look_description, execute_command
-from services.notifications import broadcast_arrival, broadcast_departure
+from commands.combat import handle_combat_disconnect, is_in_combat
+from services.notifications import broadcast_arrival, broadcast_departure, broadcast_logout
 import re
 from globals import version
 
@@ -222,12 +223,27 @@ Welcome! By what name shall I call you?
         """
         Handles client disconnection.
         Returns any carried items to the current room and cleans up session data.
+        Also handles combat disconnection scenario.
         """
         print(f"[Socket.IO] Client disconnected: {sid}")
         if sid in online_sessions:
             session = online_sessions[sid]
             if 'player' in session:
                 player = session['player']
+                
+                # Check if the player is in combat
+                if is_in_combat(player.name):
+                    # Handle combat disconnection before normal cleanup
+                    await handle_combat_disconnect(
+                        player.name, 
+                        online_sessions, 
+                        player_manager, 
+                        game_state, 
+                        sio, 
+                        utils
+                    )
+                
+                # Normal disconnection cleanup
                 current_room = game_state.get_room(player.current_room)
                 if current_room:
                     for item in list(player.inventory):
@@ -235,6 +251,11 @@ Welcome! By what name shall I call you?
                         current_room.add_item(item)
                 # game_state.save_rooms()
                 player_manager.save_players()
+                
+                # Broadcast logout to room
+                await broadcast_logout(player)
+            
+            # Remove the session
             del online_sessions[sid]
 
     @sio.event

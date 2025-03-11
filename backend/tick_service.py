@@ -8,9 +8,15 @@ import time
 import logging
 from services.notifications import broadcast_logout
 
+# Import the combat processing function
+from commands.combat import process_combat_tick
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Combat tick interval (in seconds)
+COMBAT_TICK_INTERVAL = 3.0  # Combat actions occur every 3 seconds
 
 async def start_background_tick(sio, online_sessions, player_manager, game_state, utils):
     print("[Tick] Background tick service starting...")
@@ -18,6 +24,9 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
     
     # Track last activity time (for inactivity reset)
     last_activity = time.time()
+    
+    # Track last combat tick
+    last_combat_tick = time.time()
     
     while True:
         try:
@@ -30,6 +39,11 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                 logger.info("Triggering inactivity reset after 2 hours")
                 # TODO: Implement mid-week reset here
                 last_activity = current_time
+            
+            # Process combat ticks on their own interval
+            if current_time - last_combat_tick >= COMBAT_TICK_INTERVAL:
+                await process_combat_tick(sio, online_sessions, player_manager, game_state, utils)
+                last_combat_tick = current_time
             
             if not online_sessions:
                 continue
@@ -138,7 +152,8 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                         utils
                     )
                     
-                    await utils.send_message(sio, sid, result)
+                    if result:  # Only send if there's a message to send
+                        await utils.send_message(sio, sid, result)
                     
                     if result == "quit":
                         session['should_disconnect'] = True

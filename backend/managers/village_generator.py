@@ -5,6 +5,7 @@ from models.Item import Item
 from models.StatefulItem import StatefulItem
 from models.ContainerItem import ContainerItem
 from models.SpecializedRooms import SwampRoom
+from models.Weapon import Weapon
 
 def generate_village_of_chronos():
     """
@@ -27,6 +28,8 @@ def generate_village_of_chronos():
 
     # Add container items
     add_container_items(rooms)
+
+    add_weapons(rooms)
     
     return rooms
 
@@ -1197,3 +1200,15 @@ def add_linked_doors(rooms):
         initial_state="open",
         rooms=rooms
     )
+
+def add_weapons(rooms):
+    sword = Weapon(
+        name="sword",
+        id="sword_01",
+        description="A finely crafted steel sword with magical runes.",
+        weight=5,
+        value=150,
+        damage=10,
+    )
+
+    rooms["spawn"].add_item(sword)
