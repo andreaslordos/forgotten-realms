@@ -51,16 +51,17 @@ class Player:
         
         # Store the old level name for comparison
         old_level = self.level
-        
+                
         # Update player stats based on the determined level
         new_level = levels[current_threshold]
         self.level = new_level['name']
+        self.stamina = new_level['stamina']
         self.max_stamina = new_level['stamina']
         self.strength = new_level['strength']
         self.dexterity = new_level['dexterity']
         self.magic = new_level['magic']
         self.carrying_capacity_num = new_level['carrying_capacity_num']
-        
+
         # Set current and next level thresholds
         self.current_level_at = current_threshold
         
@@ -188,4 +189,41 @@ class Player:
         player.inventory = [Item.from_dict(item_data) for item_data in inventory_data]
         player.level = data["level"]
         player.current_room = data["current_room"]
+        
+        # Update the player's stats based on their level
+        # First calculate what level threshold they should be at
+        level_thresholds = sorted(levels.keys())
+        current_threshold = 0
+        for threshold in level_thresholds:
+            if player.points >= threshold:
+                current_threshold = threshold
+            else:
+                break
+        
+        # Update level-based stats
+        level_data = levels[current_threshold]
+        player.max_stamina = level_data['stamina']
+        # If stamina was saved in the data, use that value (capped at max_stamina)
+        # Otherwise use max_stamina as default when first creating the character
+        if 'stamina' in data:
+            player.stamina = min(data['stamina'], player.max_stamina)
+        else:
+            player.stamina = player.max_stamina
+        
+        player.strength = level_data['strength']
+        player.dexterity = level_data['dexterity']
+        player.magic = level_data['magic']
+        player.carrying_capacity_num = level_data['carrying_capacity_num']
+        
+        # Set current and next level thresholds
+        player.current_level_at = current_threshold
+        
+        # Find the next level threshold
+        next_index = level_thresholds.index(current_threshold) + 1
+        if next_index < len(level_thresholds):
+            player.next_level_at = level_thresholds[next_index]
+        else:
+            player.next_level_at = -1  # No next level (at max level)
+        
         return player
+
