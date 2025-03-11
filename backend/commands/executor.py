@@ -153,11 +153,17 @@ def build_look_description(player, game_state, online_sessions=None, look=False)
                     inv_summary = "nothing"
                 
                 # Check if the player is in combat
+                from commands.combat import is_in_combat
                 combat_status = ""
                 if is_in_combat(other_player.name):
                     combat_status = " (in combat)"
                 
-                players_here.append(f"{other_player.name} the {other_player.level}{combat_status} is here, carrying {inv_summary}")
+                # Check if the player is sleeping
+                sleep_status = ""
+                if session_data.get('sleeping', False):
+                    sleep_status = ", asleep"
+                
+                players_here.append(f"{other_player.name} the {other_player.level}{combat_status} is here{sleep_status}, carrying {inv_summary}")
     
     if players_here:
         room_desc += "\n" + "\n".join(players_here)

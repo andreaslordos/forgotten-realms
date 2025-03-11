@@ -1,4 +1,4 @@
-# backend/tick_service.py
+# Update to backend/tick_service.py
 
 import asyncio
 from commands.executor import execute_command
@@ -10,6 +10,9 @@ from services.notifications import broadcast_logout
 
 # Import the combat processing function
 from commands.combat import process_combat_tick
+
+# Import the sleeping players processing function
+from commands.rest import process_sleeping_players
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -45,6 +48,9 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                 await process_combat_tick(sio, online_sessions, player_manager, game_state, utils)
                 last_combat_tick = current_time
             
+            # Process sleeping players for healing on each tick
+            await process_sleeping_players(sio, online_sessions, player_manager, utils)
+            
             if not online_sessions:
                 continue
             
@@ -64,6 +70,11 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                 logger.info(f"Processing command: {cmd_str} for player {player.name}")
                 
                 try:
+                    # Check if player is sleeping and trying to execute a non-wake command
+                    if session.get('sleeping', False) and cmd_str.lower() != "wake" and cmd_str.lower() != "awake":
+                        await utils.send_message(sio, sid, "You are asleep.")
+                        continue
+                
                     # Check for pending communications (add this new check for password flow)
                     if 'pwd_change' in session:
                         # We're in the middle of a password change, keep routing through the password handler

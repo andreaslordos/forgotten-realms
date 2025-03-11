@@ -55,7 +55,6 @@ class Player:
         # Update player stats based on the determined level
         new_level = levels[current_threshold]
         self.level = new_level['name']
-        self.stamina = new_level['stamina']
         self.max_stamina = new_level['stamina']
         self.strength = new_level['strength']
         self.dexterity = new_level['dexterity']
@@ -120,7 +119,9 @@ class Player:
         
         # Call level_up to recalculate level based on new point total
         # Pass sio and online_sessions so level_up can send its own notification
-        leveled_up = self.level_up(sio, online_sessions)
+        leveled_up = False
+        if self.points >= self.next_level_at and self.next_level_at != -1:
+            leveled_up = self.level_up(sio, online_sessions)
             
         return leveled_up, notification
 
