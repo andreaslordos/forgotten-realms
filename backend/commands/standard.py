@@ -341,6 +341,7 @@ command_registry.register_alias("take", "get")
 command_registry.register_alias("pickup", "get")
 command_registry.register_alias("dr", "drop")
 command_registry.register_alias("sc", "score")
+command_registry.register_alias("qs", "score")
 command_registry.register_alias("x", "exits")
 command_registry.register_alias("qq", "quit")  # Changed from "exit" to "qq"
 command_registry.register_alias("who", "users")

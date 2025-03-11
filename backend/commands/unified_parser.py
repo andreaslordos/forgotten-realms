@@ -556,23 +556,6 @@ def resolve_abbreviations(cmd, context, registry):
     return cmd
 
 def detect_container_commands(cmd, context, registry):
-    """
-    Detect special container commands like put X in Y and get X from Y.
-    
-    This middleware identifies container-related command patterns with complex structure:
-    - put/insert X in Y
-    - get/take/remove X from Y
-    
-    It handles abbreviations and produces a standardized command format.
-    
-    Args:
-        cmd (dict): The command object being built
-        context (CommandContext): The command context
-        registry: The command registry
-        
-    Returns:
-        dict: The potentially modified command object
-    """
     tokens = cmd["tokens"]
     if not tokens:
         return cmd
@@ -597,7 +580,7 @@ def detect_container_commands(cmd, context, registry):
         else:
             normalized.append(token_lower)
     
-    # Check for "put/insert X in Y" pattern
+    # Check for "put/insert X in Y" pattern (container commands)
     if normalized[0] in ["put", "insert"] and len(normalized) > 3:
         in_index = -1
         for i, token in enumerate(normalized[1:], 1):
@@ -606,7 +589,6 @@ def detect_container_commands(cmd, context, registry):
                 break
         
         if in_index > 1 and in_index < len(normalized) - 1:
-            # Get original tokens for better preservation of case
             item_name = " ".join(tokens[1:in_index])
             container_name = " ".join(tokens[in_index+1:])
             
@@ -620,9 +602,91 @@ def detect_container_commands(cmd, context, registry):
             cmd["preposition"] = "in"
             cmd["abort_pipeline"] = True
             return cmd
-    
     # Check for "get/take/remove X from Y" pattern
     if normalized[0] in ["get", "take", "remove"] and len(normalized) > 3:
+        from_index = -1
+        for i, token in enumerate(normalized[1:], 1):
+            if token == "from":
+                from_index = i
+                break
+        
+        if from_index > 1 and from_index < len(normalized) - 1:
+            item_name = " ".join(tokens[1:from_index])
+            target_name = " ".join(tokens[from_index+1:])
+            
+            # Check if the target name matches a player
+            is_player = False
+            if cmd.get("players_in_room"):
+                for player in cmd["players_in_room"]:
+                    if target_name.lower() in player.name.lower():
+                        is_player = True
+                        break
+            if not is_player and cmd.get("online_sessions"):
+                for session in cmd["online_sessions"].values():
+                    player = session.get("player")
+                    if player and target_name.lower() in player.name.lower():
+                        is_player = True
+                        break
+            if is_player:
+                # If the target is a player, don't handle it as a container command.
+                # Let the 'steal' middleware process this command.
+                return cmd
+            
+            # Resolve pronouns
+            item_name = context.resolve_pronoun(item_name)
+            target_name = context.resolve_pronoun(target_name)
+            
+            cmd["verb"] = "get"
+            cmd["subject"] = item_name
+            cmd["instrument"] = target_name
+            cmd["preposition"] = "from"
+            cmd["from_container"] = True
+            cmd["abort_pipeline"] = True
+            return cmd
+    
+    return cmd
+
+def detect_steal_command(cmd, context, registry):
+    """
+    Detect steal commands like get X from Y, steal X from Y
+    
+    This middleware identifies container-related command patterns with complex structure:
+    - get/take/steal X from Y
+    where Y = player
+    
+    It handles abbreviations and produces a standardized command format.
+    
+    Args:
+        cmd (dict): The command object being built
+        context (CommandContext): The command context
+        registry: The command registry
+        
+    Returns:
+        dict: The potentially modified command object
+    """
+    tokens = cmd["tokens"]
+    if not tokens:
+        return cmd
+    
+    # Normalize tokens and expand abbreviations
+    normalized = []
+    for token_index, token in enumerate(tokens):
+        token_lower = token.lower()
+        # Handle command abbreviations
+        if token_index == 0:  # First token (verb)
+            if token_lower == "g":
+                normalized.append("get")
+            else:
+                normalized.append(token_lower)
+        # Handle preposition abbreviations
+        elif token_lower == "fr":
+            normalized.append("from")
+        else:
+            normalized.append(token_lower)
+    
+    
+    # Check for "get/take/remove X from Y" pattern
+    if normalized[0] in ["get", "take", "steal"] and len(normalized) > 3:
         from_index = -1
         for i, token in enumerate(normalized[1:], 1):
             if token == "from":
@@ -636,13 +700,13 @@ def detect_container_commands(cmd, context, registry):
             
             # Resolve pronouns
             item_name = context.resolve_pronoun(item_name)
-            container_name = context.resolve_pronoun(container_name)
+            player_name = context.resolve_pronoun(container_name)
             
-            cmd["verb"] = "get"
-            cmd["subject"] = item_name
-            cmd["instrument"] = container_name
+            cmd["verb"] = "steal"
+            cmd["subject"] = player_name
+            cmd["instrument"] = item_name
             cmd["preposition"] = "from"
-            cmd["from_container"] = True
+            # cmd["from_container"] = True
             cmd["abort_pipeline"] = True
             return cmd
     
@@ -779,6 +843,8 @@ def create_default_parser(registry):
     parser.add_middleware(detect_interaction_syntax)
     # 5. Finally resolve pronouns
     parser.add_middleware(resolve_pronouns)
+    # 6. Add steal
+    parser.add_middleware(detect_steal_command)
     
     return parser
 
