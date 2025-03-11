@@ -47,7 +47,7 @@ class StatefulItem(Item):
     def add_interaction(self, verb, required_instrument=None, target_state=None, 
                        message=None, add_exit=None, remove_exit=None, 
                        conditional_fn=None, from_state=None, consume_instrument=False,
-                       drop_instrument=False, reciprocal_exit=None):
+                       drop_instrument=False, reciprocal_exit=None, remove_item=False):
         """
         Register an interaction for this item.
         
@@ -92,6 +92,8 @@ class StatefulItem(Item):
             interaction['drop_instrument'] = True
         if reciprocal_exit is not None:
             interaction['reciprocal_exit'] = reciprocal_exit
+        if remove_item:
+            interaction['remove_item'] = True
             
         # Add the interaction to the list
         self.interactions[verb].append(interaction)
@@ -150,6 +152,9 @@ class StatefulItem(Item):
                                     
                                 if 'remove_exit' in interaction and interaction['remove_exit'] in room.exits:
                                     del room.exits[interaction['remove_exit']]
+                                
+                                if interaction.get('remove_item', False):
+                                    room.remove_item(self)
 
     def _update_linked_items(self, game_state, new_state):
         """Update all linked items to maintain consistency."""

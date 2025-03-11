@@ -890,16 +890,9 @@ def add_stateful_items(rooms):
     golden_door_obj.add_interaction(
         verb="open",
         target_state="open",
-        message="As you reach for the door, it dissolves into golden mist before reforming as an open portal.",
-        add_exit=("north", "ai_generated_zone"),  # This would connect to an AI-generated area
-        from_state="closed"
-    )
-    golden_door_obj.add_interaction(
-        verb="close",
-        target_state="closed",
-        message="The doorway of light gradually shrinks until it's once again a closed door.",
-        remove_exit="north",
-        from_state="open"
+        message="As you reach for the door, it dissolves into golden mist.",
+        from_state="closed",
+        remove_item=True
     )
     golden_door_obj.add_interaction(
         verb="touch",

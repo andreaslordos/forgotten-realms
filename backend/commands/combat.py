@@ -693,6 +693,7 @@ command_registry.register("flee", handle_flee, "Escape from combat, dropping all
 
 # Register aliases
 command_registry.register_alias("kill", "attack")
+command_registry.register_alias("fight", "attack")
 command_registry.register_alias("k", "attack")
 command_registry.register_alias("ret", "retaliate")
 command_registry.register_alias("run", "flee")
