@@ -24,6 +24,11 @@ def set_context(online_sessions, send_message):
 async def broadcast_room(room_id, message, exclude_player=[]):
     """
     Notify all players in a room that a message has been broadcast.
+    
+    Args:
+        room_id (str): The ID of the room to broadcast to
+        message (str): The message to broadcast
+        exclude_player (list): List of player names to exclude from broadcast
     """
     global SESSIONS, send_msg
     if not SESSIONS or not send_msg:
@@ -34,12 +39,21 @@ async def broadcast_room(room_id, message, exclude_player=[]):
         other_player = session_data.get('player')
         if not other_player:
             continue  # Skip sessions that haven't authenticated.
-        if other_player.current_room == room_id and other_player.name not in exclude_player:
+            
+        # Skip if player is excluded or is sleeping
+        if (other_player.name in exclude_player or 
+            session_data.get('sleeping', False)):
+            continue
+            
+        if other_player.current_room == room_id:
             await send_msg(sid, message)
 
 async def broadcast_arrival(player):
     """
     Notify all players in the player's current room that the player has arrived.
+    
+    Args:
+        player (Player): The player who arrived
     """        
     room_id = player.current_room
     display_name = player.name
@@ -50,6 +64,10 @@ async def broadcast_arrival(player):
 async def broadcast_departure(room_id, departing_player):
     """
     Notify all players in the room that someone has left.
+    
+    Args:
+        room_id (str): The ID of the room to broadcast to
+        departing_player (Player): The player who left
     """
     display_name = departing_player.name
     display_level = departing_player.level
@@ -59,6 +77,9 @@ async def broadcast_departure(room_id, departing_player):
 async def broadcast_logout(player):
     """
     Notify all players in a room that a player in that room has logged out.
+    
+    Args:
+        player (Player): The player who logged out
     """    
     room_id = player.current_room
     display_name = player.name

@@ -81,6 +81,8 @@ async def handle_wake(cmd, player, game_state, player_manager, online_sessions, 
     Returns:
         str: Result message
     """
+    subject = cmd.get("subject")  # Check if targeting another player
+    
     # Find the player's session ID
     current_sid = None
     for sid, session in online_sessions.items():
@@ -91,6 +93,39 @@ async def handle_wake(cmd, player, game_state, player_manager, online_sessions, 
     if not current_sid:
         return "Error: Session not found"
     
+    # If the player wants to wake someone else up
+    if subject:
+        # Check if player is asleep (can't wake others if you're asleep)
+        if online_sessions[current_sid].get('sleeping'):
+            return "You can't wake others while you're asleep."
+            
+        # Find the target player in the same room
+        target_player = None
+        target_sid = None
+        
+        for sid, session in online_sessions.items():
+            other_player = session.get('player')
+            if (other_player and 
+                other_player.current_room == player.current_room and 
+                other_player != player and
+                subject.lower() in other_player.name.lower()):
+                target_player = other_player
+                target_sid = sid
+                break
+                
+        if not target_player:
+            return f"You don't see '{subject}' here."
+            
+        # Check if the target player is sleeping
+        if not online_sessions[target_sid].get('sleeping'):
+            return f"{target_player.name} is already awake."
+            
+        # Wake up the target player
+        await wake_player(target_player, target_sid, online_sessions, sio, utils, max_stamina_reached=False, woken_by=player)
+        
+        return f"You wake {target_player.name} up."
+    
+    # If player is waking themselves up
     # Check if player is actually sleeping
     if not online_sessions[current_sid].get('sleeping'):
         return "You're not asleep."
@@ -100,7 +135,7 @@ async def handle_wake(cmd, player, game_state, player_manager, online_sessions, 
     
     return "You wake up."
 
-async def wake_player(player, sid, online_sessions, sio, utils, max_stamina_reached=False):
+async def wake_player(player, sid, online_sessions, sio, utils, max_stamina_reached=False, woken_by=None, combat=False):
     """
     Common function to wake a player up, either manually or automatically.
     
@@ -111,6 +146,8 @@ async def wake_player(player, sid, online_sessions, sio, utils, max_stamina_reac
         sio (SocketIO): Socket.IO instance
         utils (module): Utilities module
         max_stamina_reached (bool): Whether the player woke up due to max stamina
+        woken_by (Player, optional): The player who woke this player up
+        combat (bool): Whether the player was awakened by combat
     """
     session = online_sessions[sid]
     
@@ -121,12 +158,23 @@ async def wake_player(player, sid, online_sessions, sio, utils, max_stamina_reac
     if 'healing_message_count' in session:
         del session['healing_message_count']
     
-    # Broadcast to room that player has woken up
-    await broadcast_room(
-        player.current_room, 
-        f"{player.name} the {player.level} has woken up.", 
-        exclude_player=[player.name]
-    )
+    # Broadcast to room that player has woken up, with different messages based on cause
+    if woken_by:
+        # Woken up by another player
+        await broadcast_room(
+            player.current_room, 
+            f"{player.name} the {player.level} has been woken up by {woken_by.name}.", 
+            exclude_player=[player.name, woken_by.name]
+        )
+        # Notify the player who was woken up
+        await utils.send_message(sio, sid, f"You are awakened by {woken_by.name}!")
+    else:
+        # Normal wake up
+        await broadcast_room(
+            player.current_room, 
+            f"{player.name} the {player.level} has woken up.", 
+            exclude_player=[player.name]
+        )
     
     # If waking up due to max stamina, send the specific message
     if max_stamina_reached:

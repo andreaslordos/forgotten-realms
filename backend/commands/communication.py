@@ -2,6 +2,7 @@
 
 from commands.registry import command_registry
 import logging
+from commands.rest import wake_player
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,16 @@ async def handle_shout(cmd, player, game_state, player_manager, online_sessions,
     if online_sessions and sio and utils:
         for sid, session_data in online_sessions.items():
             if 'player' in session_data and sid != current_sid:
+                # Wake up sleeping players before sending the message
+                if session_data.get('sleeping'):
+                    sleeping_player = session_data.get('player')
+                    # Wake them up with the combat=True flag to show they were awakened suddenly
+                    await wake_player(sleeping_player, sid, online_sessions, sio, utils, combat=False)
+                    
+                    # Send a special message to indicate they were woken by the shout
+                    await utils.send_message(sio, sid, f"You are awakened by a loud shout!")
+                
+                # Send the shout message
                 await utils.send_message(sio, sid, shout_text)
     
     return ""

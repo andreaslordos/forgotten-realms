@@ -6,6 +6,7 @@ import inspect
 from commands.registry import command_registry
 from models.Weapon import Weapon
 from models.CombatDialogue import CombatDialogue
+from commands.rest import wake_player
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -32,18 +33,6 @@ RESTRICTED_COMMANDS = [
 async def handle_attack(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle attacking a target, initiating continuous combat.
-    
-    Args:
-        cmd (dict): The parsed command
-        player (Player): The player attacking
-        game_state (GameState): The game state
-        player_manager (PlayerManager): The player manager
-        online_sessions (dict): Online sessions dictionary
-        sio (SocketIO): Socket.IO instance
-        utils (module): Utilities module
-        
-    Returns:
-        str: Combat initiation message
     """
     subject = cmd.get("subject")  # target
     instrument = cmd.get("instrument")  # weapon
@@ -69,6 +58,10 @@ async def handle_attack(cmd, player, game_state, player_manager, online_sessions
                 subject.lower() in other_player.name.lower()):
                 target_player = other_player
                 target_sid = sid
+                
+                # Check if target is sleeping and wake them up
+                if session_data.get('sleeping'):
+                    await wake_player(other_player, sid, online_sessions, sio, utils, woken_by=player)
                 break
     
     # If a player target was found
