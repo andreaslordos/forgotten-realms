@@ -6,6 +6,7 @@ import inspect
 from commands.registry import command_registry
 from models.Weapon import Weapon
 from models.CombatDialogue import CombatDialogue
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -411,6 +412,21 @@ async def process_combat_attack(attacker, defender, weapon, attacker_sid, defend
         sio (SocketIO): Socket.IO instance
         utils (module): Utilities module
     """
+    # Verify that the weapon is still in the attacker's inventory
+    weapon_in_inventory = False
+    if weapon:
+        for item in attacker.inventory:
+            if item == weapon:  # Check if the same object is still in inventory
+                weapon_in_inventory = True
+                break
+        
+        # If weapon is no longer in inventory, update combat info to unarmed
+        if not weapon_in_inventory:
+            weapon = None
+            # Update the attacker's combat info
+            if attacker.name in active_combats:
+                active_combats[attacker.name]['weapon'] = None
+    
     # Calculate base damage based on attacker's strength and weapon
     weapon_bonus = getattr(weapon, 'damage', 5) if weapon else 0
     base_damage = (attacker.strength // 15) + weapon_bonus
