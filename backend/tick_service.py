@@ -1,9 +1,9 @@
-# Update to backend/tick_service.py
+# backend/tick_service.py
 
 import asyncio
+from commands.parser import parse_command_wrapper as parse_command
 from commands.executor import execute_command
 from commands.communication import handle_pending_communication
-from commands.parser import parse_command
 import time
 import logging
 from services.notifications import broadcast_logout
@@ -111,18 +111,25 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                         else:
                             # For converse mode, prepend "say" (and do no further splitting)
                             cmd_str = f"say {cmd_str}"
-
-                    # Set players in room for context
+                    
+                    # Create context for command parsing
+                    context = {
+                        'player': player,
+                        'game_state': game_state,
+                        'online_sessions': online_sessions
+                    }
+                    
+                    # Get players in room for context
                     players_in_room = []
                     if online_sessions:
                         for osid, osession in online_sessions.items():
                             other_player = osession.get('player')
                             if other_player and other_player.current_room == player.current_room:
                                 players_in_room.append(other_player)
-                    session['players_in_room'] = players_in_room
+                    context['players_in_room'] = players_in_room
                     
-                    # Parse the command using the unified parser
-                    parsed_cmds = parse_command(cmd_str, None, players_in_room, online_sessions)
+                    # Parse the command using the wrapper for backward compatibility
+                    parsed_cmds = parse_command(cmd_str, context, players_in_room, online_sessions)
                     
                     # Handle command chaining (from comma-separated commands)
                     if len(parsed_cmds) > 1:

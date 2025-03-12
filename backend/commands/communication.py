@@ -21,6 +21,7 @@ async def handle_shout(cmd, player, game_state, player_manager, online_sessions,
     Returns:
         str: Confirmation message
     """
+    # Get the subject (shout message)
     subject = cmd.get("subject")
     
     # Get the current sid from the online_sessions
@@ -49,7 +50,7 @@ async def handle_shout(cmd, player, game_state, player_manager, online_sessions,
                 # Wake up sleeping players before sending the message
                 if session_data.get('sleeping'):
                     sleeping_player = session_data.get('player')
-                    # Wake them up with the combat=True flag to show they were awakened suddenly
+                    # Wake them up with the combat=False flag
                     await wake_player(sleeping_player, sid, online_sessions, sio, utils, combat=False)
                     
                     # Send a special message to indicate they were woken by the shout
@@ -76,6 +77,7 @@ async def handle_say(cmd, player, game_state, player_manager, online_sessions, s
     Returns:
         str: Confirmation message
     """
+    # Get the subject (say message)
     subject = cmd.get("subject")
     
     # If no message provided, return an error
@@ -111,23 +113,19 @@ async def handle_say(cmd, player, game_state, player_manager, online_sessions, s
 async def handle_tell(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle sending a private message to another player.
-    
-    Args:
-        cmd (dict): The parsed command
-        player (Player): The player sending the message
-        online_sessions (dict): Online sessions dictionary
-        sio (SocketIO): Socket.IO instance
-        utils (module): Utilities module
-        
-    Returns:
-        str: Confirmation message
     """
-    subject = cmd.get("subject")  # recipient
-    instrument = cmd.get("instrument")  # message
+    # Check if the "verb" is actually a player name (for "name message" pattern)
+    recipient_name = None
+    message = None
     
-    # Check if recipient and message are provided
-    if not subject:
-        return "Who do you want to tell something to?"
+    # Check the most common format: "<player_name> <message>"
+    if cmd.get("verb") and cmd.get("subject") and not cmd.get("instrument"):
+        recipient_name = cmd.get("verb")
+        message = cmd.get("subject")
+    # Check standard format: "tell <player> <message>"
+    else:
+        recipient_name = cmd.get("subject")
+        message = cmd.get("instrument")
     
     # Get the current sid from the online_sessions
     current_sid = None
@@ -139,23 +137,28 @@ async def handle_tell(cmd, player, game_state, player_manager, online_sessions, 
     if not current_sid:
         return "Error: Session not found"
     
-    if not instrument:
+    if not recipient_name:
+        return "Who do you want to tell something to?"
+    
+    if not message:
         # If no message provided, prompt for one
         if 'pending_comm' not in online_sessions.get(current_sid, {}):
             online_sessions[current_sid]['pending_comm'] = {
                 'type': 'private', 
-                'recipient': subject
+                'recipient': recipient_name
             }
-            return f"OK, tell me your message for {subject}:"
-        return f"What do you want to tell {subject}?"
+            return f"OK, tell me your message for {recipient_name}:"
+        return f"What do you want to tell {recipient_name}?"
     
     # Find the recipient
     recipient_sid = None
-    recipient_name = subject.lower()
+    recipient_player = None
+    
     for sid, session_data in online_sessions.items():
         other_player = session_data.get('player')
-        if other_player and other_player.name.lower() == recipient_name:
+        if other_player and other_player.name.lower() == recipient_name.lower():
             recipient_sid = sid
+            recipient_player = other_player
             break
     
     if recipient_sid:
@@ -164,28 +167,18 @@ async def handle_tell(cmd, player, game_state, player_manager, online_sessions, 
             await utils.send_message(
                 sio, 
                 recipient_sid, 
-                f"{player.name} the {player.level} tells you \"{instrument}\""
+                f"{player.name} the {player.level} tells you \"{message}\""
             )
-        return f""
+        return f"You tell {recipient_name}, \"{message}\""
     else:
-        return f"Player '{subject}' is not online."
-
+        return f"Player '{recipient_name}' is not online."
 
 # ===== ACT COMMAND =====
 async def handle_act(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle acting out an emote in the current room.
-    
-    Args:
-        cmd (dict): The parsed command
-        player (Player): The player acting
-        online_sessions (dict): Online sessions dictionary
-        sio (SocketIO): Socket.IO instance
-        utils (module): Utilities module
-        
-    Returns:
-        str: Confirmation message
     """
+    # Get the subject (action text)
     subject = cmd.get("subject")
     
     # If no action provided, return an error
@@ -221,14 +214,6 @@ async def handle_act(cmd, player, game_state, player_manager, online_sessions, s
 async def handle_converse(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Toggle converse mode for a player.
-    
-    Args:
-        cmd (dict): The parsed command
-        player (Player): The player
-        online_sessions (dict): Online sessions dictionary
-        
-    Returns:
-        str: Confirmation message
     """
     # Get the current sid from the online_sessions
     current_sid = None

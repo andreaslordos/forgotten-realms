@@ -31,45 +31,55 @@ async def handle_set_points(cmd, player, game_state, player_manager, online_sess
     if player.level != "Archmage":
         return "You do not have the authority to use this command."
     
-    # Parse the command string - expected format: "set player_name points"
-    command_parts = cmd.get("original", "").split()
+    # Get the subject and instrument from the parsed command
+    subject = cmd.get("subject")
+    subject_obj = cmd.get("subject_object")
     
-    # Remove the "set" verb
-    if command_parts and command_parts[0].lower() == "set":
-        command_parts = command_parts[1:]
-    
-    # Need at least two parts: player_name and points
-    if len(command_parts) < 2:
-        return "Set points for whom? (Usage: set <player_name> <points>)"
-    
-    # Last part should be the points, everything before is the player name
-    points_str = command_parts[-1]
-    player_name = " ".join(command_parts[:-1])
-    
-    if not player_name or not points_str:
-        return "Specify both player name and points. (Usage: set <player_name> <points>)"
-    
-    # Try to get the target player from online_sessions or player_manager
+    # If we have a bound player object, use it
     target_player = None
-    target_sid = None
+    if subject_obj and hasattr(subject_obj, 'name'):
+        target_player = subject_obj
+    else:
+        # Parse command string to extract player name and points
+        command_parts = cmd.get("original", "").split()
+        
+        # Remove the "set" verb
+        if command_parts and command_parts[0].lower() == "set":
+            command_parts = command_parts[1:]
+        
+        # Need at least two parts: player_name and points
+        if len(command_parts) < 2:
+            return "Set points for whom? (Usage: set <player_name> <points>)"
+        
+        # Last part should be the points, everything before is the player name
+        points_str = command_parts[-1]
+        player_name = " ".join(command_parts[:-1])
+        
+        if not player_name or not points_str:
+            return "Specify both player name and points. (Usage: set <player_name> <points>)"
+        
+        # Find player in online sessions or player manager
+        target_sid = None
+        
+        # First check online players
+        for sid, session_data in online_sessions.items():
+            other_player = session_data.get('player')
+            if other_player and other_player.name.lower() == player_name.lower():
+                target_player = other_player
+                target_sid = sid
+                break
+        
+        # If not found online, try player_manager
+        if not target_player:
+            target_player = player_manager.login(player_name)
     
-    # First check online players
-    for sid, session_data in online_sessions.items():
-        other_player = session_data.get('player')
-        if other_player and other_player.name.lower() == player_name.lower():
-            target_player = other_player
-            target_sid = sid
-            break
-    
-    # If not found online, try player_manager
     if not target_player:
-        target_player = player_manager.login(player_name)
+        return f"Player '{subject}' not found."
     
-    if not target_player:
-        return f"Player '{player_name}' not found."
-    
-    # Parse points
+    # Parse points from command_parts (it should be the last part)
     try:
+        command_parts = cmd.get("original", "").split()
+        points_str = command_parts[-1]
         points = int(points_str)
         if points < 0:
             return "Points cannot be negative."
@@ -86,6 +96,13 @@ async def handle_set_points(cmd, player, game_state, player_manager, online_sess
     # Save the updated player
     player_manager.save_players()
     
+    # Find target player's session
+    target_sid = None
+    for sid, session in online_sessions.items():
+        if session.get('player') == target_player:
+            target_sid = sid
+            break
+    
     # If player is online, update their stats
     if target_sid and sio and utils:
         await utils.send_stats_update(sio, target_sid, target_player)
@@ -98,22 +115,9 @@ async def handle_set_points(cmd, player, game_state, player_manager, online_sess
     else:
         return f"Points for {target_player.name} set to {points}. Level remains {target_player.level}."
         
-# ===== RESET COMMAND =====
 async def handle_reset(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle world reset. Archmage-only command.
-    
-    Args:
-        cmd (dict): The parsed command
-        player (Player): The player executing the command
-        game_state (GameState): The game state
-        player_manager (PlayerManager): The player manager
-        online_sessions (dict): Online sessions dictionary
-        sio (SocketIO): Socket.IO instance
-        utils (module): Utilities module
-        
-    Returns:
-        str: Confirmation message
     """
     # Check if the player is an Archmage
     if player.level != "Archmage":

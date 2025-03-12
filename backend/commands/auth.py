@@ -1,4 +1,4 @@
-# Add this to backend/commands/auth.py or create the file if it doesn't exist
+# backend/commands/auth.py
 
 from commands.registry import command_registry
 import logging
@@ -10,18 +10,6 @@ logger = logging.getLogger(__name__)
 async def handle_password(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle changing a player's password.
-    
-    Args:
-        cmd (dict): The parsed command
-        player (Player): The player changing their password
-        game_state (GameState): The game state
-        player_manager (PlayerManager): The player manager
-        online_sessions (dict): Online sessions dictionary
-        sio (SocketIO): Socket.IO instance
-        utils (module): Utilities module
-        
-    Returns:
-        str: Confirmation message
     """
     # Get the current sid from the online_sessions
     current_sid = None
@@ -148,10 +136,6 @@ async def handle_password(cmd, player, game_state, player_manager, online_sessio
 
 # Register the password command
 command_registry.register("password", handle_password, "Change your account password.")
-
-# We need to make sure this command is properly picked up by the tick service
-# The tick service needs to handle this specially since it involves multi-step interactions
-# Make sure the password command is registered before any other command executes
 
 # Let's handle the case where the user might enter the password as a new command
 async def handle_password_input(cmd, player, game_state, player_manager, online_sessions, sio, utils):

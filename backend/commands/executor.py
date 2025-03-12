@@ -1,12 +1,10 @@
-# backend/commands/executor.py
+# commands/executor.py (Updated)
 
-from commands.parser import parse_command, is_movement_command
-from commands.registry import command_registry
-from services.notifications import broadcast_arrival, broadcast_departure
-from commands.combat import check_command_restrictions, is_in_combat
 import asyncio
 import logging
-from commands.utils import get_player_inventory
+from commands.parser import parse_command_wrapper, is_movement_command
+from commands.registry import command_registry
+from services.notifications import broadcast_arrival, broadcast_departure
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -17,39 +15,23 @@ async def execute_command(cmd, player, game_state, player_manager, online_sessio
     Execute a command.
     
     Args:
-        cmd (dict): The parsed command dictionary
-        player (Player): The player executing the command
-        game_state (GameState): The current game state
-        player_manager (PlayerManager): The player manager
-        online_sessions (dict): Optional online sessions dictionary
-        sio (SocketIO): Optional Socket.IO instance
-        utils (module): Optional utilities module
+        cmd: The parsed command dictionary
+        player: The player executing the command
+        game_state: The current game state
+        player_manager: The player manager
+        online_sessions: Optional online sessions dictionary
+        sio: Optional Socket.IO instance
+        utils: Optional utilities module
         
     Returns:
-        str: The result of the command execution
+        The result of the command execution
     """
     # Get the verb from the command dictionary
     verb = cmd.get("verb")
     
     # Special case for "quit"
     if verb and verb.lower() == "quit":
-        # Check if player is in combat
-        if is_in_combat(player.name):
-            return "You can't quit while in combat! That would be cowardice."
         return "quit"
-    
-    # Get session ID if available
-    sid = None
-    if online_sessions:
-        for s, session in online_sessions.items():
-            if session.get('player') == player:
-                sid = s
-                break
-    
-    # Check command restrictions (combat, etc.)
-    allowed, message = check_command_restrictions(cmd, player, sio, sid, utils)
-    if not allowed:
-        return message
     
     # Check if it's a movement command
     if verb and is_movement_command(verb):
@@ -65,22 +47,21 @@ async def execute_command(cmd, player, game_state, player_manager, online_sessio
     else:
         return f"I don't know how to '{verb}'."
 
-
 async def handle_movement(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle movement commands.
     
     Args:
-        cmd (dict): The parsed command
-        player (Player): The player executing the command
-        game_state (GameState): The current game state
-        player_manager (PlayerManager): The player manager
-        online_sessions (dict): Optional online sessions dictionary
-        sio (SocketIO): Optional Socket.IO instance
-        utils (module): Optional utilities module
+        cmd: The parsed command
+        player: The player executing the command
+        game_state: The current game state
+        player_manager: The player manager
+        online_sessions: Optional online sessions dictionary
+        sio: Optional Socket.IO instance
+        utils: Optional utilities module
         
     Returns:
-        str: The result of the movement
+        The result of the movement
     """
     direction = cmd["verb"]
     old_room = game_state.get_room(player.current_room)
@@ -106,20 +87,9 @@ async def handle_movement(cmd, player, game_state, player_manager, online_sessio
     else:
         return "You can't go that way."
 
-
 def build_look_description(player, game_state, online_sessions=None, look=False):
-    """
-    Build a description of the current room, including items and other players.
-    
-    Args:
-        player (Player): The player looking
-        game_state (GameState): The current game state
-        online_sessions (dict): Optional online sessions dictionary
-        look (bool): Whether this is from an explicit "look" command
-        
-    Returns:
-        str: The room description
-    """
+    """Build a description of the current room."""
+    # This function remains largely unchanged
     current_room = game_state.get_room(player.current_room)
     
     # Build the room description
@@ -129,7 +99,7 @@ def build_look_description(player, game_state, online_sessions=None, look=False)
         room_desc += f"\n{current_room.description}"
         player.visited.add(current_room.room_id)
     
-    # Get all visible items (including those that become visible due to conditions)
+    # Get all visible items
     visible_items = current_room.get_items(game_state)
     
     # List items in the room
@@ -146,24 +116,30 @@ def build_look_description(player, game_state, online_sessions=None, look=False)
         for sid, session_data in online_sessions.items():
             other_player = session_data.get('player')
             if not other_player:
-                continue  # Skip sessions without a player
+                continue
             if other_player.current_room == current_room.room_id and other_player != player:
+                from commands.utils import get_player_inventory
                 inv_summary = get_player_inventory(other_player)
                 if inv_summary == "":
                     inv_summary = "nothing"
                 
+                # Check player states
+                statuses = []
+                
                 # Check if the player is in combat
                 from commands.combat import is_in_combat
-                combat_status = ""
                 if is_in_combat(other_player.name):
-                    combat_status = " (in combat)"
+                    statuses.append("in combat")
                 
                 # Check if the player is sleeping
-                sleep_status = ""
                 if session_data.get('sleeping', False):
-                    sleep_status = ", asleep"
+                    statuses.append("asleep")
                 
-                players_here.append(f"{other_player.name} the {other_player.level}{combat_status} is here{sleep_status}, carrying {inv_summary}")
+                status_text = f" ({', '.join(statuses)})" if statuses else ""
+                
+                players_here.append(
+                    f"{other_player.name} the {other_player.level}{status_text} is here, carrying {inv_summary}"
+                )
     
     if players_here:
         room_desc += "\n" + "\n".join(players_here)
