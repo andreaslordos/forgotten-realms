@@ -3,6 +3,8 @@
 from commands.registry import command_registry
 from models.ContainerItem import ContainerItem
 import logging
+from models.Player import Player
+from commands.player_interaction import handle_steal
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -146,14 +148,15 @@ async def handle_put(cmd, player, game_state, player_manager, online_sessions, s
 
 async def handle_get_from(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
-    Handle getting an item from a container.
-    Format: get <item> from <container>
+    Handle getting an item from a container or stealing from a player.
+    Format: get <item> from <container/player>
     
     Supports:
     - get <item> from <container>
     - g <item> fr <container>
     - get all from <container>
     - get t from <container> (get treasure)
+    - get <item> from <player> (redirects to steal functionality)
     """
     # Get the subject (item) and instrument (container)
     subject = cmd.get("subject")
@@ -166,6 +169,17 @@ async def handle_get_from(cmd, player, game_state, player_manager, online_sessio
     
     if not instrument and not instrument_obj:
         return f"Where do you want to get {subject} from?"
+    
+    # Check if "container" is actually a player (detected by having current_room attribute)
+    # This handles "get sword from lumina" as a steal attempt
+    if instrument_obj and isinstance(instrument_obj, Player):
+        # Create a copy of the command with all the same fields
+        steal_cmd = cmd.copy()
+        # Change the verb to "steal"
+        steal_cmd["verb"] = "steal"
+        
+        # Let the steal handler process the command with its existing logic
+        return await handle_steal(steal_cmd, player, game_state, player_manager, online_sessions, sio, utils)
     
     # Find the container in player's inventory - prefer the bound object if available
     container = instrument_obj if (instrument_obj in player.inventory and 
