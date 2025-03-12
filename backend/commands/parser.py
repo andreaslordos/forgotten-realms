@@ -44,17 +44,6 @@ def parse_command_wrapper(command_str: str, context=None, players_in_room=None, 
                 player = p
                 break
     
-    # Create temporary player and game state if not provided
-    if not player:
-        from models.Player import Player
-        player = Player("temp_player")
-        logger.debug("Created temporary player for parsing")
-    
-    if not game_state:
-        from managers.game_state import GameState
-        game_state = GameState()
-        logger.debug("Created temporary game state for parsing")
-    
     # Special case for empty command
     if not command_str.strip():
         logger.debug("Empty command string, returning empty list")

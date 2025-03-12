@@ -3,6 +3,7 @@
 import logging
 import re
 from typing import List, Dict, Tuple, Set, Optional, Any, Callable, Union
+from services.get_online_players import get_online_players
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -723,7 +724,27 @@ class ObjectBinder:
     - Handling quantity and "all" modifiers
     - Filtering by adjectives
     """
-    
+    def bind_entity(self, entity_name, entity_type, player, game_state, context):
+        """
+        General purpose binding function that tries to bind a name to an entity
+        (player, item, etc.) based on context.
+        """
+        # Special case for 'all'
+        if entity_name == 'all':
+            logger.debug(f"Subject is 'all', returning special token")
+            return 'all'
+        
+        # If there's a method to get online players
+        online_players = get_online_players()
+        
+        for other_player in online_players:
+            if other_player.name.lower() == entity_name.lower():
+                logger.debug(f"Found {other_player.name} as entity, binding...")
+                return other_player
+        
+        # If not a player, let the existing binding code handle it
+        return None
+
     def bind_subject(self, subject_str: str, player, game_state, context):
         """
         Bind a subject string to game objects.
@@ -738,6 +759,11 @@ class ObjectBinder:
             The bound object(s) or None if no matching object is found
         """
         logger.debug(f"Binding subject: '{subject_str}'")
+
+        # First try to bind to a player using our helper function
+        player_obj = self.bind_entity(subject_str, 'subject', player, game_state, context)
+        if player_obj:
+            return player_obj
         
         # Handle pronouns
         if subject_str.lower() in ["it", "him", "her", "them"]:
@@ -792,6 +818,11 @@ class ObjectBinder:
             The bound object(s) or None if no matching object is found
         """
         logger.debug(f"Binding instrument: '{instrument_str}'")
+
+        # First try to bind to a player using our helper function
+        player_obj = self.bind_entity(instrument_str, 'instrument', player, game_state, context)
+        if player_obj:
+            return player_obj
         
         # Handle pronouns
         if instrument_str.lower() in ["it", "him", "her", "them"]:
