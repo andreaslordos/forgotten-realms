@@ -756,23 +756,24 @@ class ObjectBinder:
         
         # Check player's inventory first
         for item in player.inventory:
-            if subject_str.lower() in item.name.lower():
-                logger.debug(f"Found matching item in inventory: {item.name}")
+            if subject_str.lower() == item.name.lower():
+                logger.debug(f"Found exact matching item in inventory: {item.name}")
                 return item
         
-        # Check current room
+        # Then try exact name matching in room
         current_room = game_state.get_room(player.current_room)
         for item in current_room.get_items(game_state):
-            if subject_str.lower() in item.name.lower():
-                logger.debug(f"Found matching item in room: {item.name}")
+            if subject_str.lower() == item.name.lower():
+                logger.debug(f"Found exact matching item in room: {item.name}")
                 return item
         
-        # Check other players in room
+        # Try exact name matching for other players
         for other_player in get_players_in_room(player.current_room, game_state):
-            if subject_str.lower() in other_player.name.lower():
-                logger.debug(f"Found matching player in room: {other_player.name}")
+            if subject_str.lower() == other_player.name.lower():
+                logger.debug(f"Found exact matching player in room: {other_player.name}")
                 return other_player
         
+        # If no exact matches found, return None
         logger.debug(f"No matching object found for subject: '{subject_str}'")
         return None
     
@@ -797,25 +798,26 @@ class ObjectBinder:
             logger.debug(f"Resolved pronoun '{instrument_str}' to {result}")
             return result
         
-        # Check player's inventory first (most likely for instruments)
+        # First try exact matches in inventory
         for item in player.inventory:
-            if instrument_str.lower() in item.name.lower():
-                logger.debug(f"Found matching item in inventory: {item.name}")
+            if instrument_str.lower() == item.name.lower():
+                logger.debug(f"Found exact matching item in inventory: {item.name}")
                 return item
         
-        # Check current room
+        # Then try exact matches in room
         current_room = game_state.get_room(player.current_room)
         for item in current_room.get_items(game_state):
-            if instrument_str.lower() in item.name.lower():
-                logger.debug(f"Found matching item in room: {item.name}")
+            if instrument_str.lower() == item.name.lower():
+                logger.debug(f"Found exact matching item in room: {item.name}")
                 return item
         
-        # Check other players in room
+        # Try exact matching for other players
         for other_player in get_players_in_room(player.current_room, game_state):
-            if instrument_str.lower() in other_player.name.lower():
-                logger.debug(f"Found matching player in room: {other_player.name}")
+            if instrument_str.lower() == other_player.name.lower():
+                logger.debug(f"Found exact matching player in room: {other_player.name}")
                 return other_player
         
+        # If no exact matches found, return None
         logger.debug(f"No matching object found for instrument: '{instrument_str}'")
         return None
 

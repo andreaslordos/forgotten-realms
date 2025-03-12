@@ -170,7 +170,7 @@ async def handle_get(cmd, player, game_state, player_manager, online_sessions, s
         # Look for a matching item in the room ONLY
         all_visible_items = current_room.get_items(game_state)
         for item in all_visible_items:
-            if subject.lower() in item.name.lower():
+            if subject.lower() == item.name.lower():
                 found_item = item
                 break
     
@@ -259,25 +259,26 @@ async def handle_drop(cmd, player, game_state, player_manager, online_sessions, 
         
         return "\n".join(messages)
     
-    # Handle dropping a specific item - prefer the bound object if available
-    item_to_drop = subject_obj if subject_obj in player.inventory else None
+    # Handle dropping a specific item - require object binding
+    if not subject_obj:
+        # Suggest available items in inventory
+        if player.inventory:
+            inventory_items = [item.name for item in player.inventory]
+            return f"You don't have '{subject}'."
+        else:
+            return "You aren't carrying anything."
     
-    # If no bound object, search for the item by name
-    if not item_to_drop:
-        for item in player.inventory:
-            if subject.lower() in item.name.lower():
-                item_to_drop = item
-                break
+    # Verify the item is in inventory
+    if subject_obj not in player.inventory:
+        return f"You don't have the {subject_obj.name} in your inventory."
     
-    if item_to_drop:
-        result = await drop_single_item(item_to_drop)
-        
-        # Save player state
-        player_manager.save_players()
-        
-        return result
+    # Item is valid and in inventory
+    result = await drop_single_item(subject_obj)
     
-    return f"You don't have '{subject}' in your inventory."
+    # Save player state
+    player_manager.save_players()
+    
+    return result
 
 
 # ===== SCORE COMMAND =====
