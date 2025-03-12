@@ -13,6 +13,11 @@ async def handle_put(cmd, player, game_state, player_manager, online_sessions, s
     """
     Handle putting an item into a container.
     Format: put <item> in <container>
+    
+    Supports:
+    - put <item> in <container>
+    - put all in <container>
+    - put t in <container> (put treasure)
     """
     # Get the subject (item) and instrument (container)
     subject = cmd.get("subject")
@@ -25,18 +30,6 @@ async def handle_put(cmd, player, game_state, player_manager, online_sessions, s
     
     if not instrument and not instrument_obj:
         return "You can only insert items into objects, not anything else."
-    
-    # Find the item in player's inventory - prefer the bound object if available
-    item_to_put = subject_obj if subject_obj in player.inventory else None
-    
-    if not item_to_put:
-        for item in player.inventory:
-            if subject.lower() in item.name.lower():
-                item_to_put = item
-                break
-    
-    if not item_to_put:
-        return f"You don't have '{subject}' in your inventory."
     
     # Find the container in player's inventory - prefer the bound object if available
     container = instrument_obj if (instrument_obj in player.inventory and 
@@ -54,6 +47,79 @@ async def handle_put(cmd, player, game_state, player_manager, online_sessions, s
     # Check if the container is open
     if container.state != "open":
         return f"The {container.name} is closed. You need to open it first."
+    
+    # Handle special cases: "all" and "t" (treasure)
+    if subject.lower() in ["all", "everything"]:
+        if not player.inventory or (len(player.inventory) == 1 and container in player.inventory):
+            return "You don't have anything else to put in the container."
+        
+        messages = []
+        for item in list(player.inventory):
+            # Skip the container itself
+            if item == container:
+                continue
+                
+            # Skip other containers (if nested containers not allowed)
+            if isinstance(item, ContainerItem):
+                continue
+                
+            # Try to add the item to the container
+            if container.add_item(item):
+                player.remove_item(item)
+                messages.append(f"{item.name} now inside the {container.name}.")
+            else:
+                # If it doesn't fit, provide feedback
+                if len(container.items) >= container.capacity_limit:
+                    messages.append(f"The {container.name} is full and can't hold {item.name}.")
+                elif container.current_weight() + item.weight > container.capacity_weight:
+                    messages.append(f"The {container.name} can't hold something as heavy as {item.name}.")
+                else:
+                    messages.append(f"You can't put {item.name} into the {container.name}.")
+        
+        # Save player state after changes
+        player_manager.save_players()
+        
+        return "\n".join(messages) if messages else f"Nothing added to the {container.name}."
+    
+    elif subject.lower() in ["treasure", "t"]:
+        # Get all valuable items (with value > 0) from inventory
+        valuable_items = [item for item in player.inventory 
+                         if hasattr(item, 'value') and item.value > 0 and item != container]
+        
+        if not valuable_items:
+            return "You don't have any treasure to put in the container."
+        
+        messages = []
+        for item in valuable_items:
+            # Try to add the item to the container
+            if container.add_item(item):
+                player.remove_item(item)
+                messages.append(f"{item.name} now inside the {container.name}.")
+            else:
+                # If it doesn't fit, provide feedback
+                if len(container.items) >= container.capacity_limit:
+                    messages.append(f"The {container.name} is full and can't hold {item.name}.")
+                elif container.current_weight() + item.weight > container.capacity_weight:
+                    messages.append(f"The {container.name} can't hold something as heavy as {item.name}.")
+                else:
+                    messages.append(f"You can't put {item.name} into the {container.name}.")
+        
+        # Save player state after changes
+        player_manager.save_players()
+        
+        return "\n".join(messages) if messages else f"Nothing added to the {container.name}."
+    
+    # Find the item in player's inventory - prefer the bound object if available
+    item_to_put = subject_obj if subject_obj in player.inventory else None
+    
+    if not item_to_put:
+        for item in player.inventory:
+            if subject.lower() in item.name.lower():
+                item_to_put = item
+                break
+    
+    if not item_to_put:
+        return f"You don't have '{subject}' in your inventory."
     
     # Check if the item is a container (nested containers not allowed)
     if isinstance(item_to_put, ContainerItem):
@@ -74,12 +140,20 @@ async def handle_put(cmd, player, game_state, player_manager, online_sessions, s
             return f"You can't put {item_to_put.name} into the {container.name}."
 
 # ===== GET FROM COMMAND =====
+# Enhancement to handle_get_from in backend/commands/container.py
+# This will enhance the existing function to support the "g t fr bag" syntax
+# and handle getting multiple items with "t" abbreviation
+
 async def handle_get_from(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle getting an item from a container.
     Format: get <item> from <container>
     
-    Note: This is called directly when a get/from command is identified by the parser.
+    Supports:
+    - get <item> from <container>
+    - g <item> fr <container>
+    - get all from <container>
+    - get t from <container> (get treasure)
     """
     # Get the subject (item) and instrument (container)
     subject = cmd.get("subject")
@@ -110,6 +184,47 @@ async def handle_get_from(cmd, player, game_state, player_manager, online_sessio
     if container.state != "open":
         return f"The {container.name} is closed. You need to open it first."
     
+    # Handle special cases: "all" and "t" (treasure)
+    if subject.lower() in ["all", "everything"]:
+        if not container.items:
+            return f"The {container.name} is empty."
+        
+        messages = []
+        for item in list(container.items):
+            container.remove_item(item.id)
+            success, message = player.add_item(item)
+            if success:
+                messages.append(f"{item.name} removed from {container.name}.")
+            else:
+                # If player can't carry it, put it back in the container
+                container.add_item(item)
+                messages.append(message)
+        
+        player_manager.save_players()
+        return "\n".join(messages)
+    
+    elif subject.lower() in ["treasure", "t"]:
+        # Get all valuable items (with value > 0)
+        valuable_items = [item for item in container.items 
+                         if hasattr(item, 'value') and item.value > 0]
+        
+        if not valuable_items:
+            return f"There is no treasure in the {container.name}."
+        
+        messages = []
+        for item in valuable_items:
+            container.remove_item(item.id)
+            success, message = player.add_item(item)
+            if success:
+                messages.append(f"{item.name} removed from {container.name}.")
+            else:
+                # If player can't carry it, put it back in the container
+                container.add_item(item)
+                messages.append(message)
+        
+        player_manager.save_players()
+        return "\n".join(messages)
+    
     # Find the item in the container - prefer the bound object if available
     item_to_get = None
     if subject_obj:
@@ -131,8 +246,8 @@ async def handle_get_from(cmd, player, game_state, player_manager, online_sessio
     success, message = player.add_item(item_to_get)
     if success:
         container.remove_item(item_to_get.id)
-        player_manager.save_players()  # Save player state after changing inventory
-        return f"You get {item_to_get.name} from the {container.name}."
+        player_manager.save_players()
+        return f"{item_to_get.name} removed from {container.name}."
     else:
         return message
 
