@@ -333,18 +333,21 @@ class VocabularyManager:
         if word in self.abbreviations:
             # Handle context-aware abbreviations
             if isinstance(self.abbreviations[word], dict):
-                # Determine context
+                # Improved context detection
                 if position == 0:
                     # First word is likely a verb
                     expanded = self.abbreviations[word].get("default")
                 elif position > 0 and position < total_words - 1:
-                    # Middle position - might be a preposition
-                    # Preposition is typically the third word in "verb noun prep noun"
-                    if position == 2 or (position > 0 and position % 2 == 0):
-                        expanded = self.abbreviations[word].get("in_prep_position", 
-                                  self.abbreviations[word].get("default"))
+                    # Middle position - more aggressive about using preposition expansion
+                    if "in_prep_position" in self.abbreviations[word]:
+                        # Prefer preposition expansions in non-first positions
+                        expanded = self.abbreviations[word]["in_prep_position"]
                     else:
                         expanded = self.abbreviations[word].get("default")
+                    
+                    # Additional debugging
+                    logger.debug(f"Context-based expansion: pos={position}, total={total_words}, "
+                                f"original='{original}', expanded='{expanded}'")
                 else:
                     # Last word - use default
                     expanded = self.abbreviations[word].get("default")
