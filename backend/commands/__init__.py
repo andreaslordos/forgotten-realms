@@ -41,6 +41,16 @@ common_verbs = ["look", "get", "take", "drop", "inventory", "help", "quit", "say
 for verb in common_verbs:
     natural_language_parser.vocabulary_manager.add_verb(verb)
 
+# Context-aware abbreviations
+# Register "w" as an abbreviation that expands differently based on context
+natural_language_parser.vocabulary_manager.add_abbreviation("w", "with", "in_prep_position")
+natural_language_parser.vocabulary_manager.add_abbreviation("w", "west", "default")
+
+# Ensure kill is properly registered as a command and synonym for attack
+natural_language_parser.vocabulary_manager.add_verb("kill")
+natural_language_parser.vocabulary_manager.add_synonym("kill", "attack")
+logger.info("Added context-aware abbreviations and command synonyms")
+
 # Import command handlers
 try:
     from commands import standard
@@ -55,6 +65,12 @@ try:
     logger.info("All command handlers imported successfully")
 except ImportError as e:
     logger.error(f"Error importing command handlers: {e}")
+
+# Specifically register kill command as a synonym for attack
+# This ensures the registration happens AFTER the combat module is loaded
+if 'combat' in globals():
+    command_registry.register_alias("kill", "attack")
+    logger.info("Registered 'kill' as alias for 'attack'")
 
 # Initialize the parser's command registry reference
 natural_language_parser.natural_language_parser.command_registry = command_registry

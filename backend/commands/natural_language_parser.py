@@ -152,6 +152,11 @@ class VocabularyManager:
     
     def __init__(self):
         # Dictionary of abbreviations: {"g": "get", "n": "north", ...}
+        # Now enhanced to support context-aware abbreviations
+        # Format: {
+        #   "abbreviation": "expansion" (simple case),
+        #   "abbreviation": {"default": "expansion1", "in_prep_position": "expansion2"} (context-aware)
+        # }
         self.abbreviations = {}
         
         # Dictionary of synonyms: {"grab": "get", "take": "get", ...}
@@ -197,7 +202,7 @@ class VocabularyManager:
             self.preposition_types[prep] = "reversed"
         
         # Common verb abbreviations
-        self.abbreviations.update({
+        simple_abbreviations = {
             "g": "get",
             "dr": "drop",
             "fr": "from",
@@ -208,16 +213,19 @@ class VocabularyManager:
             "n": "north",
             "s": "south",
             "e": "east",
-            "w": "west",
-            "ne": "northeast",
             "nw": "northwest",
             "se": "southeast",
             "sw": "southwest",
             "u": "up",
             "d": "down",
-            "wi": "with",
             "t": "treasure"
-        })
+        }
+        self.abbreviations.update(simple_abbreviations)
+        
+        # Context-aware abbreviations (different meaning based on position)
+        self.abbreviations["w"] = {"default": "west", "in_prep_position": "with"}
+        self.abbreviations["wi"] = {"default": "with", "in_prep_position": "with"}
+        self.abbreviations["ne"] = {"default": "northeast", "in_prep_position": "northeast"}
         
         # Common verb synonyms
         self.synonyms.update({
@@ -251,10 +259,36 @@ class VocabularyManager:
         # Add 'move' as a special verb for movement commands
         self.verbs.add("move")
     
-    def add_abbreviation(self, abbreviation: str, full_word: str):
-        """Add a new abbreviation."""
-        self.abbreviations[abbreviation.lower()] = full_word.lower()
-        logger.debug(f"Added abbreviation: {abbreviation} -> {full_word}")
+    def add_abbreviation(self, abbreviation: str, full_word: str, context: str = None):
+        """
+        Add a new abbreviation.
+        
+        Args:
+            abbreviation: The abbreviated form
+            full_word: The expanded form
+            context: Optional context specifier ('default', 'in_prep_position', etc.)
+        """
+        abbreviation = abbreviation.lower()
+        full_word = full_word.lower()
+        
+        if context:
+            if abbreviation not in self.abbreviations:
+                self.abbreviations[abbreviation] = {"default": full_word}
+            elif isinstance(self.abbreviations[abbreviation], dict):
+                self.abbreviations[abbreviation][context] = full_word
+            else:
+                # Convert simple abbreviation to context-aware
+                default_value = self.abbreviations[abbreviation]
+                self.abbreviations[abbreviation] = {"default": default_value, context: full_word}
+        else:
+            # Simple abbreviation
+            if isinstance(self.abbreviations.get(abbreviation), dict):
+                self.abbreviations[abbreviation]["default"] = full_word
+            else:
+                self.abbreviations[abbreviation] = full_word
+                
+        logger.debug(f"Added abbreviation: {abbreviation} -> {full_word}" + 
+                    (f" (context: {context})" if context else ""))
     
     def add_synonym(self, synonym: str, base_word: str):
         """Add a new synonym."""
@@ -282,12 +316,14 @@ class VocabularyManager:
         self.directions.add(direction.lower())
         logger.debug(f"Added direction: {direction}")
     
-    def expand_word(self, word: str) -> str:
+    def expand_word(self, word: str, position: int = 0, total_words: int = 1) -> str:
         """
-        Expand abbreviations and resolve synonyms.
+        Expand abbreviations and resolve synonyms with context awareness.
         
         Args:
             word: The word to expand
+            position: The position of the word in the command (0-based)
+            total_words: Total number of words in the command
             
         Returns:
             The expanded word
@@ -297,8 +333,31 @@ class VocabularyManager:
         
         # Check if it's an abbreviation
         if word in self.abbreviations:
-            word = self.abbreviations[word]
-            logger.debug(f"Expanded abbreviation: {original} -> {word}")
+            # Handle context-aware abbreviations
+            if isinstance(self.abbreviations[word], dict):
+                # Determine context
+                if position == 0:
+                    # First word is likely a verb
+                    expanded = self.abbreviations[word].get("default")
+                elif position > 0 and position < total_words - 1:
+                    # Middle position - might be a preposition
+                    # Preposition is typically the third word in "verb noun prep noun"
+                    if position == 2 or (position > 0 and position % 2 == 0):
+                        expanded = self.abbreviations[word].get("in_prep_position", 
+                                  self.abbreviations[word].get("default"))
+                    else:
+                        expanded = self.abbreviations[word].get("default")
+                else:
+                    # Last word - use default
+                    expanded = self.abbreviations[word].get("default")
+                
+                if expanded:
+                    word = expanded
+                    logger.debug(f"Expanded context-aware abbreviation: {original} -> {word} (position {position})")
+            else:
+                # Simple abbreviation
+                word = self.abbreviations[word]
+                logger.debug(f"Expanded abbreviation: {original} -> {word}")
         
         # Check if it's a synonym
         if word in self.synonyms:
@@ -840,12 +899,15 @@ class NaturalLanguageParser:
                     is_direct_message = True
                     break
         
+        # Count total number of words for context-aware expansion
+        total_words = len(tokens)
+        
         # Only expand the first token (verb) - don't expand the rest of the tokens for communication commands
         if tokens:
             # Save original first token (verb)
             original_verb = tokens[0].value
-            # Expand the verb (first token)
-            tokens[0].value = self.vocabulary.expand_word(tokens[0].value)
+            # Expand the verb (first token) with position context
+            tokens[0].value = self.vocabulary.expand_word(original_verb, 0, total_words)
             expanded_verb = tokens[0].value
             logger.debug(f"Verb: '{original_verb}' -> '{expanded_verb}'")
             
@@ -854,18 +916,18 @@ class NaturalLanguageParser:
             
             # Only expand other tokens if this is NOT a communication command or direct message
             if not (is_communication_cmd or is_direct_message):
-                # Now expand all other tokens
+                # Now expand all other tokens with position context
                 for i in range(1, len(tokens)):
                     original_value = tokens[i].value
-                    expanded_value = self.vocabulary.expand_word(original_value)
+                    expanded_value = self.vocabulary.expand_word(original_value, i, total_words)
                     if original_value != expanded_value:
                         tokens[i].value = expanded_value
-                        logger.debug(f"Expanded token: '{original_value}' -> '{expanded_value}'")
+                        logger.debug(f"Expanded token at position {i}: '{original_value}' -> '{expanded_value}'")
             
             # Handle special 'go' cases
             if original_verb.lower() == "go" and len(tokens) > 1:
                 direction = tokens[1].value.lower()
-                expanded_direction = self.vocabulary.expand_word(direction)
+                expanded_direction = self.vocabulary.expand_word(direction, 1, total_words)
                 
                 logger.debug(f"Checking for direction after 'go': '{direction}' -> '{expanded_direction}'")
                 
@@ -992,7 +1054,6 @@ class NaturalLanguageParser:
         
         logger.debug(f"Final parsed command after binding: {parsed_cmd}")
         return [parsed_cmd]
-
     
     def _detect_chained_commands(self, command_str: str) -> List[str]:
         """
