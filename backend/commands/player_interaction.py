@@ -191,3 +191,66 @@ async def handle_steal(cmd, player, game_state, player_manager, online_sessions,
     
     # Ensure a minimum chance of 10% and maximum of 90%
     steal_chance = max(10, min(90, steal_chance))
+    
+    # Roll for steal attempt
+    roll = random.randint(1, 100)
+    
+    if roll <= steal_chance:
+        # Successful steal
+        # Attempt to add the item to the stealing player's inventory
+        success, message = player.add_item(item)
+        if not success:
+            return f"You can't carry the {item.name}: {message}"
+        
+        # Remove the item from target's inventory
+        target_player.remove_item(item)
+        player_manager.save_players()
+        
+        # Prepare messages
+        steal_msg_target = f"{player.name} the {player.level} has stolen the {item.name} from you!"
+        steal_msg_thief = f"{item.name} stolen from {target_player.name} the {target_player.level}!"
+        steal_msg_others = f"{player.name} the {player.level} steals the {item.name} from {target_player.name} the {target_player.level}!"
+        
+        # Send messages to target
+        if target_sid and sio and utils:
+            await utils.send_message(sio, target_sid, steal_msg_target)
+        
+        # Broadcast to others in the room
+        if online_sessions and sio and utils:
+            for sid, session_data in online_sessions.items():
+                other_player = session_data.get('player')
+                if (other_player and 
+                    other_player.current_room == player.current_room and 
+                    other_player != player and 
+                    other_player != target_player):
+                    await utils.send_message(sio, sid, steal_msg_others)
+        
+        return steal_msg_thief
+    else:
+        # Failed steal attempt
+        # Prepare messages
+        caught_msg_thief = f"{target_player.name} the {target_player.level} discovers your attempt to steal the {item.name}!"
+        caught_msg_target = f"You catch {player.name} the {player.level} trying to steal the {item.name} from you!"
+        caught_msg_others = f"{player.name} the {player.level} attempted to steal from {target_player.name} the {target_player.level}!"
+        
+        # Send messages to target
+        if target_sid and sio and utils:
+            await utils.send_message(sio, target_sid, caught_msg_target)
+        
+        # Broadcast to others in the room
+        if online_sessions and sio and utils:
+            for sid, session_data in online_sessions.items():
+                other_player = session_data.get('player')
+                if (other_player and 
+                    other_player.current_room == player.current_room and 
+                    other_player != player and 
+                    other_player != target_player):
+                    await utils.send_message(sio, sid, caught_msg_others)
+        
+        return caught_msg_thief
+
+# Register commands
+command_registry.register("steal", handle_steal, "Steal an item from another player in the same room. Usage: steal <item> from <player>")
+
+# Register commands
+command_registry.register("give", handle_give, "Give an item to another player in the same room. Usage: give <item> to <player>")

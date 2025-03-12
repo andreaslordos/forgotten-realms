@@ -37,7 +37,7 @@ for direction in directions:
     logger.info(f"Added direction to vocabulary: {direction}")
 
 # Make sure standard verbs are added
-common_verbs = ["look", "get", "take", "drop", "inventory", "help", "quit", "say", "tell", "shout", "attack"]
+common_verbs = ["look", "get", "take", "drop", "inventory", "help", "quit", "say", "tell", "shout", "attack", "steal", "give"]
 for verb in common_verbs:
     natural_language_parser.vocabulary_manager.add_verb(verb)
 
@@ -45,10 +45,6 @@ for verb in common_verbs:
 # Register "w" as an abbreviation that expands differently based on context
 natural_language_parser.vocabulary_manager.add_abbreviation("w", "with", "in_prep_position")
 natural_language_parser.vocabulary_manager.add_abbreviation("w", "west", "default")
-
-# Ensure kill is properly registered as a command and synonym for attack
-# natural_language_parser.vocabulary_manager.add_verb("kill")
-# natural_language_parser.vocabulary_manager.add_synonym("kill", "attack")
 
 # Import command handlers
 try:
@@ -62,10 +58,6 @@ try:
     from commands import rest
     from commands import player_interaction
     logger.info("All command handlers imported successfully")
-
-    # UPDATED: Always register the alias, not just conditionally
-    # command_registry.register_alias("kill", "attack")
-    # logger.info("Registered 'kill' as alias for 'attack'")
 
 except ImportError as e:
     logger.error(f"Error importing command handlers: {e}")

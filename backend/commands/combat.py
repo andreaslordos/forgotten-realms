@@ -7,6 +7,7 @@ from commands.registry import command_registry
 from models.Weapon import Weapon
 from models.CombatDialogue import CombatDialogue
 from commands.rest import wake_player
+from models.Item import Item
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
