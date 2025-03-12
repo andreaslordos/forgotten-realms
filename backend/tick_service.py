@@ -1,7 +1,7 @@
 # backend/tick_service.py
 
 import asyncio
-from commands.parser import parse_command_wrapper as parse_command
+from commands.parser import parse_command_wrapper
 from commands.executor import execute_command
 from commands.communication import handle_pending_communication
 import time
@@ -129,7 +129,7 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                     context['players_in_room'] = players_in_room
                     
                     # Parse the command using the wrapper for backward compatibility
-                    parsed_cmds = parse_command(cmd_str, context, players_in_room, online_sessions)
+                    parsed_cmds = parse_command_wrapper(cmd_str, context=context, players_in_room=players_in_room, online_sessions=online_sessions)
                     
                     # Handle command chaining (from comma-separated commands)
                     if len(parsed_cmds) > 1:
