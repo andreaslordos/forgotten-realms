@@ -237,8 +237,6 @@ class VocabularyManager:
             "examine": "look",
             "check": "look",
             "inspect": "look",
-            "attack": "kill",
-            "fight": "kill",
             "bye": "quit",
             "go": "move"  # Add 'go' as a synonym for a special movement handler 
         })

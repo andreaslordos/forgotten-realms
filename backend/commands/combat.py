@@ -708,3 +708,6 @@ command_registry.register_alias("fight", "attack")
 command_registry.register_alias("k", "attack")
 command_registry.register_alias("ret", "retaliate")
 command_registry.register_alias("run", "flee")
+
+# Log the registrations for verification
+logger.info("Registered command aliases: 'kill', 'fight', 'k' → 'attack'")

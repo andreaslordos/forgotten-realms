@@ -37,7 +37,7 @@ for direction in directions:
     logger.info(f"Added direction to vocabulary: {direction}")
 
 # Make sure standard verbs are added
-common_verbs = ["look", "get", "take", "drop", "inventory", "help", "quit", "say", "tell", "shout", "attack", "kill"]
+common_verbs = ["look", "get", "take", "drop", "inventory", "help", "quit", "say", "tell", "shout", "attack"]
 for verb in common_verbs:
     natural_language_parser.vocabulary_manager.add_verb(verb)
 
@@ -47,9 +47,8 @@ natural_language_parser.vocabulary_manager.add_abbreviation("w", "with", "in_pre
 natural_language_parser.vocabulary_manager.add_abbreviation("w", "west", "default")
 
 # Ensure kill is properly registered as a command and synonym for attack
-natural_language_parser.vocabulary_manager.add_verb("kill")
-natural_language_parser.vocabulary_manager.add_synonym("kill", "attack")
-logger.info("Added context-aware abbreviations and command synonyms")
+# natural_language_parser.vocabulary_manager.add_verb("kill")
+# natural_language_parser.vocabulary_manager.add_synonym("kill", "attack")
 
 # Import command handlers
 try:
@@ -63,14 +62,13 @@ try:
     from commands import rest
     from commands import player_interaction
     logger.info("All command handlers imported successfully")
+
+    # UPDATED: Always register the alias, not just conditionally
+    # command_registry.register_alias("kill", "attack")
+    # logger.info("Registered 'kill' as alias for 'attack'")
+
 except ImportError as e:
     logger.error(f"Error importing command handlers: {e}")
-
-# Specifically register kill command as a synonym for attack
-# This ensures the registration happens AFTER the combat module is loaded
-if 'combat' in globals():
-    command_registry.register_alias("kill", "attack")
-    logger.info("Registered 'kill' as alias for 'attack'")
 
 # Initialize the parser's command registry reference
 natural_language_parser.natural_language_parser.command_registry = command_registry
