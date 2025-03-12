@@ -37,7 +37,7 @@ for direction in directions:
     logger.info(f"Added direction to vocabulary: {direction}")
 
 # Make sure standard verbs are added
-common_verbs = ["look", "get", "take", "drop", "inventory", "help", "quit", "say", "tell", "shout", "attack"]
+common_verbs = ["look", "get", "take", "drop", "inventory", "help", "quit", "say", "tell", "shout", "attack", "kill"]
 for verb in common_verbs:
     natural_language_parser.vocabulary_manager.add_verb(verb)
 

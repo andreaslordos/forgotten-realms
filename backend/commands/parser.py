@@ -63,16 +63,74 @@ def parse_command_wrapper(command_str: str, context=None, players_in_room=None, 
     # Special case for quoted commands (say)
     if command_str.startswith('"'):
         logger.debug(f"Processing quoted command: '{command_str}'")
+        message = command_str[1:].strip()
         cmd = {
             "verb": "say",
-            "subject": command_str[1:].strip(),
+            "subject": message,  # Use exact message
             "original": command_str,
             "players_in_room": players_in_room,
             "online_sessions": online_sessions
         }
         return [cmd]
     
-    # Parse the command
+    # Check if this might be a direct player message
+    first_word = command_str.split()[0].lower() if command_str.strip() else ""
+    is_player_message = False
+    
+    if players_in_room:
+        for other_player in players_in_room:
+            if other_player != player and hasattr(other_player, 'name') and other_player.name.lower() == first_word:
+                is_player_message = True
+                logger.debug(f"Detected direct message to player: {other_player.name}")
+                break
+    
+    # Special case for communication commands (to ensure they use exact message text)
+    words = command_str.lower().split()
+    if words and words[0] in ["say", "tell", "shout", "act", "whisper"]:
+        logger.debug(f"Detected communication command: {words[0]}")
+        parts = command_str.split(maxsplit=1)
+        verb = vocabulary_manager.expand_word(words[0])
+        
+        if verb == "tell" and len(words) >= 3:
+            # Format: "tell <player> <message>"
+            tell_parts = command_str.split(maxsplit=2)
+            cmd = {
+                "verb": verb,
+                "subject": tell_parts[1],
+                "instrument": tell_parts[2] if len(tell_parts) > 2 else "",  # Use exact message
+                "original": command_str,
+                "players_in_room": players_in_room,
+                "online_sessions": online_sessions
+            }
+        else:
+            # Format: "<verb> <message>"
+            cmd = {
+                "verb": verb,
+                "subject": parts[1] if len(parts) > 1 else "",  # Use exact message
+                "original": command_str,
+                "players_in_room": players_in_room,
+                "online_sessions": online_sessions
+            }
+        return [cmd]
+    
+    # Special case for direct player messages
+    if is_player_message:
+        parts = command_str.split(maxsplit=1)
+        recipient = parts[0]
+        message = parts[1] if len(parts) > 1 else ""
+        
+        cmd = {
+            "verb": "tell",
+            "subject": recipient,
+            "instrument": message,  # Use exact message
+            "original": command_str,
+            "players_in_room": players_in_room,
+            "online_sessions": online_sessions,
+            "is_direct_message": True
+        }
+        return [cmd]
+    
+    # For regular commands, use the natural language parser
     commands = parse_command(command_str, player, game_state)
     logger.debug(f"Parser returned: {commands}")
     

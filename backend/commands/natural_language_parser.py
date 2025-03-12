@@ -828,21 +828,39 @@ class NaturalLanguageParser:
             }
             return [cmd]
         
-        # Expand all tokens (not just the verb)
+        # Check if first token might be a player name (for direct messaging)
+        is_direct_message = False
+        if tokens and player and game_state:
+            first_token = tokens[0].value.lower()
+            # Check if this matches a player name in the room
+            players_in_room = get_players_in_room(player.current_room, game_state)
+            for other_player in players_in_room:
+                if other_player.name.lower() == first_token:
+                    logger.debug(f"Detected potential direct message to player: {other_player.name}")
+                    is_direct_message = True
+                    break
+        
+        # Only expand the first token (verb) - don't expand the rest of the tokens for communication commands
         if tokens:
-            # First expand the verb (first token)
+            # Save original first token (verb)
             original_verb = tokens[0].value
+            # Expand the verb (first token)
             tokens[0].value = self.vocabulary.expand_word(tokens[0].value)
             expanded_verb = tokens[0].value
             logger.debug(f"Verb: '{original_verb}' -> '{expanded_verb}'")
             
-            # Now expand all other tokens
-            for i in range(1, len(tokens)):
-                original_value = tokens[i].value
-                expanded_value = self.vocabulary.expand_word(original_value)
-                if original_value != expanded_value:
-                    tokens[i].value = expanded_value
-                    logger.debug(f"Expanded token: '{original_value}' -> '{expanded_value}'")
+            # Check if this is a communication command
+            is_communication_cmd = expanded_verb in ["say", "tell", "shout", "act", "whisper"]
+            
+            # Only expand other tokens if this is NOT a communication command or direct message
+            if not (is_communication_cmd or is_direct_message):
+                # Now expand all other tokens
+                for i in range(1, len(tokens)):
+                    original_value = tokens[i].value
+                    expanded_value = self.vocabulary.expand_word(original_value)
+                    if original_value != expanded_value:
+                        tokens[i].value = expanded_value
+                        logger.debug(f"Expanded token: '{original_value}' -> '{expanded_value}'")
             
             # Handle special 'go' cases
             if original_verb.lower() == "go" and len(tokens) > 1:
@@ -904,32 +922,73 @@ class NaturalLanguageParser:
             logger.debug("Parsing failed completely, returning empty list")
             return []
         
+        # For communication commands, use the original message from the command string
+        if parsed_cmd and "verb" in parsed_cmd:
+            verb = parsed_cmd["verb"]
+            if verb in ["say", "tell", "shout", "act", "whisper"]:
+                # For "tell <player> <message>" format
+                if verb == "tell" and "subject" in parsed_cmd:
+                    # Extract the message part - everything after "tell player"
+                    parts = command_str.split(maxsplit=2)
+                    if len(parts) > 2:
+                        parsed_cmd["instrument"] = parts[2]  # Use exact message
+                        logger.debug(f"Using original message for tell command: {parsed_cmd['instrument']}")
+                # For other communication commands
+                elif "subject" in parsed_cmd:
+                    # Extract the message part - everything after the verb
+                    parts = command_str.split(maxsplit=1)
+                    if len(parts) > 1:
+                        parsed_cmd["subject"] = parts[1]  # Use exact message
+                        logger.debug(f"Using original message for {verb} command: {parsed_cmd['subject']}")
+        
         # Handle object binding
         logger.debug(f"Final parsed command before binding: {parsed_cmd}")
         
-        # Add subject if present
+        # Add subject if present and not a communication command
         if "subject" in parsed_cmd and parsed_cmd["subject"]:
-            logger.debug(f"Binding subject: {parsed_cmd['subject']}")
-            parsed_cmd["subject_object"] = self.object_binder.bind_subject(
-                parsed_cmd["subject"], player, game_state, self.context
-            )
+            # Skip binding for communication command messages
+            if parsed_cmd.get("verb") not in ["say", "tell", "shout", "act", "whisper"]:
+                logger.debug(f"Binding subject: {parsed_cmd['subject']}")
+                parsed_cmd["subject_object"] = self.object_binder.bind_subject(
+                    parsed_cmd["subject"], player, game_state, self.context
+                )
         
         # Add instrument if present
         if "instrument" in parsed_cmd and parsed_cmd["instrument"]:
-            logger.debug(f"Binding instrument: {parsed_cmd['instrument']}")
-            parsed_cmd["instrument_object"] = self.object_binder.bind_instrument(
-                parsed_cmd["instrument"], player, game_state, self.context
-            )
+            # Skip binding for tell command messages
+            if parsed_cmd.get("verb") != "tell":
+                logger.debug(f"Binding instrument: {parsed_cmd['instrument']}")
+                parsed_cmd["instrument_object"] = self.object_binder.bind_instrument(
+                    parsed_cmd["instrument"], player, game_state, self.context
+                )
         
         # Store the original command string
         parsed_cmd["original"] = command_str
         
+        # Handle direct message special case
+        if is_direct_message and not parsed_cmd.get("verb") == "tell":
+            # If first token matched a player name, but wasn't parsed as a tell command
+            # we'll convert it to one
+            parts = command_str.split(maxsplit=1)
+            recipient = parts[0]
+            message = parts[1] if len(parts) > 1 else ""
+            
+            parsed_cmd = {
+                "verb": "tell",
+                "subject": recipient,
+                "instrument": message,  # Use exact message
+                "original": command_str,
+                "is_direct_message": True
+            }
+            logger.debug(f"Converted to direct player message: {parsed_cmd}")
+        
         # Update context with this command
-        self.context.update(
-            verb=parsed_cmd.get("verb"),
-            subject=parsed_cmd.get("subject_object"),
-            instrument=parsed_cmd.get("instrument_object")
-        )
+        if not (is_direct_message or parsed_cmd.get("verb") in ["say", "tell", "shout", "act", "whisper"]):
+            self.context.update(
+                verb=parsed_cmd.get("verb"),
+                subject=parsed_cmd.get("subject_object"),
+                instrument=parsed_cmd.get("instrument_object")
+            )
         
         logger.debug(f"Final parsed command after binding: {parsed_cmd}")
         return [parsed_cmd]
