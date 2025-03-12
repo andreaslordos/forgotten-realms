@@ -11,43 +11,86 @@ async def handle_give(cmd, player, game_state, player_manager, online_sessions, 
     Give an item to another player in the same room.
     Syntax: give <item> to <player>
     """
-    # Extract item and target names from the parsed command.
-    item_name = cmd.get("instrument")
-    target_name = cmd.get("subject")
+    # Get the subject (item or player) and instrument (player or item) from the parsed command
+    subject = cmd.get("subject")
+    subject_obj = cmd.get("subject_object")
+    instrument = cmd.get("instrument")
+    instrument_obj = cmd.get("instrument_object")
     
-    logger.debug(f"Give command parsed: item={item_name}, target={target_name}")
+    # Check if reversed_syntax flag is set (give item to player)
+    reversed_syntax = cmd.get("reversed_syntax", False)
     
-    if not item_name or not target_name:
-        return "Usage: give <item> to <player>"
+    # In normal syntax: "give player item" → subject=player, instrument=item
+    # In reversed syntax: "give item to player" → subject=player, instrument=item
     
-    # Look for the item in your (the giver's) inventory.
+    # For reversed syntax like "give <item> to <player>"
+    # subject = player name, instrument = item name
+    if reversed_syntax:
+        # For "give <item> to <player>", the parameters are already correct:
+        # instrument = item, subject = player
+        item_name = instrument
+        item_obj = instrument_obj
+        target_name = subject
+        target_obj = subject_obj
+    else:
+        # For "give <player> <item>", we need to swap them:
+        # subject = player, instrument = item
+        item_name = instrument
+        item_obj = instrument_obj
+        target_name = subject
+        target_obj = subject_obj
+    
+    logger.debug(f"Give command: target={target_name}, item={item_name}")
+    
+    if not item_name and not item_obj:
+        return "What do you want to give?"
+    
+    if not target_name and not target_obj:
+        return "To whom do you want to give something?"
+    
+    # Look for the item in the giver's inventory - prefer bound object
     item = None
-    for it in player.inventory:
-        if item_name.lower() in it.name.lower():
-            item = it
-            break
+    if item_obj and item_obj in player.inventory:
+        item = item_obj
+    else:
+        for it in player.inventory:
+            if item_name.lower() in it.name.lower():
+                item = it
+                break
     if not item:
         return f"You don't have '{item_name}' in your inventory."
     
-    # Find the target player in the same room.
+    # Find the target player - prefer bound object
     target_player = None
     target_sid = None
-    for sid, session in online_sessions.items():
-        other = session.get("player")
-        if other and other.current_room == player.current_room and other != player:
-            if target_name.lower() in other.name.lower():
-                target_player = other
-                target_sid = sid
-                break
+    
+    if target_obj and hasattr(target_obj, 'name') and hasattr(target_obj, 'current_room'):
+        if target_obj.current_room == player.current_room:
+            target_player = target_obj
+            # Find their session ID
+            for sid, session in online_sessions.items():
+                if session.get('player') == target_player:
+                    target_sid = sid
+                    break
+    else:
+        # Find by name
+        for sid, session in online_sessions.items():
+            other = session.get("player")
+            if other and other.current_room == player.current_room and other != player:
+                if target_name.lower() in other.name.lower():
+                    target_player = other
+                    target_sid = sid
+                    break
+    
     if not target_player:
         return f"You don't see '{target_name}' here."
     
-    # Attempt to add the item to the target's inventory.
+    # Attempt to add the item to the target's inventory
     success, message = target_player.add_item(item)
     if not success:
         return f"{target_player.name} cannot carry '{item.name}': {message}"
     
-    # Remove the item from your inventory and save the change.
+    # Remove the item from your inventory and save the change
     player.remove_item(item)
     player_manager.save_players()
     
@@ -69,7 +112,7 @@ async def handle_give(cmd, player, game_state, player_manager, online_sessions, 
                 other_player != target_player):
                 await utils.send_message(sio, sid, give_msg_others)
     
-    # Return confirmation to you.
+    # Return confirmation to you
     return f"{item.name} given to {target_player.name} the {target_player.level}."
 
 async def handle_steal(cmd, player, game_state, player_manager, online_sessions, sio, utils):
@@ -77,45 +120,79 @@ async def handle_steal(cmd, player, game_state, player_manager, online_sessions,
     Steal an item from another player in the same room.
     Syntax: steal <item> from <player>
     """
-    # Log the full command details for debugging
-    logger.debug(f"Full Steal Command: {cmd}")
+    # Get the subject (target player) and instrument (item) from the parsed command
+    subject = cmd.get("subject")
+    subject_obj = cmd.get("subject_object")
+    instrument = cmd.get("instrument")
+    instrument_obj = cmd.get("instrument_object")
     
-    # Standard approach using the parser's output
-    item_name = cmd.get("instrument")
-    target_name = cmd.get("subject")
+    logger.debug(f"Steal command parsed: subject={subject}, instrument={instrument}")
+    logger.debug(f"Bound objects: subject_obj={subject_obj}, instrument_obj={instrument_obj}")
     
-    logger.debug(f"Parsed item: {item_name}, Parsed target: {target_name}")
+    # In steal command, the subject should be the player and instrument should be the item
+    # But we need to check if we're parsing a 'steal item from player' format
+    if cmd.get("preposition") == "from":
+        # This is 'steal item from player', so we need to swap
+        temp = subject
+        subject = instrument 
+        instrument = temp
+        
+        temp_obj = subject_obj
+        subject_obj = instrument_obj
+        instrument_obj = temp_obj
     
-    if not item_name or not target_name:
-        return "Usage: steal <item> from <player>"
+    if not subject and not subject_obj:
+        return "Steal from whom?"
     
-    # Find the target player in the same room.
+    if not instrument and not instrument_obj:
+        return "What do you want to steal?"
+    
+    # Find the target player - prefer bound object
     target_player = None
     target_sid = None
-    for sid, session in online_sessions.items():
-        other = session.get("player")
-        if other and other.current_room == player.current_room and other != player:
-            if target_name.lower() in other.name.lower():
-                target_player = other
-                target_sid = sid
-                break
+    
+    if subject_obj and hasattr(subject_obj, 'name') and hasattr(subject_obj, 'current_room'):
+        if subject_obj.current_room == player.current_room:
+            target_player = subject_obj
+            # Find their session ID
+            for sid, session in online_sessions.items():
+                if session.get('player') == target_player:
+                    target_sid = sid
+                    break
+    else:
+        # Find by name
+        for sid, session in online_sessions.items():
+            other = session.get("player")
+            if other and other.current_room == player.current_room and other != player:
+                if subject.lower() in other.name.lower():
+                    target_player = other
+                    target_sid = sid
+                    break
     
     if not target_player:
-        return f"You don't see '{target_name}' here."
+        return f"You don't see '{subject}' here."
     
     # Log player and target details for debugging
     logger.debug(f"Thief: {player.name} (Dex: {player.dexterity})")
     logger.debug(f"Target: {target_player.name} (Dex: {target_player.dexterity})")
     
-    # Look for the item in the target's inventory.
+    # Look for the item in the target's inventory - prefer bound object
     item = None
-    for it in target_player.inventory:
-        if item_name.lower() in it.name.lower():
-            item = it
-            break
+    if instrument_obj:
+        for it in target_player.inventory:
+            if it == instrument_obj:
+                item = it
+                break
+    
+    # If not found by object reference, search by name
+    if not item:
+        for it in target_player.inventory:
+            if instrument.lower() in it.name.lower():
+                item = it
+                break
     
     if not item:
-        return f"{target_player.name} doesn't have '{item_name}'."
+        return f"{target_player.name} doesn't have '{instrument}'."
     
     # Calculate steal chance based on ratio of dexterities
     # Chance = (your_dexterity / (your_dexterity + target_dexterity)) * 100

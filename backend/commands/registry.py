@@ -1,76 +1,87 @@
-# backend/commands/registry.py (Updated)
+# commands/registry.py (Updated)
 
-from commands.unified_parser import SyntaxPattern, CommandContext
+from typing import Dict, List, Callable, Any, Optional
+from commands.natural_language_parser import vocabulary_manager
 
 class CommandRegistry:
     """
-    Registry for command handlers. Serves as a central repository
-    for all commands in the game.
+    Registry for command handlers.
+    
+    This class is responsible for:
+    - Registering command handlers
+    - Retrieving handlers for specific verbs
+    - Managing command aliases
+    - Providing help information
     """
+    
     def __init__(self):
         self.commands = {}
-        self.command_context = CommandContext()
-        self.all_aliases = {}  # Maps all aliases to their target verbs
-        self.direction_aliases = {
-            "n": "north",
-            "s": "south",
-            "e": "east",
-            "w": "west",
-            "ne": "northeast",
-            "nw": "northwest",
-            "se": "southeast",
-            "sw": "southwest",
-            "u": "up",
-            "d": "down",
-            "out": "out",
-            "in": "in",
-        }
-        # Add directions to all_aliases
-        for alias, direction in self.direction_aliases.items():
-            self.all_aliases[alias] = direction
+        self.command_context = None  # Initialized later by parser
+        
+        # Initialize vocabularies in the parser
+        self._initialize_commands()
     
-    def register(self, verb, handler, help_text=None, syntax_patterns=None):
+    def _initialize_commands(self):
+        """Initialize the basic command vocabulary."""
+        # Register standard movement directions
+        for direction in ["north", "south", "east", "west", 
+                          "northeast", "northwest", "southeast", "southwest",
+                          "up", "down", "in", "out"]:
+            vocabulary_manager.add_direction(direction)
+    
+    def register(self, verb: str, handler: Callable, help_text: Optional[str] = None):
         """
         Register a command handler.
         
         Args:
-            verb (str): The command verb
-            handler (callable): The function to handle the command
-            help_text (str): Optional help text for the command
-            syntax_patterns (list): Optional list of SyntaxPattern objects
+            verb: The command verb
+            handler: The function to handle the command
+            help_text: Optional help text for the command
         """
         verb_lower = verb.lower()
         
-        # Create default syntax pattern if none provided
-        if syntax_patterns is None:
-            syntax_patterns = [SyntaxPattern("VERB SUBJECT")]
-        
         self.commands[verb_lower] = {
             "handler": handler,
-            "help_text": help_text or f"No help available for '{verb}'.",
-            "patterns": syntax_patterns
+            "help_text": help_text or f"No help available for '{verb}'."
         }
         
-        # Add to all_aliases
-        self.all_aliases[verb_lower] = verb_lower
+        # Add to vocabulary
+        vocabulary_manager.add_verb(verb_lower)
     
-    def get_handler(self, verb):
-        """Get the handler for a specific verb."""
-        verb = verb.lower() if verb else ""
+    def get_handler(self, verb: str) -> Optional[Callable]:
+        """
+        Get the handler for a specific verb.
+        
+        Args:
+            verb: The verb to look up
+            
+        Returns:
+            The handler function or None if not found
+        """
+        if not verb:
+            return None
+            
+        verb = verb.lower()
+        # Expand abbreviations and synonyms
+        verb = vocabulary_manager.expand_word(verb)
+        
         return self.commands.get(verb, {}).get("handler")
     
-    def get_help(self, verb=None):
+    def get_help(self, verb: Optional[str] = None) -> str:
         """
         Get help text for a specific verb or all commands.
         
         Args:
-            verb (str): Optional verb to get help for. If None, returns all help.
+            verb: Optional verb to get help for
             
         Returns:
-            str: The help text
+            The help text
         """
         if verb:
             verb = verb.lower()
+            # Expand abbreviations and synonyms
+            verb = vocabulary_manager.expand_word(verb)
+            
             command_info = self.commands.get(verb)
             if command_info:
                 return command_info["help_text"]
@@ -82,40 +93,33 @@ class CommandRegistry:
             help_text += f"{v}: {info['help_text']}\n"
         return help_text
     
-    def register_alias(self, alias, target_verb):
+    def register_alias(self, alias: str, target_verb: str):
         """
         Register an alias for an existing command.
         
         Args:
-            alias (str): The alias to register
-            target_verb (str): The existing command verb
+            alias: The alias to register
+            target_verb: The existing command verb
         """
         alias_lower = alias.lower()
         target_lower = target_verb.lower()
         
         if target_lower not in self.commands:
             raise ValueError(f"Cannot create alias '{alias}' for unknown command '{target_verb}'")
-            
-        target_info = self.commands[target_lower]
-        self.commands[alias_lower] = {
-            "handler": target_info["handler"],
-            "help_text": f"Alias for '{target_verb}'. {target_info['help_text']}",
-            "patterns": target_info.get("patterns", [])
-        }
         
-        # Add to all_aliases
-        self.all_aliases[alias_lower] = target_lower
+        # Add abbreviation to vocabulary manager
+        vocabulary_manager.add_abbreviation(alias_lower, target_lower)
     
-    def register_aliases(self, aliases, target_verb):
+    def register_aliases(self, aliases: List[str], target_verb: str):
         """
         Register multiple aliases for an existing command.
         
         Args:
-            aliases (list): List of aliases to register
-            target_verb (str): The existing command verb
+            aliases: List of aliases to register
+            target_verb: The existing command verb
         """
         for alias in aliases:
             self.register_alias(alias, target_verb)
 
-# Global registry of commands
+# Global command registry instance
 command_registry = CommandRegistry()

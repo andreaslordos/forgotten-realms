@@ -14,18 +14,6 @@ SLEEP_HEALING_INTERVAL = 2  # Healing occurs every 2 ticks
 async def handle_sleep(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle the sleep command, putting the player to sleep for healing.
-    
-    Args:
-        cmd (dict): The parsed command
-        player (Player): The player executing the command
-        game_state (GameState): The game state
-        player_manager (PlayerManager): The player manager
-        online_sessions (dict): Online sessions dictionary
-        sio (SocketIO): Socket.IO instance
-        utils (module): Utilities module
-        
-    Returns:
-        str: Result message
     """
     # Check if player is already sleeping
     for sid, session in online_sessions.items():
@@ -68,20 +56,10 @@ async def handle_sleep(cmd, player, game_state, player_manager, online_sessions,
 async def handle_wake(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle the wake command, waking up a sleeping player.
-    
-    Args:
-        cmd (dict): The parsed command
-        player (Player): The player executing the command
-        game_state (GameState): The game state
-        player_manager (PlayerManager): The player manager
-        online_sessions (dict): Online sessions dictionary
-        sio (SocketIO): Socket.IO instance
-        utils (module): Utilities module
-        
-    Returns:
-        str: Result message
     """
-    subject = cmd.get("subject")  # Check if targeting another player
+    # Get subject (target player)
+    subject = cmd.get("subject")
+    subject_obj = cmd.get("subject_object")
     
     # Find the player's session ID
     current_sid = None
@@ -94,15 +72,20 @@ async def handle_wake(cmd, player, game_state, player_manager, online_sessions, 
         return "Error: Session not found"
     
     # If the player wants to wake someone else up
-    if subject:
-        # Check if player is asleep (can't wake others if you're asleep)
-        if online_sessions[current_sid].get('sleeping'):
-            return "You can't wake others while you're asleep."
-            
-        # Find the target player in the same room
-        target_player = None
-        target_sid = None
-        
+    target_player = None
+    target_sid = None
+    
+    # If we have a bound player object, use it
+    if subject_obj and hasattr(subject_obj, 'name') and hasattr(subject_obj, 'current_room'):
+        if subject_obj.current_room == player.current_room and subject_obj != player:
+            target_player = subject_obj
+            # Find their session ID
+            for sid, session in online_sessions.items():
+                if session.get('player') == target_player:
+                    target_sid = sid
+                    break
+    elif subject:
+        # Find the target player by name in the same room
         for sid, session in online_sessions.items():
             other_player = session.get('player')
             if (other_player and 
@@ -112,9 +95,11 @@ async def handle_wake(cmd, player, game_state, player_manager, online_sessions, 
                 target_player = other_player
                 target_sid = sid
                 break
-                
-        if not target_player:
-            return f"You don't see '{subject}' here."
+    
+    if target_player:
+        # Check if player is asleep (can't wake others if you're asleep)
+        if online_sessions[current_sid].get('sleeping'):
+            return "You can't wake others while you're asleep."
             
         # Check if the target player is sleeping
         if not online_sessions[target_sid].get('sleeping'):
@@ -140,14 +125,14 @@ async def wake_player(player, sid, online_sessions, sio, utils, max_stamina_reac
     Common function to wake a player up, either manually or automatically.
     
     Args:
-        player (Player): The player to wake up
-        sid (str): The player's session ID
-        online_sessions (dict): Online sessions dictionary
-        sio (SocketIO): Socket.IO instance
-        utils (module): Utilities module
-        max_stamina_reached (bool): Whether the player woke up due to max stamina
-        woken_by (Player, optional): The player who woke this player up
-        combat (bool): Whether the player was awakened by combat
+        player: The player to wake up
+        sid: The player's session ID
+        online_sessions: Dictionary of online sessions
+        sio: Socket.IO instance
+        utils: Utilities module
+        max_stamina_reached: Whether the player woke up due to max stamina
+        woken_by: The player who woke this player up
+        combat: Whether the player was awakened by combat
     """
     session = online_sessions[sid]
     
@@ -184,12 +169,6 @@ async def process_sleeping_players(sio, online_sessions, player_manager, utils):
     """
     Process all sleeping players to heal them at regular intervals.
     This should be called by the tick service.
-    
-    Args:
-        sio (SocketIO): Socket.IO instance
-        online_sessions (dict): Online sessions dictionary
-        player_manager (PlayerManager): The player manager
-        utils (module): Utilities module
     """
     for sid, session in list(online_sessions.items()):
         player = session.get('player')

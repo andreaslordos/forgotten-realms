@@ -7,19 +7,13 @@ from commands.registry import command_registry
 from models.Weapon import Weapon
 from models.CombatDialogue import CombatDialogue
 from commands.rest import wake_player
+from models.Item import Item
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Global dictionary to track active combat sessions
-# Format: {player_id: {
-#   'target': target_player, 
-#   'target_sid': target_sid,
-#   'weapon': weapon_item,
-#   'next_turn': timestamp,
-#   'initiative': True/False  # Whether this player has initiative (hits first in a cycle)
-# }}
 active_combats = {}
 
 # List of commands that are blocked during combat
@@ -29,15 +23,19 @@ RESTRICTED_COMMANDS = [
     "quit", "password", "set", "reset"
 ]
 
-# ===== ATTACK/KILL COMMAND =====
 async def handle_attack(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle attacking a target, initiating continuous combat.
     """
-    subject = cmd.get("subject")  # target
-    instrument = cmd.get("instrument")  # weapon
+    # Get the subject (target) from the parsed command
+    subject = cmd.get("subject")
+    subject_obj = cmd.get("subject_object")
     
-    if not subject:
+    # Get the optional instrument (weapon) from the parsed command
+    instrument = cmd.get("instrument")
+    instrument_obj = cmd.get("instrument_object")
+    
+    if not subject and not subject_obj:
         return "Who do you want to attack?"
     
     # Check if player is already in combat
@@ -49,27 +47,52 @@ async def handle_attack(cmd, player, game_state, player_manager, online_sessions
     target_player = None
     target_sid = None
     
-    if online_sessions:
-        for sid, session_data in online_sessions.items():
-            other_player = session_data.get('player')
-            if (other_player and 
-                other_player.current_room == player.current_room and 
-                other_player != player and
-                subject.lower() in other_player.name.lower()):
-                target_player = other_player
-                target_sid = sid
-                
-                # Check if target is sleeping and wake them up
-                if session_data.get('sleeping'):
-                    await wake_player(other_player, sid, online_sessions, sio, utils, woken_by=player)
-                break
+    # If we have a bound subject object that's a player
+    if subject_obj and hasattr(subject_obj, 'name') and hasattr(subject_obj, 'current_room'):
+        if subject_obj.current_room == player.current_room and subject_obj != player:
+            target_player = subject_obj
+            
+            # Find their session ID
+            for sid, session_data in online_sessions.items():
+                if session_data.get('player') == target_player:
+                    target_sid = sid
+                    
+                    # Check if target is sleeping and wake them up
+                    if session_data.get('sleeping'):
+                        await wake_player(target_player, sid, online_sessions, sio, utils, woken_by=player)
+                    break
+    else:
+        # Find a player by name
+        if online_sessions:
+            for sid, session_data in online_sessions.items():
+                other_player = session_data.get('player')
+                if (other_player and 
+                    other_player.current_room == player.current_room and 
+                    other_player != player and
+                    subject and subject.lower() in other_player.name.lower()):
+                    target_player = other_player
+                    target_sid = sid
+                    
+                    # Check if target is sleeping and wake them up
+                    if session_data.get('sleeping'):
+                        await wake_player(other_player, sid, online_sessions, sio, utils, woken_by=player)
+                    break
     
     # If a player target was found
     if target_player:
-        # Find weapon in inventory if specified
+        # Use the bound weapon if available, otherwise try to find it by name
         weapon_item = None
         
-        if instrument:
+        if instrument_obj and isinstance(instrument_obj, (Weapon, Item)) and instrument_obj in player.inventory:
+            weapon_item = instrument_obj
+            
+            # Check if it's a Weapon class with requirements
+            if isinstance(weapon_item, Weapon):
+                can_use, reason = weapon_item.can_use(player)
+                if not can_use:
+                    return reason
+        elif instrument:
+            # Find weapon in inventory by name
             for item in player.inventory:
                 if instrument.lower() in item.name.lower():
                     # Check if it's a weapon
@@ -134,49 +157,50 @@ async def handle_attack(cmd, player, game_state, player_manager, online_sessions
         # This would be implemented when the NPC/mob system is created
         return f"You don't see '{subject}' here."
 
-# ===== RETALIATE COMMAND =====
 async def handle_retaliate(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle retaliating with a weapon when already in combat.
-    
-    Args:
-        cmd (dict): The parsed command
-        player (Player): The player retaliating
-        game_state (GameState): The game state
-        player_manager (PlayerManager): The player manager
-        online_sessions (dict): Online sessions dictionary
-        sio (SocketIO): Socket.IO instance
-        utils (module): Utilities module
-        
-    Returns:
-        str: Retaliation message
     """
-    instrument = cmd.get("instrument")  # weapon
+    # Get the instrument (weapon) from the parsed command
+    instrument = cmd.get("instrument")
+    instrument_obj = cmd.get("instrument_object")
     
     # Check if player is in combat
     if player.name not in active_combats:
         return "You're not in combat with anyone."
     
     # If no weapon specified
-    if not instrument:
+    if not instrument and not instrument_obj:
         return "Retaliate with what? Specify a weapon."
     
-    # Find the weapon in inventory
+    # Use the bound weapon object if available
     weapon_item = None
-    for item in player.inventory:
-        if instrument.lower() in item.name.lower():
-            # Check if it's a weapon
-            if isinstance(item, Weapon) or hasattr(item, 'damage'):
-                weapon_item = item
-                
-                # If it's a Weapon, check requirements
-                if isinstance(item, Weapon):
-                    can_use, reason = item.can_use(player)
-                    if not can_use:
-                        return reason
-            else:
-                return f"{item.name} is not a weapon."
-            break
+    if instrument_obj and instrument_obj in player.inventory:
+        weapon_item = instrument_obj
+        
+        # If it's a Weapon, check requirements
+        if isinstance(weapon_item, Weapon):
+            can_use, reason = weapon_item.can_use(player)
+            if not can_use:
+                return reason
+        elif not hasattr(weapon_item, 'damage'):
+            return f"{weapon_item.name} is not a weapon."
+    else:
+        # Find the weapon in inventory by name
+        for item in player.inventory:
+            if instrument.lower() in item.name.lower():
+                # Check if it's a weapon
+                if isinstance(item, Weapon) or hasattr(item, 'damage'):
+                    weapon_item = item
+                    
+                    # If it's a Weapon, check requirements
+                    if isinstance(item, Weapon):
+                        can_use, reason = item.can_use(player)
+                        if not can_use:
+                            return reason
+                else:
+                    return f"{item.name} is not a weapon."
+                break
     
     if not weapon_item:
         return f"You don't have '{instrument}' in your inventory."
@@ -200,24 +224,12 @@ async def handle_retaliate(cmd, player, game_state, player_manager, online_sessi
     else:
         return f"You ready your {weapon_item.name} for combat!"
 
-# ===== FLEE COMMAND =====
 async def handle_flee(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle fleeing from combat.
-    
-    Args:
-        cmd (dict): The parsed command
-        player (Player): The player fleeing
-        game_state (GameState): The game state
-        player_manager (PlayerManager): The player manager
-        online_sessions (dict): Online sessions dictionary
-        sio (SocketIO): Socket.IO instance
-        utils (module): Utilities module
-        
-    Returns:
-        str: Flee result message
     """
-    subject = cmd.get("subject")  # Optional direction
+    # Get the subject (direction) from the parsed command
+    subject = cmd.get("subject")
     
     # Check if player is in combat
     if player.name not in active_combats:
@@ -697,3 +709,6 @@ command_registry.register_alias("fight", "attack")
 command_registry.register_alias("k", "attack")
 command_registry.register_alias("ret", "retaliate")
 command_registry.register_alias("run", "flee")
+
+# Log the registrations for verification
+logger.info("Registered command aliases: 'kill', 'fight', 'k' → 'attack'")
