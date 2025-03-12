@@ -11,52 +11,62 @@ async def handle_give(cmd, player, game_state, player_manager, online_sessions, 
     Give an item to another player in the same room.
     Syntax: give <item> to <player>
     """
-    # Get the subject (target player) and instrument (item) from the parsed command
+    # Get the subject (item or player) and instrument (player or item) from the parsed command
     subject = cmd.get("subject")
     subject_obj = cmd.get("subject_object")
     instrument = cmd.get("instrument")
     instrument_obj = cmd.get("instrument_object")
     
-    # Check if reversed_syntax is needed (give item to player vs. give player item)
+    # Check if reversed_syntax flag is set (give item to player)
     reversed_syntax = cmd.get("reversed_syntax", False)
     
-    # If reversed syntax, swap subject and instrument
+    # In normal syntax: "give player item" → subject=player, instrument=item
+    # In reversed syntax: "give item to player" → subject=player, instrument=item
+    
+    # For reversed syntax like "give <item> to <player>"
+    # subject = player name, instrument = item name
     if reversed_syntax:
-        temp = subject
-        subject = instrument
-        instrument = temp
-        
-        temp_obj = subject_obj
-        subject_obj = instrument_obj
-        instrument_obj = temp_obj
+        # For "give <item> to <player>", the parameters are already correct:
+        # instrument = item, subject = player
+        item_name = instrument
+        item_obj = instrument_obj
+        target_name = subject
+        target_obj = subject_obj
+    else:
+        # For "give <player> <item>", we need to swap them:
+        # subject = player, instrument = item
+        item_name = instrument
+        item_obj = instrument_obj
+        target_name = subject
+        target_obj = subject_obj
     
-    logger.debug(f"Give command parsed: item={instrument}, target={subject}")
+    logger.debug(f"Give command: target={target_name}, item={item_name}")
     
-    if not instrument and not instrument_obj:
+    if not item_name and not item_obj:
         return "What do you want to give?"
     
-    if not subject and not subject_obj:
+    if not target_name and not target_obj:
         return "To whom do you want to give something?"
     
     # Look for the item in the giver's inventory - prefer bound object
     item = None
-    if instrument_obj and instrument_obj in player.inventory:
-        item = instrument_obj
+    if item_obj and item_obj in player.inventory:
+        item = item_obj
     else:
         for it in player.inventory:
-            if instrument.lower() in it.name.lower():
+            if item_name.lower() in it.name.lower():
                 item = it
                 break
     if not item:
-        return f"You don't have '{instrument}' in your inventory."
+        return f"You don't have '{item_name}' in your inventory."
     
     # Find the target player - prefer bound object
     target_player = None
     target_sid = None
     
-    if subject_obj and hasattr(subject_obj, 'name') and hasattr(subject_obj, 'current_room'):
-        if subject_obj.current_room == player.current_room:
-            target_player = subject_obj
+    if target_obj and hasattr(target_obj, 'name') and hasattr(target_obj, 'current_room'):
+        if target_obj.current_room == player.current_room:
+            target_player = target_obj
             # Find their session ID
             for sid, session in online_sessions.items():
                 if session.get('player') == target_player:
@@ -67,13 +77,13 @@ async def handle_give(cmd, player, game_state, player_manager, online_sessions, 
         for sid, session in online_sessions.items():
             other = session.get("player")
             if other and other.current_room == player.current_room and other != player:
-                if subject.lower() in other.name.lower():
+                if target_name.lower() in other.name.lower():
                     target_player = other
                     target_sid = sid
                     break
     
     if not target_player:
-        return f"You don't see '{subject}' here."
+        return f"You don't see '{target_name}' here."
     
     # Attempt to add the item to the target's inventory
     success, message = target_player.add_item(item)
