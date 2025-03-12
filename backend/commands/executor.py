@@ -1,4 +1,4 @@
-# commands/executor.py (Updated)
+# commands/executor.py (Patched)
 
 import asyncio
 import logging
@@ -40,11 +40,36 @@ async def execute_command(cmd, player, game_state, player_manager, online_sessio
     
     # Get the handler for this verb
     handler = command_registry.get_handler(verb)
+    
     if handler:
         # Call the handler with the parsed command and appropriate context
+        logger.debug("Calling handler")
         result = await handler(cmd, player, game_state, player_manager, online_sessions, sio, utils)
         return result
     else:
+        logger.debug("Did not find handler, checking if player name")
+        # New code: Check if verb is a player name for a private message
+        if online_sessions and verb:
+            # Look for players with matching names
+            recipient_found = False
+            for sid, session_data in online_sessions.items():
+                other_player = session_data.get('player')
+                if other_player and verb.lower() in other_player.name.lower():
+                    recipient_found = True
+                    # It's a private message! Route to the tell handler
+                    from commands.communication import handle_tell
+                    # Reformat the command to use the correct fields
+                    pm_cmd = {
+                        "verb": verb,              # Use the player name as is
+                        "subject": cmd.get("subject"),  # Use the message text
+                        "original": cmd.get("original")
+                    }
+                    result = await handle_tell(pm_cmd, player, game_state, player_manager, online_sessions, sio, utils)
+                    return result
+            
+            if recipient_found:
+                return ""  # Return empty string if recipient found (handler will send messages)
+        
         return f"I don't know how to '{verb}'."
 
 async def handle_movement(cmd, player, game_state, player_manager, online_sessions, sio, utils):
