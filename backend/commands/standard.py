@@ -304,24 +304,64 @@ async def handle_help(cmd, player, game_state, player_manager, online_sessions, 
     
     # General help
     help_text = (
-        "Commands:\n"
-        "  shout <message>       - Broadcasts a global shout.\n"
-        "  \"<message>           - Sends a message to everyone in your current room.\n"
-        "  <recipient> <msg>     - Sends a private message to a specific player.\n"
-        "  users                 - Lists online users.\n"
-        "  help [<topic>]        - Displays this help information.\n"
-        "  info                  - Provides information about the game and its objectives.\n"
-        "  <direction>           - Move in a specific direction (n, s, e, w, north, south, etc).\n"
-        "  look [<item>]         - Describes your current location or examines something.\n"
-        "  get <item>            - Pick up an item (also: g).\n"
-        "  open <container>      - Open a container.\n"
-        "  close <container>     - Close a container.\n"
-        "  drop <item>           - Drop an item from your inventory (also: dr).\n"
-        "  inventory             - Lists items in your inventory (also: i, inv).\n"
-        "  exits                 - Lists available exits (also: x).\n"
-        "  score                 - Shows your current score and stats (also: sc).\n"
-        "  levels                - Shows the levels of experience\n"
-        "  quit                  - Exit the game (also: qq, bye).\n"
+        "Commands:\n\n"
+        "MOVEMENT:\n"
+        "  n, s, e, w                   - Move north, south, east, west (also: north, south, etc).\n"
+        "  ne, nw, se, sw               - Move diagonally (also: northeast, etc).\n"
+        "  up, down, in, out            - Move vertically or through entrances/exits.\n"
+        "  flee <direction>             - Escape from combat (drops items, loses points).\n\n"
+        
+        "COMMUNICATION:\n"
+        "  \"<message>                  - Say something to everyone in your room (also: say).\n"
+        "  <player> <message>           - Send a private message to a specific player (also: tell).\n"
+        "  shout <message>              - Broadcast to all players in the game.\n"
+        "  act <action>                 - Perform an emote or action.\n"
+        "  converse                     - Toggle conversation mode (auto-say).\n\n"
+        
+        "ITEMS:\n"
+        "  look [<item>]                - Examine your surroundings or a specific item (also: l).\n"
+        "  get <item>                   - Pick up an item (also: g, take).\n"
+        "  drop <item>                  - Drop an item (also: dr).\n"
+        "  inventory                    - List items you're carrying (also: i, inv).\n"
+        "  get all                      - Get all available items in the room.\n"
+        "  get t                        - Get all treasure items in the room.\n"
+        "  drop all                     - Drop everything you're carrying.\n\n"
+        
+        "CONTAINERS:\n"
+        "  open <container>             - Open a container.\n"
+        "  close <container>            - Close a container.\n"
+        "  put <item> in <container>    - Put an item into a container.\n"
+        "  get <item> from <container>  - Take an item from a container.\n"
+        "  empty <container>            - Empty all contents of a container into the room.\n\n"
+        
+        "INTERACTIONS:\n"
+        "  <verb> <object>              - Interact with objects (push, pull, move, etc).\n"
+        "  <verb> <object> with <item>  - Use an item with an object.\n"
+        "  read <object>                - Read inscriptions or examine objects closely.\n"
+        "  use <item> with <object>     - Try to use items with objects in the world.\n\n"
+        
+        "PLAYER INTERACTIONS:\n"
+        "  attack <player>              - Attack another player (also: k, kill).\n"
+        "  retaliate with <weapon>      - Use a weapon in combat (also: ret).\n"
+        "  give <item> to <player>      - Give an item to another player.\n"
+        "  steal <item> from <player>   - Attempt to steal from another player.\n\n"
+        
+        "REST:\n"
+        "  sleep                        - Go to sleep to recover stamina (also: rest).\n"
+        "  wake                         - Wake up from sleep (also: awake).\n"
+        "  wake <player>                - Wake up another sleeping player.\n\n"
+        
+        "INFORMATION:\n"
+        "  score                        - Show your current stats (also: sc).\n"
+        "  levels                       - Show the levels of experience.\n"
+        "  exits                        - Show available exits from your location (also: x).\n"
+        "  users                        - List online players (also: who).\n"
+        "  info                         - Get game information and objectives.\n"
+        "  help [<command>]             - Show this help or help for a specific command.\n\n"
+        
+        "ACCOUNT:\n"
+        "  password                     - Change your account password.\n"
+        "  quit                         - Exit the game (also: qq, bye).\n"
     )
     return help_text
 
@@ -470,6 +510,7 @@ command_registry.register("debug", handle_diagnostic, "Show diagnostic info for 
 
 # Register aliases
 command_registry.register_alias("l", "look")
+command_registry.register_alias("commands", "help")
 command_registry.register_alias("i", "inventory")
 command_registry.register_alias("inv", "inventory")
 command_registry.register_alias("g", "get")
