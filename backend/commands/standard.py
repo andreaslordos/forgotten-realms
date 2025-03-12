@@ -160,9 +160,14 @@ async def handle_get(cmd, player, game_state, player_manager, online_sessions, s
     # Handle getting a specific item - prefer the bound object if available
     found_item = subject_obj
     
+    # Check if the found item is from inventory rather than the room
+    if found_item in player.inventory:
+        # The parser bound to an item in inventory, but we need an item from the room
+        found_item = None  # Reset to look in the room instead
+    
     # If no bound object, search for the item by name
     if not found_item:
-        # Look for a matching item in the room
+        # Look for a matching item in the room ONLY
         all_visible_items = current_room.get_items(game_state)
         for item in all_visible_items:
             if subject.lower() in item.name.lower():
