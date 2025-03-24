@@ -255,7 +255,7 @@ async def handle_interaction(cmd, player, game_state, player_manager, online_ses
 
 # Register all the interaction verbs
 common_interaction_verbs = [
-    "open", "close", "push", "pull", "turn", "twist", "light", "extinguish", "touch",
+    "open", "close", "push", "pull", "turn", "twist", "light", "extinguish", "touch", "place",
     "cut", "break", "chop", "hit", "move", "unlock", "lock", "knock", "read", "tie", "use"
 ]
 

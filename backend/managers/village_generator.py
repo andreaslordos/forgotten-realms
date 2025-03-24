@@ -852,13 +852,16 @@ def add_stateful_items(rooms):
         verb="place",
         required_instrument="stone",
         message="You place the rune stone in a matching indentation. It begins to glow softly.",
-        from_state="empty"
+        from_state="empty",
+        target_state="partial",
+        consume_instrument=True
     )
     shrine_altar.add_interaction(
         verb="place",
         required_instrument="stone",
         message="You place another rune stone in its matching indentation. The altar pulses with energy.",
         from_state="partial"
+        
     )
     shrine_altar.add_interaction(
         verb="touch",
@@ -1054,7 +1057,7 @@ def add_regular_items(rooms):
                "into it pulses gently with inner light."
     )
     
-    rooms["library_astronomy"].add_item(blue_rune_stone)
+    rooms["shrine_interior"].add_item(blue_rune_stone)
     
     # Remaining items as before
     frayed_rope = Item(
