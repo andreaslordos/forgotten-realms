@@ -12,6 +12,10 @@ function App() {
   // Current command input
   const [command, setCommand] = useState("");
 
+  // Command history
+  const [commandHistory, setCommandHistory] = useState([]);
+  const [historyPosition, setHistoryPosition] = useState(0);
+
   // Whether to show password or text
   const [inputType, setInputType] = useState("text");
 
@@ -24,9 +28,10 @@ function App() {
   // Whether the input is disabled (e.g., after connection closed)
   const [inputDisabled, setInputDisabled] = useState(false);
 
-  // Socket and ref for scrolling
+  // Socket and refs for scrolling and input selection
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -92,8 +97,7 @@ function App() {
   }, []);
 
   // Handle command submission
-// This update modifies the handleCommandSubmit function in App.js to prevent blank password submissions
-const handleCommandSubmit = (e) => {
+  const handleCommandSubmit = (e) => {
     e.preventDefault();
     if (inputDisabled) {
       return;
@@ -102,7 +106,6 @@ const handleCommandSubmit = (e) => {
     // In game phase, if blank input is entered, just add a new prompt line and do nothing else.
     if (command.trim() === "" && phase === "game") {
       setMessages((prev) => [...prev, "* "]);
-      setCommand("");
       return;
     }
 
@@ -126,7 +129,84 @@ const handleCommandSubmit = (e) => {
       return newMessages;
     });
     socketRef.current.emit('command', command);
-    setCommand("");
+    
+    // Only clear input during auth phase, keep it in game phase
+    if (phase !== "game") {
+      setCommand("");
+    } else {
+      // Add command to history if it has content and isn't a duplicate of the last command
+      if (command.trim() !== "") {
+        setCommandHistory(prevHistory => {
+          if (prevHistory.length === 0 || prevHistory[0] !== command) {
+            return [command, ...prevHistory]; // Add to front of array
+          }
+          return prevHistory;
+        });
+      }
+      
+      // Reset history position
+      setHistoryPosition(0);
+      
+      // Select all text for easy overtyping
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.select();
+        }
+      }, 10);
+    }
+  };
+
+  // Handle up/down arrow keys for command history
+  const handleKeyDown = (e) => {
+    // Only process in game phase
+    if (phase !== "game") {
+      return;
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      
+      // If we're already at the end of history, don't go further
+      if (historyPosition >= commandHistory.length) {
+        return;
+      }
+      
+      // If we're at position 0 (current command) and it's not in history yet, 
+      // and it has content, add it to history
+      if (historyPosition === 0 && command.trim() !== "" && 
+          (commandHistory.length === 0 || commandHistory[0] !== command)) {
+        setCommandHistory(prev => [command, ...prev]);
+      }
+      
+      // Move to the next position in history
+      const newPosition = historyPosition + 1;
+      setHistoryPosition(newPosition);
+      
+      // Set command to the history item (if available)
+      if (newPosition <= commandHistory.length) {
+        setCommand(commandHistory[newPosition - 1]);
+      }
+    } 
+    else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      
+      // If we're at position 0, can't go further down
+      if (historyPosition <= 0) {
+        return;
+      }
+      
+      // Move to previous position in history
+      const newPosition = historyPosition - 1;
+      setHistoryPosition(newPosition);
+      
+      // If we're back to position 0, clear command
+      if (newPosition === 0) {
+        setCommand("");
+      } else {
+        // Set command to the history item
+        setCommand(commandHistory[newPosition - 1]);
+      }
+    }
   };
 
   return (
@@ -180,10 +260,12 @@ const handleCommandSubmit = (e) => {
         {/* Input bar */}
         <form onSubmit={handleCommandSubmit} style={{ backgroundColor: "#ffff00", padding: "0.5rem" }}>
           <input
+            ref={inputRef}
             type={inputType}
             placeholder={inputDisabled ? "Connection Closed" : "Type your command...."}
             value={command}
             onChange={(e) => setCommand(e.target.value)}
+            onKeyDown={handleKeyDown}
             disabled={inputDisabled}
             style={{
               width: "100%",
