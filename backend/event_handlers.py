@@ -92,6 +92,9 @@ def register_handlers(sio, auth_manager, player_manager, game_state, online_sess
                 await utils.send_message(sio, sid, "New persona detected. What is your sex? (M/F)")
             return
 
+        # Processes the authentication/registration flow.
+        # Depending on the current auth state, this function guides the user
+        # through login or registration and then calls post_login on success.
         # Stage 2: Awaiting Password for Existing Persona
         elif session['auth_state'] == 'awaiting_password':
             username = session['temp_data']['username']
@@ -107,15 +110,45 @@ def register_handlers(sio, auth_manager, player_manager, game_state, online_sess
                 else:
                     await utils.send_message(sio, sid, "Invalid password. Try again:")
                     return
+            
+            # Get the player and capture the last login time BEFORE updating it
             player = player_manager.login(username)
+            last_login_time = player.last_active  # Store the previous login time
+            
+            # Now update the session and authentication state
             session['player'] = player
             del session['auth_state']
             await sio.emit('setInputType', 'text', room=sid)
-            last_login = player.last_active.strftime("%H:%M:%S")
-            login_message = (f"\n\n"
-                             f"Yes!\n"
-                             f"Your last game was today at {last_login}.\n\n"
-                             f"Hello again, {player.name} the {player.level}!\n\n")
+            
+            # Format the last login time with appropriate date context
+            from datetime import datetime, timedelta
+            now = datetime.now()
+            
+            # Handle the case where this is the first login (no previous last_active timestamp)
+            if last_login_time:
+                if now.date() == last_login_time.date():
+                    # Same day - show only time
+                    login_time = last_login_time.strftime("%H:%M:%S")
+                    time_message = f"today at {login_time}"
+                elif now.date() - last_login_time.date() == timedelta(days=1):
+                    # Yesterday
+                    login_time = last_login_time.strftime("%H:%M:%S")
+                    time_message = f"yesterday at {login_time}"
+                else:
+                    # Different day, show full date and time
+                    time_message = last_login_time.strftime("%Y-%m-%d at %H:%M:%S")
+                
+                login_message = (f"\n\n"
+                                f"Yes!\n"
+                                f"Your last game was {time_message}.\n\n"
+                                f"Hello again, {player.name} the {player.level}!\n\n")
+            else:
+                # First time login
+                login_message = (f"\n\n"
+                                f"Yes!\n"
+                                f"This is your first login.\n\n"
+                                f"Hello, {player.name} the {player.level}!\n\n")
+            
             await utils.send_message(sio, sid, login_message)
             await post_login(sid, player)
             return
