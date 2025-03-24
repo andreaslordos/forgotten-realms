@@ -219,7 +219,8 @@ class VocabularyManager:
             "sw": "southwest",
             "u": "up",
             "d": "down",
-            "t": "treasure"
+            "t": "treasure",
+            "o": "out",
         }
         self.abbreviations.update(simple_abbreviations)
         
