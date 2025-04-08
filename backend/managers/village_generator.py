@@ -1201,7 +1201,7 @@ def add_weapons(rooms):
     sword = Weapon(
         name="sword",
         id="sword_01",
-        description="A finely crafted steel sword with magical runes.",
+        description="A finely crafted steel sword with magical runes lies here.",
         weight=5,
         value=150,
         damage=10,
