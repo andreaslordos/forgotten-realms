@@ -16,7 +16,8 @@ async def handle_look(cmd, player, game_state, player_manager, online_sessions, 
     
     # If no subject, look at the room
     if not subject and not subject_obj:
-        return build_look_description(player, game_state, online_sessions, look=True)
+        mob_manager = getattr(utils, 'mob_manager', None) if utils and hasattr(utils, '__dict__') else None
+        return build_look_description(player, game_state, online_sessions, look=True, mob_manager=mob_manager)
     
     # If we have a bound object, use it directly
     if subject_obj:

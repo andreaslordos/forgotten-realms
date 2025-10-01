@@ -8,6 +8,10 @@ class AuthManager:
     def __init__(self, save_file="storage/auth.json"):
         self.save_file = save_file
         self.credentials = {}
+        # Ensure storage directory exists
+        directory = os.path.dirname(self.save_file)
+        if directory and not os.path.exists(directory):
+            os.makedirs(directory)
         self.load_credentials()
 
     def load_credentials(self):

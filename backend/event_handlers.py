@@ -48,7 +48,8 @@ def register_handlers(sio, auth_manager, player_manager, game_state, online_sess
         await utils.send_stats_update(sio, sid, player)
 
         # Build and send the initial room description.
-        initial_text = build_look_description(player, game_state, online_sessions=online_sessions)
+        mob_manager = getattr(utils, 'mob_manager', None) if utils and hasattr(utils, '__dict__') else None
+        initial_text = build_look_description(player, game_state, online_sessions=online_sessions, mob_manager=mob_manager)
         await utils.send_message(sio, sid, initial_text)
 
         # Notify other players in the room.

@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 from managers.auth import AuthManager
 from managers.player import PlayerManager
 from managers.game_state import GameState
+from managers.mob_manager import MobManager
+from managers.mob_definitions import get_mob_definitions
 from managers.map_generator import generate_3x3_grid
 from managers.village_generator import generate_village_of_chronos
 from globals import online_sessions
@@ -47,20 +49,31 @@ sio.attach(app)
 logger.info("Initializing game managers and state...")
 auth_manager = AuthManager()
 player_manager = PlayerManager(spawn_room="spawn", auth_manager=auth_manager)
+mob_manager = MobManager()
+
+# Load mob definitions
+mob_definitions = get_mob_definitions()
+mob_manager.load_mob_definitions(mob_definitions)
+logger.info(f"Loaded {len(mob_definitions)} mob definitions.")
+
 game_state = GameState()
 if not game_state.rooms:
-    logger.info("No game rooms found. Generating a new 3x3 grid...")
-    new_rooms = generate_village_of_chronos()
+    logger.info("No game rooms found. Generating village with mobs...")
+    new_rooms = generate_village_of_chronos(mob_manager=mob_manager)
     for room in new_rooms.values():
         game_state.add_room(room)
     # game_state.save_rooms()
-    logger.info("Game rooms generated and saved.")
+    logger.info("Game rooms and mobs generated.")
 else:
     logger.info("Game rooms loaded from existing state.")
 
 # Set context for notifications.
 set_context(online_sessions, lambda sid, msg: utils.send_message(sio, sid, msg))
 logger.info("Notification context set successfully.")
+
+# Attach mob_manager to utils for global access
+utils.mob_manager = mob_manager
+logger.info("Mob manager attached to utils.")
 
 # Register Socket.IO event handlers.
 logger.info("Registering Socket.IO event handlers...")

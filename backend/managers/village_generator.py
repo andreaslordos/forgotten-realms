@@ -7,22 +7,25 @@ from models.ContainerItem import ContainerItem
 from models.SpecializedRooms import SwampRoom
 from models.Weapon import Weapon
 
-def generate_village_of_chronos():
+def generate_village_of_chronos(mob_manager=None):
     """
     Generates the Village of Chronos, the default starting area.
     Returns a dictionary mapping room_id to Room objects.
+
+    Args:
+        mob_manager (MobManager, optional): Mob manager for spawning mobs
     """
     rooms = {}
-    
+
     # Create all rooms
     generate_rooms(rooms)
-    
+
     # Connect rooms with exits
     connect_exits(rooms)
-    
+
     # Add stateful items to rooms
     add_stateful_items(rooms)
-    
+
     # Add regular items to rooms
     add_regular_items(rooms)
 
@@ -30,8 +33,43 @@ def generate_village_of_chronos():
     add_container_items(rooms)
 
     add_weapons(rooms)
-    
+
+    # Spawn mobs if mob_manager provided
+    if mob_manager:
+        spawn_initial_mobs(mob_manager, rooms)
+
     return rooms
+
+
+def spawn_initial_mobs(mob_manager, rooms):
+    """
+    Spawn initial mobs in the village.
+
+    Args:
+        mob_manager (MobManager): The mob manager
+        rooms (dict): Dictionary of room objects
+    """
+    # Helper function to spawn and add mob to room
+    def spawn_mob_in_room(mob_type, room_id):
+        if room_id in rooms:
+            mob_manager.spawn_mob(mob_type, room_id)
+            mob = mob_manager.mobs.get(list(mob_manager.mobs.keys())[-1])
+            if mob:
+                rooms[room_id].add_item(mob)
+
+    # Village area - peaceful NPCs
+    spawn_mob_in_room("village_merchant", "marketplace")
+    spawn_mob_in_room("guard_captain", "spawn")  # Patrols spawn/village_gates/guard_tower
+    spawn_mob_in_room("elder_sage", "cottage_garden")  # Patrols cottage areas
+
+    # Forest area - goblin scouts (moderate danger)
+    spawn_mob_in_room("goblin_scout", "forest_clearing")
+
+    # Underground/shrine area - skeletons (easy, instant death)
+    spawn_mob_in_room("brittle_skeleton", "well_bottom")
+
+    # Swamp area - dire wolves (high danger)
+    spawn_mob_in_room("dire_wolf", "swamp1")
 
 def generate_rooms(rooms):
     """Generate all the rooms for the village."""

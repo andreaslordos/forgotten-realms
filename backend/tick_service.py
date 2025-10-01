@@ -45,8 +45,15 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
             
             # Process combat ticks on their own interval
             if current_time - last_combat_tick >= COMBAT_TICK_INTERVAL:
-                await process_combat_tick(sio, online_sessions, player_manager, game_state, utils)
+                # Get mob_manager if available (passed via utils or global context)
+                mob_manager = getattr(utils, 'mob_manager', None) if hasattr(utils, '__dict__') else None
+                await process_combat_tick(sio, online_sessions, player_manager, game_state, utils, mob_manager)
                 last_combat_tick = current_time
+
+            # Process mob AI ticks (if mob_manager is available)
+            mob_manager = getattr(utils, 'mob_manager', None) if hasattr(utils, '__dict__') else None
+            if mob_manager:
+                await mob_manager.tick_all_mobs(sio, online_sessions, player_manager, game_state, utils)
             
             # Process sleeping players for healing on each tick
             await process_sleeping_players(sio, online_sessions, player_manager, utils)
@@ -113,10 +120,12 @@ async def start_background_tick(sio, online_sessions, player_manager, game_state
                             cmd_str = f"say {cmd_str}"
                     
                     # Create context for command parsing
+                    mob_manager = getattr(utils, 'mob_manager', None) if hasattr(utils, '__dict__') else None
                     context = {
                         'player': player,
                         'game_state': game_state,
-                        'online_sessions': online_sessions
+                        'online_sessions': online_sessions,
+                        'mob_manager': mob_manager
                     }
                     
                     # Get players in room for context

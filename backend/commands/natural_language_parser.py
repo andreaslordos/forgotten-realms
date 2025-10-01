@@ -748,14 +748,14 @@ class ObjectBinder:
 
     def bind_subject(self, subject_str: str, player, game_state, context):
         """
-        Bind a subject string to game objects.
-        
+        Bind a subject string to game objects (including mobs).
+
         Args:
             subject_str: The subject string to bind
             player: The player object
             game_state: The game state
             context: The command context
-            
+
         Returns:
             The bound object(s) or None if no matching object is found
         """
@@ -765,6 +765,15 @@ class ObjectBinder:
         player_obj = self.bind_entity(subject_str, 'subject', player, game_state, context)
         if player_obj:
             return player_obj
+
+        # Try to bind to a mob (if mob_manager is available in context)
+        mob_manager = context.get('mob_manager') if isinstance(context, dict) else None
+        if mob_manager and player.current_room:
+            mobs_in_room = mob_manager.get_mobs_in_room(player.current_room)
+            for mob in mobs_in_room:
+                if subject_str.lower() in mob.name.lower():
+                    logger.debug(f"Found mob: {mob.name}")
+                    return mob
         
         # Handle pronouns
         if subject_str.lower() in ["it", "him", "her", "them"]:
@@ -807,14 +816,14 @@ class ObjectBinder:
     
     def bind_instrument(self, instrument_str: str, player, game_state, context):
         """
-        Bind an instrument string to game objects.
-        
+        Bind an instrument string to game objects (including mobs).
+
         Args:
             instrument_str: The instrument string to bind
             player: The player object
             game_state: The game state
             context: The command context
-            
+
         Returns:
             The bound object(s) or None if no matching object is found
         """
@@ -824,6 +833,15 @@ class ObjectBinder:
         player_obj = self.bind_entity(instrument_str, 'instrument', player, game_state, context)
         if player_obj:
             return player_obj
+
+        # Try to bind to a mob (if mob_manager is available in context)
+        mob_manager = context.get('mob_manager') if isinstance(context, dict) else None
+        if mob_manager and player.current_room:
+            mobs_in_room = mob_manager.get_mobs_in_room(player.current_room)
+            for mob in mobs_in_room:
+                if instrument_str.lower() in mob.name.lower():
+                    logger.debug(f"Found mob: {mob.name}")
+                    return mob
         
         # Handle pronouns
         if instrument_str.lower() in ["it", "him", "her", "them"]:

@@ -243,7 +243,8 @@ async def handle_interaction(cmd, player, game_state, player_manager, online_ses
             
         # If requested, show the full room description
         if valid_interaction.get('show_room_desc', False):
-            return f"{message}{exit_msg}\n\n{build_look_description(player, game_state, online_sessions)}"
+            mob_manager = getattr(utils, 'mob_manager', None) if utils and hasattr(utils, '__dict__') else None
+            return f"{message}{exit_msg}\n\n{build_look_description(player, game_state, online_sessions, mob_manager=mob_manager)}"
             
         return f"{message}{exit_msg}"
         

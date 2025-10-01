@@ -75,7 +75,7 @@ async def execute_command(cmd, player, game_state, player_manager, online_sessio
 async def handle_movement(cmd, player, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle movement commands.
-    
+
     Args:
         cmd: The parsed command
         player: The player executing the command
@@ -84,10 +84,15 @@ async def handle_movement(cmd, player, game_state, player_manager, online_sessio
         online_sessions: Optional online sessions dictionary
         sio: Optional Socket.IO instance
         utils: Optional utilities module
-        
+
     Returns:
         The result of the movement
     """
+    # Check if player is in combat
+    from commands.combat import is_in_combat
+    if is_in_combat(player.name):
+        return "You can't move while in combat! Use 'flee <direction>' to escape."
+
     direction = cmd["verb"]
     old_room = game_state.get_room(player.current_room)
     
@@ -107,33 +112,66 @@ async def handle_movement(cmd, player, game_state, player_manager, online_sessio
         # Notify arrival in the new room
         if online_sessions and sio and utils:
             await broadcast_arrival(player)
-        
-        return build_look_description(player, game_state, online_sessions)
+
+        # Check for aggressive mobs in the new room and trigger immediate attack if needed
+        mob_manager = getattr(utils, 'mob_manager', None) if hasattr(utils, '__dict__') else None
+        if mob_manager:
+            mobs_in_room = mob_manager.get_mobs_in_room(new_room_id)
+            for mob in mobs_in_room:
+                if mob.can_attack_player():
+                    # Found an aggressive mob - initiate combat
+                    from commands.combat import mob_initiate_attack, is_in_combat
+                    # Only attack if not already in combat
+                    if not is_in_combat(player.name) and not is_in_combat(mob.id):
+                        player_sid = None
+                        for sid, session_data in online_sessions.items():
+                            if session_data.get('player') == player:
+                                player_sid = sid
+                                break
+                        if player_sid:
+                            await mob_initiate_attack(mob, player, player_sid, player_manager, game_state, online_sessions, sio, utils)
+                            break  # Only one mob attacks at a time
+
+        return build_look_description(player, game_state, online_sessions, mob_manager=mob_manager)
     else:
         return "You can't go that way."
 
-def build_look_description(player, game_state, online_sessions=None, look=False):
-    """Build a description of the current room."""
+def build_look_description(player, game_state, online_sessions=None, look=False, mob_manager=None):
+    """Build a description of the current room (including mobs)."""
     # This function remains largely unchanged
     current_room = game_state.get_room(player.current_room)
-    
+
     # Build the room description
     room_desc = f"{current_room.name}"
-    
+
     if current_room.room_id not in player.visited or look:
         room_desc += f"\n{current_room.description}"
         player.visited.add(current_room.room_id)
-    
-    # Get all visible items
+
+    # Get all visible items (excluding mobs - they're listed separately)
     visible_items = current_room.get_items(game_state)
-    
+
+    # Filter out mobs from items (mobs are StatefulItems but we list them separately)
+    from models.Mobile import Mobile
+    non_mob_items = [item for item in visible_items if not isinstance(item, Mobile)]
+
     # List items in the room
-    if visible_items:
+    if non_mob_items:
         items_desc = []
-        for item in visible_items:
+        for item in non_mob_items:
             items_desc.append(item.description)
         if items_desc:
             room_desc += "\n" + "\n".join(items_desc)
+
+    # List mobs in the room
+    if mob_manager:
+        mobs_in_room = mob_manager.get_mobs_in_room(current_room.room_id)
+        if mobs_in_room:
+            for mob in mobs_in_room:
+                # Check if mob is in combat
+                from commands.combat import is_in_combat
+                combat_status = " (in combat)" if is_in_combat(mob.id) else ""
+                room_desc += f"\n{mob.description}{combat_status}"
     
     # List other players present in the room
     players_here = []
