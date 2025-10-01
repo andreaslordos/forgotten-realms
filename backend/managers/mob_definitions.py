@@ -154,7 +154,7 @@ def get_mob_definitions():
 
         # Wandering elder - peaceful mob that patrols (for quests/interactions)
         "elder_sage": {
-            "name": "Elder Chronister",
+            "name": "Elder",
             "description": "The village Elder wanders slowly, lost in thought about the nature of time.",
             "strength": 10,
             "dexterity": 10,
