@@ -5,7 +5,7 @@
 import asyncio
 import logging
 import time
-from typing import Awaitable, Callable, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, cast
 
 from commands.combat import process_combat_tick
 from commands.communication import handle_pending_communication
@@ -33,24 +33,24 @@ class TickService:
 
     def __init__(
         self,
-        sio,
-        online_sessions,
-        player_manager,
-        game_state,
-        utils,
+        sio: Any,
+        online_sessions: Dict[str, Dict[str, Any]],
+        player_manager: Any,
+        game_state: Any,
+        utils: Any,
         *,
         time_func: Optional[TimeFunc] = None,
         sleep_func: Optional[SleepFunc] = None,
         combat_tick_interval: float = COMBAT_TICK_INTERVAL,
         tick_interval: float = DEFAULT_TICK_INTERVAL,
         inactivity_reset_seconds: float = INACTIVITY_RESET_SECONDS,
-        parse_command=parse_command_wrapper,
-        execute_command=execute_command,
-        handle_pending_communication=handle_pending_communication,
-        combat_tick_callable=process_combat_tick,
-        sleeping_players_callable=process_sleeping_players,
-        broadcast_logout_callable=broadcast_logout,
-    ):
+        parse_command: Any = parse_command_wrapper,
+        execute_command: Any = execute_command,
+        handle_pending_communication: Any = handle_pending_communication,
+        combat_tick_callable: Any = process_combat_tick,
+        sleeping_players_callable: Any = process_sleeping_players,
+        broadcast_logout_callable: Any = broadcast_logout,
+    ) -> None:
         self.sio = sio
         self.online_sessions = online_sessions
         self.player_manager = player_manager
@@ -150,15 +150,17 @@ class TickService:
                 self.utils,
             )
 
-    def _get_mob_manager(self):
+    def _get_mob_manager(self) -> Any:
         return getattr(self.utils, "mob_manager", None)
 
-    def _update_last_activity(self, session, current_time: float) -> None:
+    def _update_last_activity(
+        self, session: Dict[str, Any], current_time: float
+    ) -> None:
         if session.get("command_queue") or session.get("player"):
             self._last_activity = current_time
 
     async def _process_player_command(
-        self, sid, session, player, command_queue: List[str]
+        self, sid: str, session: Dict[str, Any], player: Any, command_queue: List[str]
     ) -> None:
         cmd_str = command_queue.pop(0)
         logger.info(
@@ -237,7 +239,9 @@ class TickService:
         finally:
             await self._send_stats_and_handle_disconnect(sid, session, player)
 
-    async def _handle_sleeping_player(self, sid, session, cmd_str: str) -> bool:
+    async def _handle_sleeping_player(
+        self, sid: str, session: Dict[str, Any], cmd_str: str
+    ) -> bool:
         if not session.get("sleeping", False):
             return False
 
@@ -248,7 +252,9 @@ class TickService:
         await self.utils.send_message(self.sio, sid, "You are asleep.")
         return True
 
-    async def _handle_password_change(self, sid, session, player, cmd_str: str) -> bool:
+    async def _handle_password_change(
+        self, sid: str, session: Dict[str, Any], player: Any, cmd_str: str
+    ) -> bool:
         if "pwd_change" not in session:
             return False
 
@@ -269,7 +275,7 @@ class TickService:
         return True
 
     async def _handle_pending_communication(
-        self, sid, session, player, cmd_str: str
+        self, sid: str, session: Dict[str, Any], player: Any, cmd_str: str
     ) -> bool:
         pending_comm = session.get("pending_comm")
         if not pending_comm:
@@ -288,7 +294,7 @@ class TickService:
         return True
 
     async def _handle_converse_mode(
-        self, sid, session, cmd_str: str
+        self, sid: str, session: Dict[str, Any], cmd_str: str
     ) -> Tuple[str, bool]:
         if not session.get("converse_mode"):
             return cmd_str, False
@@ -301,7 +307,9 @@ class TickService:
         # Prepend "say" and continue in converse mode
         return f"say {cmd_str}", False
 
-    def _parse_command(self, cmd_str: str, session, player) -> List[dict]:
+    def _parse_command(
+        self, cmd_str: str, session: Dict[str, Any], player: Any
+    ) -> List[Dict[str, Any]]:
         mob_manager = self._get_mob_manager()
         players_in_room = []
 
@@ -319,14 +327,17 @@ class TickService:
             "players_in_room": players_in_room,
         }
 
-        return self.parse_command(
+        result = self.parse_command(
             cmd_str,
             context=context,
             players_in_room=players_in_room,
             online_sessions=self.online_sessions,
         )
+        return cast(List[Dict[str, Any]], result)
 
-    async def _send_stats_and_handle_disconnect(self, sid, session, player) -> None:
+    async def _send_stats_and_handle_disconnect(
+        self, sid: str, session: Dict[str, Any], player: Any
+    ) -> None:
         if player:
             await self.utils.send_stats_update(self.sio, sid, player)
 
@@ -345,8 +356,12 @@ class TickService:
 
 
 async def start_background_tick(
-    sio, online_sessions, player_manager, game_state, utils
-):
+    sio: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    player_manager: Any,
+    game_state: Any,
+    utils: Any,
+) -> None:
     """Legacy entry point retained for backwards compatibility."""
     print("[Tick] Background tick service starting...")
     logger.info("Background tick service starting")

@@ -1,4 +1,5 @@
 # backend/commands/player_interaction.py
+from typing import Dict, Any
 from commands.registry import command_registry
 import random
 import logging
@@ -8,8 +9,14 @@ logger.setLevel(logging.DEBUG)
 
 
 async def handle_give(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Give an item to another player in the same room.
     Syntax: give <item> to <player>
@@ -57,7 +64,7 @@ async def handle_give(
         item = item_obj
     else:
         for it in player.inventory:
-            if item_name.lower() in it.name.lower():
+            if item_name and item_name.lower() in it.name.lower():
                 item = it
                 break
     if not item:
@@ -84,7 +91,7 @@ async def handle_give(
         for sid, session in online_sessions.items():
             other = session.get("player")
             if other and other.current_room == player.current_room and other != player:
-                if target_name.lower() in other.name.lower():
+                if target_name and target_name.lower() in other.name.lower():
                     target_player = other
                     target_sid = sid
                     break
@@ -126,8 +133,14 @@ async def handle_give(
 
 
 async def handle_steal(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Steal an item from another player in the same room.
     Syntax: steal <item> from <player>
@@ -182,7 +195,7 @@ async def handle_steal(
         for sid, session in online_sessions.items():
             other = session.get("player")
             if other and other.current_room == player.current_room and other != player:
-                if subject.lower() in other.name.lower():
+                if subject and subject.lower() in other.name.lower():
                     target_player = other
                     target_sid = sid
                     break
@@ -205,7 +218,7 @@ async def handle_steal(
     # If not found by object reference, search by name
     if not item:
         for it in target_player.inventory:
-            if instrument.lower() in it.name.lower():
+            if instrument and instrument.lower() in it.name.lower():
                 item = it
                 break
 

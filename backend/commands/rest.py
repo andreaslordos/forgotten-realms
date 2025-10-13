@@ -1,6 +1,8 @@
 # backend/commands/rest.py
 
 from commands.registry import command_registry
+from typing import Any, Dict, Optional
+
 from services.notifications import broadcast_room
 import logging
 
@@ -13,8 +15,14 @@ SLEEP_HEALING_INTERVAL = 2  # Healing occurs every 2 ticks
 
 
 async def handle_sleep(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle the sleep command, putting the player to sleep for healing.
     """
@@ -61,8 +69,14 @@ async def handle_sleep(
 
 
 async def handle_wake(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle the wake command, waking up a sleeping player.
     """
@@ -111,7 +125,7 @@ async def handle_wake(
                 target_sid = sid
                 break
 
-    if target_player:
+    if target_player and target_sid:
         # Check if player is asleep (can't wake others if you're asleep)
         if online_sessions[current_sid].get("sleeping"):
             return "You can't wake others while you're asleep."
@@ -147,15 +161,15 @@ async def handle_wake(
 
 
 async def wake_player(
-    player,
-    sid,
-    online_sessions,
-    sio,
-    utils,
-    max_stamina_reached=False,
-    woken_by=None,
-    combat=False,
-):
+    player: Any,
+    sid: str,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+    max_stamina_reached: bool = False,
+    woken_by: Optional[Any] = None,
+    combat: bool = False,
+) -> None:
     """
     Common function to wake a player up, either manually or automatically.
 
@@ -205,7 +219,12 @@ async def wake_player(
         )
 
 
-async def process_sleeping_players(sio, online_sessions, player_manager, utils):
+async def process_sleeping_players(
+    sio: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    player_manager: Any,
+    utils: Any,
+) -> None:
     """
     Process all sleeping players to heal them at regular intervals.
     This should be called by the tick service.

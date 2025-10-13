@@ -1,12 +1,13 @@
 # backend/utils.py
+from typing import Any, Dict, Optional, Tuple
 from models.StatefulItem import StatefulItem
 
 
-async def send_message(sio, sid, message):
+async def send_message(sio: Any, sid: str, message: str) -> None:
     await sio.emit("message", message, room=sid)
 
 
-async def send_stats_update(sio, sid, player):
+async def send_stats_update(sio: Any, sid: str, player: Any) -> None:
     if not player:
         return
 
@@ -14,7 +15,7 @@ async def send_stats_update(sio, sid, player):
     required_attrs = ("points", "stamina", "max_stamina")
     if any(not hasattr(player, attr) for attr in required_attrs):
         return
-    stats_data = {
+    stats_data: Dict[str, Any] = {
         "name": player.name,
         "score": player.points,
         "stamina": player.stamina,
@@ -27,17 +28,17 @@ async def send_stats_update(sio, sid, player):
 
 
 def create_linked_doors(
-    room1_id,
-    room2_id,
-    door1_id,
-    door2_id,
-    door_name,
-    dir1to2,
-    dir2to1,
-    initial_state="closed",
-    game_state=None,
-    rooms=None,
-):
+    room1_id: str,
+    room2_id: str,
+    door1_id: str,
+    door2_id: str,
+    door_name: str,
+    dir1to2: str,
+    dir2to1: str,
+    initial_state: str = "closed",
+    game_state: Optional[Any] = None,
+    rooms: Optional[Dict[str, Any]] = None,
+) -> Tuple[StatefulItem, StatefulItem]:
     """
     Create a pair of linked doors between two rooms with explicit directions.
 
@@ -57,7 +58,7 @@ def create_linked_doors(
         tuple: The two door objects created
     """
     # Create door for room 1
-    door1 = StatefulItem(
+    door1: StatefulItem = StatefulItem(
         name=door_name,
         id=door1_id,
         description=f"A {door_name} stands {initial_state}.",
@@ -71,7 +72,7 @@ def create_linked_doors(
     door1.set_room_id(room1_id)
 
     # Create door for room 2
-    door2 = StatefulItem(
+    door2: StatefulItem = StatefulItem(
         name=door_name,
         id=door2_id,
         description=f"A {door_name} stands {initial_state}.",
@@ -121,8 +122,8 @@ def create_linked_doors(
 
     # Add doors to rooms
     if game_state:
-        room1 = game_state.get_room(room1_id)
-        room2 = game_state.get_room(room2_id)
+        room1: Optional[Any] = game_state.get_room(room1_id)
+        room2: Optional[Any] = game_state.get_room(room2_id)
         if room1:
             room1.add_item(door1)
         if room2:

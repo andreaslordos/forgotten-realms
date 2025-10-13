@@ -2,6 +2,7 @@
 
 import random
 import logging
+from typing import Dict, Any, Optional, Tuple, Union
 from commands.registry import command_registry
 from models.Weapon import Weapon
 from models.CombatDialogue import CombatDialogue
@@ -13,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Global dictionary to track active combat sessions
-active_combats = {}
+active_combats: Dict[str, Dict[str, Any]] = {}
 
 # List of commands that are blocked during combat
 RESTRICTED_COMMANDS = [
@@ -47,8 +48,14 @@ RESTRICTED_COMMANDS = [
 
 
 async def handle_attack(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle attacking a target, initiating continuous combat.
     """
@@ -296,8 +303,14 @@ async def handle_attack(
 
 
 async def handle_retaliate(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle retaliating with a weapon when already in combat.
     """
@@ -328,7 +341,7 @@ async def handle_retaliate(
     else:
         # Find the weapon in inventory by name
         for item in player.inventory:
-            if instrument.lower() in item.name.lower():
+            if instrument and instrument.lower() in item.name.lower():
                 # Check if it's a weapon
                 if isinstance(item, Weapon) or hasattr(item, "damage"):
                     weapon_item = item
@@ -365,8 +378,14 @@ async def handle_retaliate(
 
 
 async def handle_flee(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle fleeing from combat.
     """
@@ -475,8 +494,13 @@ async def handle_flee(
 
 # ===== COMBAT TICK PROCESSING =====
 async def process_combat_tick(
-    sio, online_sessions, player_manager, game_state, utils, mob_manager=None
-):
+    sio: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    player_manager: Any,
+    game_state: Any,
+    utils: Any,
+    mob_manager: Optional[Any] = None,
+) -> None:
     """
     Process one tick of combat for all active combats (including mobs).
     This should be called regularly by the game's tick service.
@@ -491,7 +515,7 @@ async def process_combat_tick(
     """
     from models.Mobile import Mobile
 
-    def _cleanup_entry(identifier):
+    def _cleanup_entry(identifier: str) -> None:
         entry = active_combats.pop(identifier, None)
         if entry:
             entity = entry.get("entity")
@@ -689,17 +713,17 @@ async def process_combat_tick(
 
 
 async def process_combat_attack(
-    attacker,
-    defender,
-    weapon,
-    attacker_sid,
-    defender_sid,
-    player_manager,
-    game_state,
-    online_sessions,
-    sio,
-    utils,
-):
+    attacker: Any,
+    defender: Any,
+    weapon: Optional[Any],
+    attacker_sid: Optional[str],
+    defender_sid: Optional[str],
+    player_manager: Any,
+    game_state: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> None:
     """
     Process a single attack in combat.
 
@@ -777,16 +801,17 @@ async def process_combat_attack(
 
         # Check if defender is defeated
         if defender.stamina <= 0:
-            await handle_player_defeat(
-                attacker,
-                defender,
-                defender_sid,
-                game_state,
-                player_manager,
-                online_sessions,
-                sio,
-                utils,
-            )
+            if defender_sid:
+                await handle_player_defeat(
+                    attacker,
+                    defender,
+                    defender_sid,
+                    game_state,
+                    player_manager,
+                    online_sessions,
+                    sio,
+                    utils,
+                )
     else:
         # Attack misses
         miss_msg_attacker = CombatDialogue.get_player_miss_message(defender.name)
@@ -796,7 +821,7 @@ async def process_combat_attack(
         await utils.send_message(sio, defender_sid, miss_msg_defender)
 
 
-def reset_player_persona(player):
+def reset_player_persona(player: Any) -> None:
     """
     Reset a player's persona to neophyte (level 0) state.
 
@@ -820,16 +845,16 @@ def reset_player_persona(player):
 
 
 async def handle_respawn_choice(
-    player,
-    choice,
-    player_sid,
-    game_state,
-    player_manager,
-    online_sessions,
-    sio,
-    utils,
-    combat_death=True,
-):
+    player: Any,
+    choice: str,
+    player_sid: str,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+    combat_death: bool = True,
+) -> Optional[str]:
     """
     Handle a player's choice to respawn or disconnect after death.
 
@@ -899,15 +924,15 @@ async def handle_respawn_choice(
 
 
 async def handle_player_defeat(
-    attacker,
-    defender,
-    defender_sid,
-    game_state,
-    player_manager,
-    online_sessions,
-    sio,
-    utils,
-):
+    attacker: Any,
+    defender: Any,
+    defender_sid: str,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> None:
     """
     Handle when a player defeats another player.
 
@@ -995,7 +1020,9 @@ async def handle_player_defeat(
 
 
 # ===== HELPER FUNCTIONS =====
-def find_player_sid(player_name_or_obj, online_sessions):
+def find_player_sid(
+    player_name_or_obj: Union[str, Any], online_sessions: Dict[str, Dict[str, Any]]
+) -> Optional[str]:
     """Find a player's session ID from their name or object."""
     for sid, session in online_sessions.items():
         player = session.get("player")
@@ -1009,7 +1036,9 @@ def find_player_sid(player_name_or_obj, online_sessions):
     return None
 
 
-def find_player_by_name(player_name, online_sessions):
+def find_player_by_name(
+    player_name: str, online_sessions: Dict[str, Dict[str, Any]]
+) -> Optional[Any]:
     """Find a player object from their name."""
     for session in online_sessions.values():
         player = session.get("player")
@@ -1018,7 +1047,7 @@ def find_player_by_name(player_name, online_sessions):
     return None
 
 
-def end_combat(player1_name, player2_name):
+def end_combat(player1_name: str, player2_name: str) -> None:
     """End combat between two players."""
     if player1_name in active_combats:
         del active_combats[player1_name]
@@ -1026,13 +1055,19 @@ def end_combat(player1_name, player2_name):
         del active_combats[player2_name]
 
 
-def is_in_combat(player_name):
+def is_in_combat(player_name: str) -> bool:
     """Check if a player is in combat."""
     return player_name in active_combats
 
 
 # Add restriction checking function to command executor
-def check_command_restrictions(cmd, player, sio=None, sid=None, utils=None):
+def check_command_restrictions(
+    cmd: Dict[str, Any],
+    player: Any,
+    sio: Optional[Any] = None,
+    sid: Optional[str] = None,
+    utils: Optional[Any] = None,
+) -> Tuple[bool, str]:
     """
     Check if a command is allowed to be executed based on player state.
 
@@ -1088,8 +1123,13 @@ def check_command_restrictions(cmd, player, sio=None, sid=None, utils=None):
 
 # Function to handle player disconnection during combat
 async def handle_combat_disconnect(
-    player_name, online_sessions, player_manager, game_state, sio, utils
-):
+    player_name: str,
+    online_sessions: Dict[str, Dict[str, Any]],
+    player_manager: Any,
+    game_state: Any,
+    sio: Any,
+    utils: Any,
+) -> None:
     """
     Handle when a player disconnects during combat.
 
@@ -1166,17 +1206,17 @@ async def handle_combat_disconnect(
 
 # ===== MOB COMBAT FUNCTIONS =====
 async def handle_mob_attack(
-    player,
-    mob,
-    weapon,
-    player_sid,
-    player_manager,
-    game_state,
-    online_sessions,
-    mob_manager,
-    sio,
-    utils,
-):
+    player: Any,
+    mob: Any,
+    weapon: Optional[Any],
+    player_sid: Optional[str],
+    player_manager: Any,
+    game_state: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    mob_manager: Any,
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle a player attacking a mob.
 
@@ -1260,8 +1300,15 @@ async def handle_mob_attack(
 
 
 async def mob_initiate_attack(
-    mob, player, player_sid, player_manager, game_state, online_sessions, sio, utils
-):
+    mob: Any,
+    player: Any,
+    player_sid: str,
+    player_manager: Any,
+    game_state: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> None:
     """
     Handle a mob initiating an attack on a player.
 
@@ -1324,17 +1371,17 @@ async def mob_initiate_attack(
 
 
 async def process_mob_combat_attack(
-    attacker,
-    defender,
-    weapon,
-    attacker_sid,
-    player_manager,
-    game_state,
-    online_sessions,
-    mob_manager,
-    sio,
-    utils,
-):
+    attacker: Any,
+    defender: Any,
+    weapon: Optional[Any],
+    attacker_sid: Optional[str],
+    player_manager: Any,
+    game_state: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    mob_manager: Optional[Any],
+    sio: Any,
+    utils: Any,
+) -> None:
     """
     Process a combat attack involving a mob (either attacking or being attacked).
 
@@ -1444,16 +1491,16 @@ async def process_mob_combat_attack(
 
 
 async def handle_mob_defeat(
-    player,
-    mob,
-    player_sid,
-    game_state,
-    player_manager,
-    online_sessions,
-    mob_manager,
-    sio,
-    utils,
-):
+    player: Any,
+    mob: Any,
+    player_sid: Optional[str],
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    mob_manager: Any,
+    sio: Any,
+    utils: Any,
+) -> None:
     """
     Handle when a player defeats a mob.
 
@@ -1523,8 +1570,14 @@ async def handle_mob_defeat(
 
 
 async def handle_player_defeat_by_mob(
-    mob, player, game_state, player_manager, online_sessions, sio, utils
-):
+    mob: Any,
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> None:
     """
     Handle when a mob defeats a player.
 
@@ -1586,8 +1639,14 @@ async def handle_player_defeat_by_mob(
 
 
 async def handle_non_combat_death(
-    player, player_sid, game_state, player_manager, online_sessions, sio, utils
-):
+    player: Any,
+    player_sid: str,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> None:
     """
     Handle when a player dies from non-combat sources (traps, etc.).
 

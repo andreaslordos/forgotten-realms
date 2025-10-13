@@ -1,5 +1,6 @@
 # backend/commands/standard.py
 
+from typing import Dict, Any, cast
 from commands.registry import command_registry
 from commands.executor import build_look_description
 from models.Levels import levels
@@ -9,8 +10,14 @@ from models.SpecializedRooms import SwampRoom
 
 # ===== LOOK COMMAND =====
 async def handle_look(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """Handle the 'look' command."""
     # Get the subject (what to look at)
     subject = cmd.get("subject")
@@ -45,7 +52,7 @@ async def handle_look(
 
     # Look at a specific item in inventory
     for item in player.inventory:
-        if subject.lower() in item.name.lower():
+        if subject and subject.lower() in item.name.lower():
             return f"{item.description}"
 
     # Look at a specific item in the room
@@ -54,7 +61,7 @@ async def handle_look(
         game_state
     )  # Get visible items including hidden ones
     for item in all_visible_items:
-        if subject.lower() in item.name.lower():
+        if subject and subject.lower() in item.name.lower():
             return f"{item.name}: {item.description}"
 
     # Look at another player in the room
@@ -64,6 +71,7 @@ async def handle_look(
             other_player
             and other_player.current_room == player.current_room
             and other_player != player
+            and subject
             and subject.lower() in other_player.name.lower()
         ):
             return f"{other_player.name} the {other_player.level}"
@@ -73,8 +81,14 @@ async def handle_look(
 
 # ===== INVENTORY COMMAND =====
 async def handle_inventory(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """Handle the 'inventory' command."""
     if not player.inventory:
         return "You aren't carrying anything!"
@@ -86,8 +100,14 @@ async def handle_inventory(
 
 # ===== EXITS COMMAND =====
 async def handle_exits(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """Handle the 'exits' command."""
     current_room = game_state.get_room(player.current_room)
     if not current_room.exits:
@@ -108,8 +128,14 @@ async def handle_exits(
 
 # ===== GET/TAKE COMMAND =====
 async def handle_get(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """Handle the 'get' command."""
     # Get the subject (item to get)
     subject = cmd.get("subject")
@@ -199,7 +225,7 @@ async def handle_get(
         # Look for a matching item in the room ONLY
         all_visible_items = current_room.get_items(game_state)
         for item in all_visible_items:
-            if subject.lower() == item.name.lower():
+            if subject and subject.lower() == item.name.lower():
                 found_item = item
                 break
 
@@ -218,15 +244,21 @@ async def handle_get(
             # Save player state
             player_manager.save_players()
 
-        return message
+        return cast(str, message)
 
     return f"You don't see '{subject}' here."
 
 
 # ===== DROP COMMAND =====
 async def handle_drop(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """Handle the 'drop' command."""
     # Get the subject (item to drop)
     subject = cmd.get("subject")
@@ -242,7 +274,7 @@ async def handle_drop(
     is_swamp_room = isinstance(current_room, SwampRoom)
 
     # Helper function to handle dropping a single item
-    async def drop_single_item(item):
+    async def drop_single_item(item: Any) -> str:
         player.remove_item(item)
 
         # Special handling for treasure in swamp rooms
@@ -250,7 +282,7 @@ async def handle_drop(
             success, message = current_room.handle_treasure_drop(
                 item, player, game_state, player_manager, sio, online_sessions
             )
-            return message
+            return cast(str, message)
         else:
             # Standard drop behavior
             current_room.add_item(item)
@@ -316,8 +348,14 @@ async def handle_drop(
 
 # ===== SCORE COMMAND =====
 async def handle_score(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """Handle the 'score' command."""
     return (
         f"Score: {player.points} points\n"
@@ -331,8 +369,14 @@ async def handle_score(
 
 # ===== HELP COMMAND =====
 async def handle_help(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """Handle the 'help' command."""
     # Get the subject (specific command to get help for)
     subject = cmd.get("subject")
@@ -399,8 +443,14 @@ async def handle_help(
 
 # ===== INFO COMMAND =====
 async def handle_info(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """Handle the 'info' command."""
     info_text = (
         "AI MUD: A text-based multiplayer adventure where you explore, solve puzzles, "
@@ -419,8 +469,14 @@ async def handle_info(
 
 # ===== LEVELS COMMAND =====
 async def handle_levels(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """Handle the 'levels' command."""
     return_str = "Levels of experience in Forgotten Realms:\n"
     # Header row with fixed width for each column
@@ -436,8 +492,14 @@ async def handle_levels(
 
 # ===== USERS COMMAND =====
 async def handle_users(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """Handle the 'users' command."""
     if not online_sessions:
         return "How is this possible?"
@@ -458,16 +520,28 @@ async def handle_users(
 
 # ===== QUIT COMMAND =====
 async def handle_quit(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """Handle the 'quit' command."""
     return "quit"
 
 
 # ===== DIAGNOSTIC COMMAND =====
 async def handle_diagnostic(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """Debug command to print information about items in the room."""
 
     current_room = game_state.get_room(player.current_room)

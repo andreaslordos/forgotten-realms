@@ -4,6 +4,7 @@ import logging
 import os
 import ssl
 import sys
+from typing import Any
 
 import socketio
 import utils
@@ -70,7 +71,7 @@ set_context(online_sessions, lambda sid, msg: utils.send_message(sio, sid, msg))
 logger.info("Notification context set successfully.")
 
 # Attach mob_manager to utils for global access
-utils.mob_manager = mob_manager
+utils.mob_manager = mob_manager  # type: ignore[attr-defined]
 logger.info("Mob manager attached to utils.")
 
 # Register Socket.IO event handlers.
@@ -99,7 +100,7 @@ else:
     logger.info("🛠 Running without SSL (Test Mode)")
 
 
-async def main():
+async def main() -> None:
     try:
         runner = web.AppRunner(app)
         await runner.setup()
@@ -127,7 +128,7 @@ async def main():
         logger.info("Server runner cleanup complete.")
 
 
-async def handle_root(request):
+async def handle_root(request: Any) -> web.Response:
     logger.info("Received request on root endpoint.")
     return web.Response(
         text="Socket.IO server is running" + (" over HTTPS." if ssl_context else ".")

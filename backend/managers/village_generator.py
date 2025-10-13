@@ -1,5 +1,6 @@
 # backend/managers/village_generator.py
 
+from typing import Dict, Optional, Any
 from models.Room import Room
 from models.Item import Item
 from models.StatefulItem import StatefulItem
@@ -8,7 +9,7 @@ from models.SpecializedRooms import SwampRoom
 from models.Weapon import Weapon
 
 
-def generate_village_of_chronos(mob_manager=None):
+def generate_village_of_chronos(mob_manager: Optional[Any] = None) -> Dict[str, Room]:
     """
     Generates the Village of Chronos, the default starting area.
     Returns a dictionary mapping room_id to Room objects.
@@ -16,7 +17,7 @@ def generate_village_of_chronos(mob_manager=None):
     Args:
         mob_manager (MobManager, optional): Mob manager for spawning mobs
     """
-    rooms = {}
+    rooms: Dict[str, Room] = {}
 
     # Create all rooms
     generate_rooms(rooms)
@@ -42,7 +43,7 @@ def generate_village_of_chronos(mob_manager=None):
     return rooms
 
 
-def spawn_initial_mobs(mob_manager, rooms):
+def spawn_initial_mobs(mob_manager: Any, rooms: Dict[str, Room]) -> None:
     """
     Spawn initial mobs in the village.
 
@@ -52,7 +53,7 @@ def spawn_initial_mobs(mob_manager, rooms):
     """
 
     # Helper function to spawn and add mob to room
-    def spawn_mob_in_room(mob_type, room_id):
+    def spawn_mob_in_room(mob_type: str, room_id: str) -> None:
         if room_id in rooms:
             mob_manager.spawn_mob(mob_type, room_id)
             mob = mob_manager.mobs.get(list(mob_manager.mobs.keys())[-1])
@@ -76,11 +77,11 @@ def spawn_initial_mobs(mob_manager, rooms):
     spawn_mob_in_room("dire_wolf", "golden_door")
 
 
-def generate_rooms(rooms):
+def generate_rooms(rooms: Dict[str, Room]) -> None:
     """Generate all the rooms for the village."""
 
     # Village Center
-    spawn = Room(
+    spawn: Room = Room(
         "spawn",
         "Village Center",
         "The heart of Chronos Village pulses with subtle energy. Cobblestone paths radiate in all directions. "
@@ -90,7 +91,7 @@ def generate_rooms(rooms):
     )
 
     # Elder's Cottage - exterior and interior
-    elders_cottage = Room(
+    elders_cottage: Room = Room(
         "elders_cottage",
         "Outside Elder's Cottage",
         "A quaint cottage of weathered stone stands before you. Herbs hang in bunches beside the entrance, and "
@@ -99,7 +100,7 @@ def generate_rooms(rooms):
         "The village center lies to the east, while a small garden path circles behind the cottage to the north.",
     )
 
-    cottage_interior = Room(
+    cottage_interior: Room = Room(
         "cottage_interior",
         "Inside Elder's Cottage",
         "The interior is larger than it appeared from outside. The air smells of herbs and old parchment. "
@@ -109,7 +110,7 @@ def generate_rooms(rooms):
         "A narrow staircase in the corner leads upward.",
     )
 
-    cottage_upstairs = Room(
+    cottage_upstairs: Room = Room(
         "cottage_upstairs",
         "Cottage Upper Floor",
         "This upper floor serves as the Elder's observatory and private study. A large circular window "
@@ -118,7 +119,7 @@ def generate_rooms(rooms):
         "sits beneath the window, and a comfortable-looking bed occupies one corner.",
     )
 
-    cottage_cellar = Room(
+    cottage_cellar: Room = Room(
         "cottage_cellar",
         "Hidden Cellar",
         "A cool, dry cellar extends beneath the cottage. Unlike the wooden construction above, "
@@ -127,7 +128,7 @@ def generate_rooms(rooms):
         "At the far end, a tunnel leads off to the north, its purpose and destination unclear.",
     )
 
-    cottage_garden = Room(
+    cottage_garden: Room = Room(
         "cottage_garden",
         "Herb Garden",
         "Behind the Elder's cottage lies a circular garden of impeccably maintained herbs and flowers, many of which "
@@ -137,7 +138,7 @@ def generate_rooms(rooms):
     )
 
     # Marketplace area
-    marketplace = Room(
+    marketplace: Room = Room(
         "marketplace",
         "Village Marketplace",
         "Wooden stalls arranged in a semicircle host merchants who call out their wares in practiced cadence. "
@@ -147,7 +148,7 @@ def generate_rooms(rooms):
         "Swamp.",
     )
 
-    curiosity_shop = Room(
+    curiosity_shop: Room = Room(
         "curiosity_shop",
         "Curiosity Shop",
         "This space expands impossibly once you enter, revealing a cluttered shop filled with artifacts from "
@@ -157,7 +158,7 @@ def generate_rooms(rooms):
     )
 
     # Mystic's Tower complex
-    mystics_tower = Room(
+    mystics_tower: Room = Room(
         "mystics_tower",
         "Mystic's Tower Base",
         "A spiral tower of pale stone reaches skyward, occasionally shimmering as if not fully anchored in reality. "
@@ -166,7 +167,7 @@ def generate_rooms(rooms):
         "while a winding path leads west into the forest.",
     )
 
-    tower_interior = Room(
+    tower_interior: Room = Room(
         "tower_interior",
         "Tower Main Chamber",
         "Inside, pendulum clocks line the walls, each showing a different time, their ticking strangely synchronized. "
@@ -175,7 +176,7 @@ def generate_rooms(rooms):
         "filled with half-finished temporal instruments.",
     )
 
-    tower_workshop = Room(
+    tower_workshop: Room = Room(
         "tower_workshop",
         "Clockwork Workshop",
         "This circular room branches off from the main chamber, filled with workbenches covered in gears, "
@@ -184,7 +185,7 @@ def generate_rooms(rooms):
         "you see the village from an angle that shouldn't be possible from this position.",
     )
 
-    tower_upper = Room(
+    tower_upper: Room = Room(
         "tower_upper",
         "Upper Observatory",
         "This chamber near the tower's peak has walls transparent from the inside, offering panoramic views of the village "
@@ -192,7 +193,7 @@ def generate_rooms(rooms):
         "toward the stars, even in daylight. Star charts hover in mid-air, rearranging themselves as you watch.",
     )
 
-    tower_top = Room(
+    tower_top: Room = Room(
         "tower_top",
         "Tower Summit",
         "The highest room offers breathtaking views in all directions. The floor is a glass mosaic depicting "
@@ -201,7 +202,7 @@ def generate_rooms(rooms):
         "splits, showing multiple versions of the same view.",
     )
 
-    tower_basement = Room(
+    tower_basement: Room = Room(
         "tower_basement",
         "Tower Underchamber",
         "This spherical chamber beneath the tower has walls covered in softly glowing runes that pulse in rhythm "
@@ -210,7 +211,7 @@ def generate_rooms(rooms):
     )
 
     # Library area
-    ancient_library = Room(
+    ancient_library: Room = Room(
         "ancient_library",
         "Ancient Library Entrance",
         "A building of pale stone stands before you, its architecture unlike the rest of the village. Wide steps lead up "
@@ -218,7 +219,7 @@ def generate_rooms(rooms):
         "The well courtyard lies to the north, while a small reading garden is visible to the east.",
     )
 
-    library_main = Room(
+    library_main: Room = Room(
         "library_main",
         "Grand Archive",
         "Towering bookshelves filled with leather-bound tomes reach up to vaulted ceilings. Some books appear partially "
@@ -227,7 +228,7 @@ def generate_rooms(rooms):
         "Archways lead to specialized reading rooms, while a spiral staircase connects to other levels.",
     )
 
-    library_reading = Room(
+    library_reading: Room = Room(
         "library_reading",
         "Reading Room",
         "A peaceful circular chamber branches off from the Grand Archive, furnished with comfortable chairs and reading "
@@ -236,7 +237,7 @@ def generate_rooms(rooms):
         "impossible given the room's location.",
     )
 
-    reading_garden = Room(
+    reading_garden: Room = Room(
         "reading_garden",
         "Library Gardens",
         "A tranquil garden surrounds the eastern side of the library, designed for outdoor reading and contemplation. "
@@ -245,7 +246,7 @@ def generate_rooms(rooms):
         "Several forgotten tomes rest on the benches.",
     )
 
-    library_mezzanine = Room(
+    library_mezzanine: Room = Room(
         "library_mezzanine",
         "Library Mezzanine",
         "A balcony level overlooks the Grand Archive below. This level houses rarer volumes in glass cases that occasionally "
@@ -253,7 +254,7 @@ def generate_rooms(rooms):
         "the railing, each equipped with magnifying glasses and translation codices.",
     )
 
-    library_astronomy = Room(
+    library_astronomy: Room = Room(
         "library_astronomy",
         "Astronomy Section",
         "The highest level of the library is dedicated to astronomical knowledge. The ceiling is an enchanted "
@@ -262,7 +263,7 @@ def generate_rooms(rooms):
         "but several others as well, all in constant motion.",
     )
 
-    library_basement = Room(
+    library_basement: Room = Room(
         "library_basement",
         "Forbidden Archives",
         "The most dangerous knowledge is kept in this shadowy basement. The air is noticeably cooler here, and the silence deeper. "
@@ -272,7 +273,7 @@ def generate_rooms(rooms):
     )
 
     # Well and underground areas
-    old_well = Room(
+    old_well: Room = Room(
         "old_well",
         "The Old Well Courtyard",
         "A stone well stands in a small courtyard surrounded by cobblestone paths. The ground around it is always damp "
@@ -281,7 +282,7 @@ def generate_rooms(rooms):
         "the library south, and the forgotten shrine east.",
     )
 
-    well_bottom = Room(
+    well_bottom: Room = Room(
         "well_bottom",
         "Bottom of the Well",
         "This surprisingly dry chamber lies at the bottom of the ancient well shaft. Glowing moss provides dim illumination, "
@@ -290,7 +291,7 @@ def generate_rooms(rooms):
         "A narrow tunnel leads eastward into darkness.",
     )
 
-    underground_junction = Room(
+    underground_junction: Room = Room(
         "underground_junction",
         "Underground Passage Junction",
         "Several rough-hewn tunnels converge in this spacious underground chamber. Glowing crystals embedded in the walls "
@@ -300,7 +301,7 @@ def generate_rooms(rooms):
     )
 
     # Shrine area
-    forgotten_shrine = Room(
+    forgotten_shrine: Room = Room(
         "forgotten_shrine",
         "Forgotten Shrine Entrance",
         "Half-buried in the earth lies an ancient shrine predating the village itself. Stone steps descend into "
@@ -309,7 +310,7 @@ def generate_rooms(rooms):
         "heartbeat of time itself.",
     )
 
-    shrine_interior = Room(
+    shrine_interior: Room = Room(
         "shrine_interior",
         "Shrine Inner Sanctum",
         "The heart of the ancient shrine is a circular chamber dominated by a central altar with seven different-colored "
@@ -318,7 +319,7 @@ def generate_rooms(rooms):
         "downward along the wall.",
     )
 
-    shrine_underground = Room(
+    shrine_underground: Room = Room(
         "shrine_underground",
         "Ritual Chamber",
         "A perfectly circular chamber extends beneath the shrine. The walls are mirror-smooth obsidian reflecting "
@@ -328,7 +329,7 @@ def generate_rooms(rooms):
     )
 
     # Forest and northern areas
-    northern_path = Room(
+    northern_path: Room = Room(
         "northern_path",
         "Northern Path",
         "A winding dirt path stretches northward from the village, flanked by ancient oak trees whose branches "
@@ -337,7 +338,7 @@ def generate_rooms(rooms):
         "lies south, the mystic's tower east, and the dense forest continues north.",
     )
 
-    forest_edge = Room(
+    forest_edge: Room = Room(
         "forest_edge",
         "Edge of the Whispering Forest",
         "The forest creates a natural boundary for the village to the north. Trees with silvery bark stand "
@@ -346,7 +347,7 @@ def generate_rooms(rooms):
         "back to the village lies south, while barely visible trails lead deeper into the forest.",
     )
 
-    forest_clearing = Room(
+    forest_clearing: Room = Room(
         "forest_clearing",
         "Whispering Clearing",
         "The forest opens into a perfectly circular clearing where no trees grow. The ground is covered in soft moss "
@@ -355,7 +356,7 @@ def generate_rooms(rooms):
         "as if sound itself is muffled here.",
     )
 
-    forest_hideaway = Room(
+    forest_hideaway: Room = Room(
         "forest_hideaway",
         "Hidden Grove",
         "This secluded grove is hidden from casual discovery by dense foliage. A small structure resembling a combination "
@@ -364,7 +365,7 @@ def generate_rooms(rooms):
         "recent use. Carved wooden figurines depict various village residents in remarkable detail.",
     )
 
-    yew_tree_hollow = Room(
+    yew_tree_hollow: Room = Room(
         "yew_tree_hollow",
         "Within the Ancient Yew",
         "This impossible space within the massive yew tree is larger inside than the tree could possibly contain. "
@@ -374,7 +375,7 @@ def generate_rooms(rooms):
     )
 
     # Swamp areas - now using SwampRoom class
-    swamp1 = SwampRoom(
+    swamp1: SwampRoom = SwampRoom(
         "swamp1",
         "Treacherous Swamp",
         "You are waylaid in a treacherous swamp.",
@@ -383,7 +384,7 @@ def generate_rooms(rooms):
     )
 
     # Golden Door
-    golden_door = Room(
+    golden_door: Room = Room(
         "golden_door",
         "The First Golden Door",
         "A small island in the deepest part of the swamp holds a free-standing archway of obsidian stone. The archway "
@@ -392,7 +393,7 @@ def generate_rooms(rooms):
     )
 
     # Underswamp - special area only accessible to archmages
-    underswamp = Room(
+    underswamp: Room = Room(
         "underswamp",
         "The Underswamp",
         "This vast cavern hidden beneath the Swamp can only be accessed by those with the highest "
@@ -439,7 +440,7 @@ def generate_rooms(rooms):
     rooms["underswamp"] = underswamp
 
 
-def connect_exits(rooms):
+def connect_exits(rooms: Dict[str, Room]) -> None:
     """Connect all rooms with appropriate exits."""
 
     # Village Center connections
@@ -611,12 +612,12 @@ def connect_exits(rooms):
 # Update to village_generator.py to make containers work with the interaction system
 
 
-def add_container_items(rooms):
-    bag = ContainerItem(
+def add_container_items(rooms: Dict[str, Room]) -> None:
+    bag: ContainerItem = ContainerItem(
         "bag",
         "bag",
         "A musty carpet bag lies here",
-        weight=0.1,
+        weight=1,
         value=0,
         capacity_limit=8,
         capacity_weight=40,
@@ -643,7 +644,7 @@ def add_container_items(rooms):
     rooms["elders_cottage"].add_item(bag)
 
 
-def add_stateful_items(rooms):
+def add_stateful_items(rooms: Dict[str, Room]) -> None:
     """
     Add all stateful interactive objects to rooms.
 
@@ -658,7 +659,7 @@ def add_stateful_items(rooms):
     # Cottage trapdoor and rug
     # ------------------------
     # Create the rug that covers the trapdoor
-    cottage_rug = StatefulItem(
+    cottage_rug: StatefulItem = StatefulItem(
         "rug",
         "cottage_rug",
         "A worn circular rug lies in the center of the room.",
@@ -702,7 +703,7 @@ def add_stateful_items(rooms):
     )
 
     # Create the trapdoor as a separate item
-    cottage_trapdoor = StatefulItem(
+    cottage_trapdoor: StatefulItem = StatefulItem(
         "trapdoor",
         "cottage_trapdoor",
         "A wooden trapdoor is set into the floor.",
@@ -749,7 +750,7 @@ def add_stateful_items(rooms):
 
     # Yew tree in the forest
     # ---------------------
-    yew_tree = StatefulItem(
+    yew_tree: StatefulItem = StatefulItem(
         "tree",
         "yew_tree",
         "A massive yew tree with carved symbols in its bark.",
@@ -792,7 +793,7 @@ def add_stateful_items(rooms):
 
     # Old well in the courtyard
     # ------------------------
-    old_well = StatefulItem(
+    old_well: StatefulItem = StatefulItem(
         "well",
         "well",
         "A stone well with a locked wooden lid sits here.",
@@ -872,7 +873,7 @@ def add_stateful_items(rooms):
 
     # Shrine altar with rune stones
     # ----------------------------
-    shrine_altar = StatefulItem(
+    shrine_altar: StatefulItem = StatefulItem(
         "altar",
         "altar",
         "A circular stone altar with seven empty colored indentations.",
@@ -920,7 +921,7 @@ def add_stateful_items(rooms):
 
     # Golden door in archway
     # ---------------------
-    golden_door_obj = StatefulItem(
+    golden_door_obj: StatefulItem = StatefulItem(
         "door",
         "golden_door",
         "A door of pure golden light shimmers within the archway.",
@@ -960,20 +961,18 @@ def add_stateful_items(rooms):
 # Update add_regular_items in village_generator.py to include readable content
 
 
-def add_regular_items(rooms):
+def add_regular_items(rooms: Dict[str, Room]) -> None:
     """Add regular (non-stateful) items to rooms."""
 
     # Elder's cottage items
-    Item(
-        "tome", "tome", "An ancient leather-bound tome lies here.", weight=0.5, value=5
-    )
+    Item("tome", "tome", "An ancient leather-bound tome lies here.", weight=1, value=5)
 
     # Make the tome readable using the StatefulItem features
-    readable_tome = StatefulItem(
+    readable_tome: StatefulItem = StatefulItem(
         "tome",
         "ancient_tome",
         "An ancient leather-bound tome lies here.",
-        weight=0.5,
+        weight=1,
         value=5,
         takeable=True,
         state="unread",
@@ -1014,11 +1013,11 @@ def add_regular_items(rooms):
     rooms["cottage_interior"].add_item(readable_tome)
 
     # Library manuscript
-    glowing_manuscript = StatefulItem(
+    glowing_manuscript: StatefulItem = StatefulItem(
         "manuscript",
         "manuscript",
         "A manuscript written in glowing ink has been left here.",
-        weight=0.5,
+        weight=1,
         value=20,
         state="unread",
     )
@@ -1046,44 +1045,44 @@ def add_regular_items(rooms):
     rooms["library_main"].add_item(glowing_manuscript)
 
     # Dimensional compass
-    dimensional_compass = Item(
+    dimensional_compass: Item = Item(
         "compass",
         "compass",
         "A peculiar brass compass rests on the ground.",
-        weight=0.05,
+        weight=1,
         value=15,
     )
     rooms["cottage_upstairs"].add_item(dimensional_compass)
 
     # Bronze key
-    bronze_key = Item(
-        "key", "key", "A tarnished bronze key lies here.", weight=0.02, value=5
+    bronze_key: Item = Item(
+        "key", "key", "A tarnished bronze key lies here.", weight=1, value=5
     )
     rooms["marketplace"].add_item(bronze_key)
 
     # Remembrance charm
-    remembrance_charm = Item(
+    remembrance_charm: Item = Item(
         "amulet",
         "amulet",
         "A faintly glowing blue amulet has been left here.",
-        weight=0.1,
+        weight=1,
         value=20,
     )
     rooms["curiosity_shop"].add_item(remembrance_charm)
 
     # Crystal lens
-    crystal_lens = Item(
+    crystal_lens: Item = Item(
         "lens",
         "lens",
         "A perfectly cut crystal lens gleams nearby.",
-        weight=0.05,
+        weight=1,
         value=25,
     )
     rooms["tower_workshop"].add_item(crystal_lens)
 
     # Add more readable items for other books and manuscripts
     # Blue rune stone with readable carvings
-    blue_rune_stone = StatefulItem(
+    blue_rune_stone: StatefulItem = StatefulItem(
         "stone",
         "bluestone",
         "A smooth blue stone etched with a glowing rune catches your eye.",
@@ -1114,17 +1113,17 @@ def add_regular_items(rooms):
     rooms["shrine_interior"].add_item(blue_rune_stone)
 
     # Remaining items as before
-    frayed_rope = Item(
+    frayed_rope: Item = Item(
         "rope", "rope", "A weathered rope lies coiled on the ground.", weight=3, value=5
     )
     rooms["old_well"].add_item(frayed_rope)
 
-    wooden_bucket = Item(
+    wooden_bucket: Item = Item(
         "bucket", "bucket", "A sturdy wooden bucket sits here.", weight=2, value=5
     )
     rooms["old_well"].add_item(wooden_bucket)
 
-    silver_flute = Item(
+    silver_flute: Item = Item(
         "flute",
         "flute",
         "A delicate silver flute has been discarded here.",
@@ -1133,13 +1132,13 @@ def add_regular_items(rooms):
     )
     rooms["northern_path"].add_item(silver_flute)
 
-    enchanted_axe = Item(
+    enchanted_axe: Item = Item(
         "axe", "axe", "An unusual-looking axe rests against a tree.", weight=3, value=40
     )
     rooms["forest_hideaway"].add_item(enchanted_axe)
 
 
-def add_linked_doors(rooms):
+def add_linked_doors(rooms: Dict[str, Room]) -> None:
     """
     Create all linked doors between rooms in the village.
 
@@ -1240,8 +1239,8 @@ def add_linked_doors(rooms):
     )
 
 
-def add_weapons(rooms):
-    sword = Weapon(
+def add_weapons(rooms: Dict[str, Room]) -> None:
+    sword: Weapon = Weapon(
         name="sword",
         id="sword_01",
         description="A finely crafted steel sword with magical runes lies here.",

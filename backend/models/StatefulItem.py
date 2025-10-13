@@ -1,7 +1,11 @@
 # Enhancement to models/StatefulItem.py to support linked items
 
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from models.Item import Item
 import logging
+
+if False:  # TYPE_CHECKING
+    pass
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -9,9 +13,22 @@ logger = logging.getLogger(__name__)
 
 
 class StatefulItem(Item):
+    state: Optional[str]
+    state_descriptions: Dict[str, str]
+    interactions: Dict[str, List[Dict[str, Any]]]
+    room_id: Optional[str]
+    linked_items: List[str]
+
     def __init__(
-        self, name, id, description, weight=1, value=0, takeable=True, state=None
-    ):
+        self,
+        name: str,
+        id: str,
+        description: str,
+        weight: int = 1,
+        value: int = 0,
+        takeable: bool = True,
+        state: Optional[str] = None,
+    ) -> None:
         super().__init__(name, id, description, weight, value, takeable)
         self.state = state
         self.state_descriptions = {}
@@ -23,19 +40,19 @@ class StatefulItem(Item):
             # When a state is provided, use the given description for that state.
             self.state_descriptions[state] = description
 
-    def add_state_description(self, state, description):
+    def add_state_description(self, state: str, description: str) -> None:
         """Add a description for a specific state."""
         self.state_descriptions[state] = description
 
-    def get_state(self):
+    def get_state(self) -> Optional[str]:
         """Get the current state of the item."""
         return self.state
 
-    def set_room_id(self, room_id):
+    def set_room_id(self, room_id: str) -> None:
         """Set the room ID where this item is located."""
         self.room_id = room_id
 
-    def link_item(self, item_id):
+    def link_item(self, item_id: str) -> None:
         """
         Link this item to another item (e.g., door with another door).
         Linked items change state together.
@@ -49,19 +66,19 @@ class StatefulItem(Item):
 
     def add_interaction(
         self,
-        verb,
-        required_instrument=None,
-        target_state=None,
-        message=None,
-        add_exit=None,
-        remove_exit=None,
-        conditional_fn=None,
-        from_state=None,
-        consume_instrument=False,
-        drop_instrument=False,
-        reciprocal_exit=None,
-        remove_item=False,
-    ):
+        verb: str,
+        required_instrument: Optional[str] = None,
+        target_state: Optional[str] = None,
+        message: Optional[str] = None,
+        add_exit: Optional[Tuple[str, str]] = None,
+        remove_exit: Optional[str] = None,
+        conditional_fn: Optional[Callable[..., bool]] = None,
+        from_state: Optional[str] = None,
+        consume_instrument: bool = False,
+        drop_instrument: bool = False,
+        reciprocal_exit: Optional[Tuple[str, str, str]] = None,
+        remove_item: bool = False,
+    ) -> None:
         """
         Register an interaction for this item.
 
@@ -85,7 +102,7 @@ class StatefulItem(Item):
             self.interactions[verb] = []
 
         # Create the new interaction dictionary explicitly
-        interaction = {}
+        interaction: Dict[str, Any] = {}
         if required_instrument is not None:
             interaction["required_instrument"] = required_instrument
         if target_state is not None:
@@ -112,7 +129,7 @@ class StatefulItem(Item):
         # Add the interaction to the list
         self.interactions[verb].append(interaction)
 
-    def set_state(self, new_state, game_state=None):
+    def set_state(self, new_state: str, game_state: Optional[Any] = None) -> bool:
         """
         Change the state of the item and update room exits if needed.
         Also update any linked items to maintain consistency.
@@ -128,7 +145,7 @@ class StatefulItem(Item):
             return False
 
         # Change this item's state
-        old_state = self.state
+        old_state = self.state if self.state is not None else ""
         self.state = new_state
         self.description = self.state_descriptions[new_state]
 
@@ -142,7 +159,9 @@ class StatefulItem(Item):
 
         return True
 
-    def _process_exit_changes(self, game_state, old_state, new_state):
+    def _process_exit_changes(
+        self, game_state: Any, old_state: str, new_state: str
+    ) -> None:
         """Process exit changes based on state change."""
         if self.room_id:
             room = game_state.get_room(self.room_id)
@@ -176,7 +195,7 @@ class StatefulItem(Item):
                                 if interaction.get("remove_item", False):
                                     room.remove_item(self)
 
-    def _update_linked_items(self, game_state, new_state):
+    def _update_linked_items(self, game_state: Any, new_state: str) -> None:
         """Update all linked items to maintain consistency."""
         for item_id in self.linked_items:
             # Find the linked item in all rooms
@@ -196,7 +215,7 @@ class StatefulItem(Item):
                                 )
                         break
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Convert the stateful item to a dictionary including its state data."""
         data = super().to_dict()
         if self.state is not None:
@@ -208,7 +227,7 @@ class StatefulItem(Item):
         return data
 
     @staticmethod
-    def from_dict(data):
+    def from_dict(data: Dict[str, Any]) -> "StatefulItem":
         """Create a stateful item from a dictionary representation."""
         item = StatefulItem(
             name=data["name"],

@@ -26,7 +26,7 @@ class WeaponInitializationTest(unittest.TestCase):
 
         self.assertEqual(weapon.name, "Dagger")
         self.assertEqual(weapon.damage, 5)  # Default damage
-        self.assertEqual(weapon.min_level, 0)
+        self.assertEqual(weapon.min_level, "")  # min_level is a string (level name)
         self.assertEqual(weapon.min_strength, 0)
         self.assertEqual(weapon.min_dexterity, 0)
         self.assertEqual(weapon.weapon_type, "melee")

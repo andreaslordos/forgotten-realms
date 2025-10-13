@@ -1,7 +1,12 @@
 # backend/managers/mob_manager.py
 
 import logging
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from models.Mobile import Mobile
+
+if TYPE_CHECKING:
+    from managers.game_state import GameState
+    from managers.player import PlayerManager
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -14,12 +19,16 @@ class MobManager:
     Handles spawning, tracking, and AI ticking.
     """
 
-    def __init__(self):
+    mobs: Dict[str, Mobile]
+    mob_definitions: Dict[str, Dict[str, Any]]
+    global_tick_counter: int
+
+    def __init__(self) -> None:
         self.mobs = {}  # Dict of mob_id -> Mobile instance
         self.mob_definitions = {}  # Dict of definition_id -> mob template
         self.global_tick_counter = 0  # Track ticks for movement timing
 
-    def load_mob_definitions(self, definitions):
+    def load_mob_definitions(self, definitions: Dict[str, Dict[str, Any]]) -> None:
         """
         Load mob definition templates.
 
@@ -29,7 +38,9 @@ class MobManager:
         self.mob_definitions = definitions
         logger.info(f"Loaded {len(definitions)} mob definitions")
 
-    def spawn_mob(self, definition_id, room_id, game_state=None):
+    def spawn_mob(
+        self, definition_id: str, room_id: str, game_state: Optional["GameState"] = None
+    ) -> Optional[Mobile]:
         """
         Spawn a mob from a definition template.
 
@@ -51,7 +62,7 @@ class MobManager:
         mob_id = f"{definition_id}_{len(self.mobs)}_{room_id}"
 
         # Reconstruct loot table with Item objects
-        loot_table = []
+        loot_table: List[Dict[str, Any]] = []
         for loot_entry in template.get("loot_table", []):
             # loot_entry should be {"item": Item object, "chance": float}
             loot_table.append(loot_entry)
@@ -94,7 +105,7 @@ class MobManager:
         logger.info(f"Spawned {mob.name} (ID: {mob_id}) in room {room_id}")
         return mob
 
-    def remove_mob(self, mob_id, game_state=None):
+    def remove_mob(self, mob_id: str, game_state: Optional["GameState"] = None) -> bool:
         """
         Remove a mob from the game.
 
@@ -121,11 +132,11 @@ class MobManager:
         logger.info(f"Removed mob {mob.name} (ID: {mob_id})")
         return True
 
-    def get_mob(self, mob_id):
+    def get_mob(self, mob_id: str) -> Optional[Mobile]:
         """Get a mob by ID."""
         return self.mobs.get(mob_id)
 
-    def get_mobs_in_room(self, room_id):
+    def get_mobs_in_room(self, room_id: str) -> List[Mobile]:
         """
         Get all mobs in a specific room.
 
@@ -141,13 +152,18 @@ class MobManager:
             if mob.current_room == room_id and mob.state == "alive"
         ]
 
-    def get_all_mobs(self):
+    def get_all_mobs(self) -> List[Mobile]:
         """Get all mobs (alive and dead)."""
         return list(self.mobs.values())
 
     async def tick_all_mobs(
-        self, sio, online_sessions, player_manager, game_state, utils
-    ):
+        self,
+        sio: Any,
+        online_sessions: Dict[str, Dict[str, Any]],
+        player_manager: "PlayerManager",
+        game_state: "GameState",
+        utils: Any,
+    ) -> None:
         """
         Process one tick for all mobs (AI, movement, aggro).
 
@@ -185,7 +201,14 @@ class MobManager:
                     mob, online_sessions, player_manager, game_state, sio, utils
                 )
 
-    async def _process_mob_movement(self, mob, game_state, online_sessions, sio, utils):
+    async def _process_mob_movement(
+        self,
+        mob: Mobile,
+        game_state: "GameState",
+        online_sessions: Dict[str, Dict[str, Any]],
+        sio: Any,
+        utils: Any,
+    ) -> None:
         """
         Handle mob movement along patrol route.
 
@@ -203,7 +226,7 @@ class MobManager:
             return
 
         # Remove from old room
-        old_room = game_state.get_room(old_room_id)
+        old_room = game_state.get_room(old_room_id) if old_room_id else None
         if old_room:
             old_room.remove_item(mob)
 
@@ -217,10 +240,11 @@ class MobManager:
                         )
 
         # Move mob
-        mob.move_to_room(new_room_id, self.global_tick_counter)
+        if new_room_id is not None:
+            mob.move_to_room(new_room_id, self.global_tick_counter)
 
         # Add to new room
-        new_room = game_state.get_room(new_room_id)
+        new_room = game_state.get_room(new_room_id) if new_room_id else None
         if new_room:
             new_room.add_item(mob)
 
@@ -234,8 +258,14 @@ class MobManager:
                         )
 
     async def _process_mob_aggression(
-        self, mob, online_sessions, player_manager, game_state, sio, utils
-    ):
+        self,
+        mob: Mobile,
+        online_sessions: Dict[str, Dict[str, Any]],
+        player_manager: "PlayerManager",
+        game_state: "GameState",
+        sio: Any,
+        utils: Any,
+    ) -> None:
         """
         Handle aggressive mob initiating combat.
 
@@ -260,7 +290,7 @@ class MobManager:
                     target_sid = sid
                     break
 
-        if not target_player:
+        if not target_player or not target_sid:
             return
 
         # Import combat module to initiate attack

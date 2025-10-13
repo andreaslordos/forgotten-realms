@@ -1,6 +1,10 @@
 # backend/models/CombatDialogue.py
 
 import random
+from typing import Optional, TYPE_CHECKING, List
+
+if TYPE_CHECKING:
+    from models.Weapon import Weapon
 
 
 class CombatDialogue:
@@ -11,7 +15,7 @@ class CombatDialogue:
     """
 
     # Player successfully hits opponent
-    PLAYER_HIT_MESSAGES = [
+    PLAYER_HIT_MESSAGES: List[str] = [
         "Your retributive cross sends {target} sprawling!",
         "You beat {target} with a punishing cross!",
         "You catch {target} with a hefty forehand!",
@@ -29,7 +33,7 @@ class CombatDialogue:
     ]
 
     # Player weapon hit messages
-    PLAYER_WEAPON_HIT_MESSAGES = [
+    PLAYER_WEAPON_HIT_MESSAGES: List[str] = [
         "Your {weapon} slices into {target} with deadly precision!",
         "You drive your {weapon} forward, catching {target} off guard!",
         "Your {weapon} connects with {target} in a devastating arc!",
@@ -42,7 +46,7 @@ class CombatDialogue:
     ]
 
     # Player misses opponent
-    PLAYER_MISS_MESSAGES = [
+    PLAYER_MISS_MESSAGES: List[str] = [
         "Your wild swing misses {target} completely!",
         "{target} narrowly evades your attack!",
         "You lunge forward but {target} steps aside!",
@@ -50,12 +54,12 @@ class CombatDialogue:
         "You strike out but only catch air as {target} moves!",
         "Your blow goes wide, missing {target} entirely!",
         "{target} deftly avoids your clumsy attack!",
-        "You stumble slightly, your attack going astray!",
+        "You stumble slightly, your attack at {target} going astray!",
         "With surprising agility, {target} avoids your strike!",
     ]
 
     # Opponent successfully hits player
-    OPPONENT_HIT_MESSAGES = [
+    OPPONENT_HIT_MESSAGES: List[str] = [
         "The momentum of a thrust by {target} sends you sideways.",
         "You are stunned by the vigour of a whack by {target}!",
         "The weight of a thrust from {target} sends you staggering.",
@@ -69,7 +73,7 @@ class CombatDialogue:
     ]
 
     # Opponent weapon hit messages
-    OPPONENT_WEAPON_HIT_MESSAGES = [
+    OPPONENT_WEAPON_HIT_MESSAGES: List[str] = [
         "{target}'s {weapon} strikes you with unexpected force!",
         "You feel the sting as {target}'s {weapon} finds its mark!",
         "{target} swings their {weapon}, landing a solid blow!",
@@ -81,7 +85,7 @@ class CombatDialogue:
     ]
 
     # Opponent misses player
-    OPPONENT_MISS_MESSAGES = [
+    OPPONENT_MISS_MESSAGES: List[str] = [
         "You simply elude a feeble blow by {target}.",
         "You comfortably duck a terrible thump from {target}.",
         "You easily duck a pathetic thrust by {target}.",
@@ -95,7 +99,7 @@ class CombatDialogue:
     ]
 
     # Player takes heavy damage but continues
-    HEAVY_DAMAGE_RECOVERY = [
+    HEAVY_DAMAGE_RECOVERY: List[str] = [
         "With renewed vigour you pull through, and hurtle into the carnage.",
         "Gritting your teeth you compose, and throw yourself into the battle.",
         "With tremendous willpower you carry on, and head back into the carnage.",
@@ -107,7 +111,7 @@ class CombatDialogue:
     ]
 
     # Player lands killing blow
-    KILLING_BLOW_MESSAGES = [
+    KILLING_BLOW_MESSAGES: List[str] = [
         "Your last punch killed {target}!",
         "Your final strike brings {target} crashing down!",
         "With a decisive blow, you vanquish {target}!",
@@ -120,7 +124,7 @@ class CombatDialogue:
     ]
 
     # Player weapon killing blow
-    WEAPON_KILLING_BLOW_MESSAGES = [
+    WEAPON_KILLING_BLOW_MESSAGES: List[str] = [
         "Your {weapon} delivers the final, fatal blow to {target}!",
         "With deadly precision, your {weapon} ends the fight with {target}!",
         "Your {weapon} flashes one last time, and {target} falls!",
@@ -130,15 +134,17 @@ class CombatDialogue:
     ]
 
     # Victory messages
-    VICTORY_MESSAGES = [
+    VICTORY_MESSAGES: List[str] = [
         "You are victorious - this time...",
     ]
 
     @staticmethod
-    def get_player_hit_message(target_name, weapon=None):
+    def get_player_hit_message(
+        target_name: str, weapon: Optional["Weapon"] = None
+    ) -> str:
         """Get a random message for when the player hits their target."""
         if weapon:
-            messages = CombatDialogue.PLAYER_WEAPON_HIT_MESSAGES
+            messages: List[str] = CombatDialogue.PLAYER_WEAPON_HIT_MESSAGES
             return random.choice(messages).format(
                 target=target_name, weapon=weapon.name
             )
@@ -148,17 +154,19 @@ class CombatDialogue:
             )
 
     @staticmethod
-    def get_player_miss_message(target_name):
+    def get_player_miss_message(target_name: str) -> str:
         """Get a random message for when the player misses their target."""
         return random.choice(CombatDialogue.PLAYER_MISS_MESSAGES).format(
             target=target_name
         )
 
     @staticmethod
-    def get_opponent_hit_message(target_name, weapon=None):
+    def get_opponent_hit_message(
+        target_name: str, weapon: Optional["Weapon"] = None
+    ) -> str:
         """Get a random message for when the opponent hits the player."""
         if weapon:
-            messages = CombatDialogue.OPPONENT_WEAPON_HIT_MESSAGES
+            messages: List[str] = CombatDialogue.OPPONENT_WEAPON_HIT_MESSAGES
             return random.choice(messages).format(
                 target=target_name, weapon=weapon.name
             )
@@ -168,22 +176,25 @@ class CombatDialogue:
             )
 
     @staticmethod
-    def get_opponent_miss_message(target_name):
+    def get_opponent_miss_message(target_name: str) -> str:
         """Get a random message for when the opponent misses the player."""
         return random.choice(CombatDialogue.OPPONENT_MISS_MESSAGES).format(
             target=target_name
         )
 
     @staticmethod
-    def get_heavy_damage_recovery():
+    def get_heavy_damage_recovery() -> str:
         """Get a random message for when player takes heavy damage but continues."""
         return random.choice(CombatDialogue.HEAVY_DAMAGE_RECOVERY)
 
     @staticmethod
-    def get_killing_blow_message(target_name, weapon=None):
+    def get_killing_blow_message(
+        target_name: str, weapon: Optional["Weapon"] = None
+    ) -> str:
         """Get a random message for when player lands a killing blow."""
+        msg: str
         if weapon:
-            messages = CombatDialogue.WEAPON_KILLING_BLOW_MESSAGES
+            messages: List[str] = CombatDialogue.WEAPON_KILLING_BLOW_MESSAGES
             msg = random.choice(messages).format(target=target_name, weapon=weapon.name)
         else:
             msg = random.choice(CombatDialogue.KILLING_BLOW_MESSAGES).format(

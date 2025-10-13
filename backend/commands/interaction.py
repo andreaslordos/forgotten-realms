@@ -1,6 +1,8 @@
 # backend/commands/interaction.py
 
 from commands.registry import command_registry
+from typing import Any, Dict
+
 from commands.executor import build_look_description
 import logging
 import traceback
@@ -12,8 +14,14 @@ logger = logging.getLogger(__name__)
 
 
 async def handle_interaction(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle specific verb-object interactions with enhanced features:
     - Consuming items after use
@@ -340,7 +348,7 @@ common_interaction_verbs = [
 ]
 
 
-def register_interaction_verbs():
+def register_interaction_verbs() -> None:
     for verb in common_interaction_verbs:
         command_registry.register(
             verb,

@@ -1,4 +1,6 @@
 # backend/globals.py
 
-online_sessions = {}
-version = "0.51"
+from typing import Any, Dict
+
+online_sessions: Dict[str, Dict[str, Any]] = {}
+version: str = "0.51"

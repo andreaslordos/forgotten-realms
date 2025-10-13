@@ -1,5 +1,6 @@
 # backend/commands/auth.py
 
+from typing import Any, Dict
 from commands.registry import command_registry
 import logging
 
@@ -9,8 +10,14 @@ logger = logging.getLogger(__name__)
 
 
 async def handle_password(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle changing a player's password.
     """
@@ -169,8 +176,14 @@ command_registry.register("password", handle_password, "Change your account pass
 
 # Let's handle the case where the user might enter the password as a new command
 async def handle_password_input(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     This is a special handler for inputs during a password change process.
     It simply echoes back the password command to keep the flow in the password handler.

@@ -1,10 +1,11 @@
 # backend/managers/mob_definitions.py
 
+from typing import Dict, Any
 from models.Item import Item
 from models.Weapon import Weapon
 
 
-def get_mob_definitions():
+def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
     """
     Define mob templates that can be spawned in the game world.
 
@@ -17,7 +18,7 @@ def get_mob_definitions():
         name="rusty dagger",
         id="rusty_dagger",
         description="A worn dagger with a rusted blade. Better than nothing.",
-        weight=0.5,
+        weight=1,
         value=5,
         takeable=True,
         damage=3,
@@ -30,7 +31,7 @@ def get_mob_definitions():
         name="gold coin",
         id="gold_coin",
         description="A shiny gold coin.",
-        weight=0.01,
+        weight=1,
         value=10,
         takeable=True,
     )
@@ -39,7 +40,7 @@ def get_mob_definitions():
         name="tattered cloak",
         id="tattered_cloak",
         description="A worn, tattered cloak that has seen better days.",
-        weight=0.3,
+        weight=1,
         value=3,
         takeable=True,
     )
@@ -57,7 +58,7 @@ def get_mob_definitions():
         name="ancient key",
         id="ancient_key",
         description="An ornate key covered in mysterious runes.",
-        weight=0.1,
+        weight=1,
         value=0,
         takeable=True,
     )

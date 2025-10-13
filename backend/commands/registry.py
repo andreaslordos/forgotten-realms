@@ -1,6 +1,6 @@
 # commands/registry.py (Updated)
 
-from typing import List, Callable, Optional
+from typing import List, Callable, Optional, Dict, Any
 from commands.natural_language_parser import vocabulary_manager
 
 
@@ -15,14 +15,17 @@ class CommandRegistry:
     - Providing help information
     """
 
-    def __init__(self):
+    commands: Dict[str, Dict[str, Any]]
+    command_context: Any
+
+    def __init__(self) -> None:
         self.commands = {}
         self.command_context = None  # Initialized later by parser
 
         # Initialize vocabularies in the parser
         self._initialize_commands()
 
-    def _initialize_commands(self):
+    def _initialize_commands(self) -> None:
         """Initialize the basic command vocabulary."""
         # Register standard movement directions
         for direction in [
@@ -41,7 +44,9 @@ class CommandRegistry:
         ]:
             vocabulary_manager.add_direction(direction)
 
-    def register(self, verb: str, handler: Callable, help_text: Optional[str] = None):
+    def register(
+        self, verb: str, handler: Callable[..., Any], help_text: Optional[str] = None
+    ) -> None:
         """
         Register a command handler.
 
@@ -60,7 +65,7 @@ class CommandRegistry:
         # Add to vocabulary
         vocabulary_manager.add_verb(verb_lower)
 
-    def get_handler(self, verb: str) -> Optional[Callable]:
+    def get_handler(self, verb: str) -> Optional[Callable[..., Any]]:
         """
         Get the handler for a specific verb.
 
@@ -77,7 +82,9 @@ class CommandRegistry:
         # Expand abbreviations and synonyms
         verb = vocabulary_manager.expand_word(verb)
 
-        return self.commands.get(verb, {}).get("handler")
+        command_entry = self.commands.get(verb, {})
+        handler: Optional[Callable[..., Any]] = command_entry.get("handler")
+        return handler
 
     def get_help(self, verb: Optional[str] = None) -> str:
         """
@@ -96,7 +103,8 @@ class CommandRegistry:
 
             command_info = self.commands.get(verb)
             if command_info:
-                return command_info["help_text"]
+                help_text_value: str = command_info["help_text"]
+                return help_text_value
             return f"No help available for '{verb}'."
 
         # Return help for all commands
@@ -105,7 +113,7 @@ class CommandRegistry:
             help_text += f"{v}: {info['help_text']}\n"
         return help_text
 
-    def register_alias(self, alias: str, target_verb: str):
+    def register_alias(self, alias: str, target_verb: str) -> None:
         """
         Register an alias for an existing command.
 
@@ -124,7 +132,7 @@ class CommandRegistry:
         # Add abbreviation to vocabulary manager
         vocabulary_manager.add_abbreviation(alias_lower, target_lower)
 
-    def register_aliases(self, aliases: List[str], target_verb: str):
+    def register_aliases(self, aliases: List[str], target_verb: str) -> None:
         """
         Register multiple aliases for an existing command.
 
@@ -137,4 +145,4 @@ class CommandRegistry:
 
 
 # Global command registry instance
-command_registry = CommandRegistry()
+command_registry: CommandRegistry = CommandRegistry()

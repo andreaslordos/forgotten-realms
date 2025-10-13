@@ -1,6 +1,11 @@
 # backend/models/Weapon.py
 
+from typing import Any, Dict, Tuple, TYPE_CHECKING
+
 from models.Item import Item
+
+if TYPE_CHECKING:
+    from models.Player import Player
 
 
 class Weapon(Item):
@@ -9,19 +14,25 @@ class Weapon(Item):
     Extends the base Item class with combat-specific attributes.
     """
 
+    damage: int
+    min_level: str
+    min_strength: int
+    min_dexterity: int
+    weapon_type: str
+
     def __init__(
         self,
-        name,
-        id,
-        description,
-        weight=1,
-        value=0,
-        takeable=True,
-        damage=5,
-        min_level=0,
-        min_strength=0,
-        min_dexterity=0,
-    ):
+        name: str,
+        id: str,
+        description: str,
+        weight: int = 1,
+        value: int = 0,
+        takeable: bool = True,
+        damage: int = 5,
+        min_level: str = "",
+        min_strength: int = 0,
+        min_dexterity: int = 0,
+    ) -> None:
         """
         Initialize a Weapon.
 
@@ -44,7 +55,7 @@ class Weapon(Item):
         self.min_dexterity = min_dexterity
         self.weapon_type = "melee"  # Default weapon type
 
-    def can_use(self, player):
+    def can_use(self, player: "Player") -> Tuple[bool, str]:
         """
         Check if a player meets the requirements to use this weapon.
 
@@ -56,7 +67,7 @@ class Weapon(Item):
         """
         # Check level requirement
         if self.min_level and player.level != self.min_level:
-            level_names = {
+            level_names: Dict[str, int] = {
                 "Neophyte": 0,
                 "Novice": 1,
                 "Acolyte": 2,
@@ -89,7 +100,7 @@ class Weapon(Item):
 
         return True, ""
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Convert the weapon to a dictionary for serialization."""
         data = super().to_dict()
         data["damage"] = self.damage
@@ -101,7 +112,7 @@ class Weapon(Item):
         return data
 
     @staticmethod
-    def from_dict(data):
+    def from_dict(data: Dict[str, Any]) -> "Weapon":
         """Create a weapon from a dictionary representation."""
         weapon = Weapon(
             name=data["name"],
@@ -111,7 +122,7 @@ class Weapon(Item):
             value=data.get("value", 0),
             takeable=data.get("takeable", True),
             damage=data.get("damage", 5),
-            min_level=data.get("min_level", 0),
+            min_level=data.get("min_level", ""),
             min_strength=data.get("min_strength", 0),
             min_dexterity=data.get("min_dexterity", 0),
         )

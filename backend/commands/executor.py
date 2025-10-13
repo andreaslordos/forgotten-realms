@@ -1,6 +1,8 @@
 # commands/executor.py (Patched)
 
 import logging
+from typing import Any, Dict, Optional, cast
+
 from commands.parser import is_movement_command
 from commands.registry import command_registry
 from services.notifications import broadcast_arrival, broadcast_departure
@@ -11,15 +13,15 @@ logger = logging.getLogger(__name__)
 
 
 async def execute_command(
-    cmd,
-    player,
-    game_state,
-    player_manager,
-    online_sessions=None,
-    sio=None,
-    utils=None,
-    player_sid=None,
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+    player_sid: Optional[str] = None,
+) -> str:
     """
     Execute a command.
 
@@ -82,7 +84,7 @@ async def execute_command(
         return result
 
     # Get the handler for this verb
-    handler = command_registry.get_handler(verb)
+    handler = command_registry.get_handler(verb) if verb else None
 
     if handler:
         # Call the handler with the parsed command and appropriate context
@@ -90,7 +92,7 @@ async def execute_command(
         result = await handler(
             cmd, player, game_state, player_manager, online_sessions, sio, utils
         )
-        return result
+        return cast(str, result)
     else:
         logger.debug("Did not find handler, checking if player name")
         # New code: Check if verb is a player name for a private message
@@ -128,8 +130,14 @@ async def execute_command(
 
 
 async def handle_movement(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle movement commands.
 
@@ -208,8 +216,12 @@ async def handle_movement(
 
 
 def build_look_description(
-    player, game_state, online_sessions=None, look=False, mob_manager=None
-):
+    player: Any,
+    game_state: Any,
+    online_sessions: Optional[Dict[str, Dict[str, Any]]] = None,
+    look: bool = False,
+    mob_manager: Optional[Any] = None,
+) -> str:
     """Build a description of the current room (including mobs)."""
     # This function remains largely unchanged
     current_room = game_state.get_room(player.current_room)

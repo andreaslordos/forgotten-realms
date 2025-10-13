@@ -1,9 +1,13 @@
 # backend/models/Mobile.py
 
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 from models.StatefulItem import StatefulItem
 from models.Item import Item
 import random
 import logging
+
+if TYPE_CHECKING:
+    from models.Player import Player
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -16,26 +20,46 @@ class Mobile(StatefulItem):
     Inherits from StatefulItem to enable special interactions (e.g., give/show commands).
     """
 
+    strength: int
+    dexterity: int
+    max_stamina: int
+    stamina: int
+    damage: int
+    instant_death: bool
+    point_value: int
+    aggressive: bool
+    aggro_delay_min: int
+    aggro_delay_max: int
+    aggro_tick_counter: Optional[int]
+    target_player: Optional["Player"]
+    patrol_rooms: List[str]
+    movement_interval: int
+    last_move_tick: int
+    current_patrol_index: int
+    loot_table: List[Dict[str, Any]]
+    current_room: Optional[str]
+    pronouns: str
+
     def __init__(
         self,
-        name,
-        id,
-        description,
-        strength=20,
-        dexterity=20,
-        max_stamina=100,
-        damage=5,
-        aggressive=False,
-        aggro_delay_min=0,
-        aggro_delay_max=0,
-        patrol_rooms=None,
-        movement_interval=10,
-        loot_table=None,
-        instant_death=False,
-        point_value=0,
-        pronouns="it",
-        current_room=None,
-    ):
+        name: str,
+        id: str,
+        description: str,
+        strength: int = 20,
+        dexterity: int = 20,
+        max_stamina: int = 100,
+        damage: int = 5,
+        aggressive: bool = False,
+        aggro_delay_min: int = 0,
+        aggro_delay_max: int = 0,
+        patrol_rooms: Optional[List[str]] = None,
+        movement_interval: int = 10,
+        loot_table: Optional[List[Dict[str, Any]]] = None,
+        instant_death: bool = False,
+        point_value: int = 0,
+        pronouns: str = "it",
+        current_room: Optional[str] = None,
+    ) -> None:
         """
         Initialize a Mobile.
 
@@ -104,7 +128,7 @@ class Mobile(StatefulItem):
 
         logger.info(f"Created mob: {name} (ID: {id}) in room {current_room}")
 
-    def initialize_aggro_delay(self):
+    def initialize_aggro_delay(self) -> None:
         """
         Set the initial aggro delay based on the configured range.
         Called when the mob is spawned.
@@ -119,7 +143,7 @@ class Mobile(StatefulItem):
         else:
             self.aggro_tick_counter = 0
 
-    def can_attack_player(self):
+    def can_attack_player(self) -> bool:
         """
         Check if the mob should initiate combat with a player.
 
@@ -142,14 +166,14 @@ class Mobile(StatefulItem):
 
         return True
 
-    def tick_aggro_counter(self):
+    def tick_aggro_counter(self) -> None:
         """Decrement the aggro counter each tick."""
         if self.aggro_tick_counter is not None and self.aggro_tick_counter > 0:
             self.aggro_tick_counter -= 1
             if self.aggro_tick_counter == 0:
                 logger.info(f"{self.name} is now aggressive!")
 
-    def should_move(self, current_tick):
+    def should_move(self, current_tick: int) -> bool:
         """
         Check if the mob should move this tick.
 
@@ -175,7 +199,7 @@ class Mobile(StatefulItem):
 
         return False
 
-    def choose_next_room(self):
+    def choose_next_room(self) -> Optional[str]:
         """
         Choose the next room to patrol to.
 
@@ -191,7 +215,7 @@ class Mobile(StatefulItem):
         )
         return self.patrol_rooms[self.current_patrol_index]
 
-    def move_to_room(self, room_id, current_tick):
+    def move_to_room(self, room_id: str, current_tick: int) -> None:
         """
         Move the mob to a new room.
 
@@ -204,7 +228,7 @@ class Mobile(StatefulItem):
         self.last_move_tick = current_tick
         logger.info(f"{self.name} moved from {old_room} to {room_id}")
 
-    def take_damage(self, amount):
+    def take_damage(self, amount: int) -> Tuple[bool, int]:
         """
         Apply damage to the mob.
 
@@ -232,32 +256,32 @@ class Mobile(StatefulItem):
 
         return False, self.stamina
 
-    def drop_loot(self):
+    def drop_loot(self) -> List[Item]:
         """
         Roll the loot table and return items to drop.
 
         Returns:
             list: List of Item objects to drop
         """
-        dropped_items = []
+        dropped_items: List[Item] = []
 
         for loot_entry in self.loot_table:
             item_obj = loot_entry.get("item")
             chance = loot_entry.get("chance", 0.0)
 
             # Roll for drop
-            if random.random() <= chance:
+            if item_obj is not None and random.random() <= chance:
                 # Create a copy of the item to drop
                 dropped_items.append(item_obj)
                 logger.info(f"{self.name} dropped {item_obj.name}")
 
         return dropped_items
 
-    def is_mob(self):
+    def is_mob(self) -> bool:
         """Helper method to identify this as a mob."""
         return True
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Convert the mobile to a dictionary for serialization."""
         data = super().to_dict()
         data.update(
@@ -290,13 +314,14 @@ class Mobile(StatefulItem):
         return data
 
     @staticmethod
-    def from_dict(data):
+    def from_dict(data: Dict[str, Any]) -> "Mobile":
         """Create a mobile from a dictionary representation."""
         # Reconstruct loot table with Item objects
-        loot_table = []
+        loot_table: List[Dict[str, Any]] = []
         for entry in data.get("loot_table", []):
             item_data = entry["item"]
             # Reconstruct item based on type
+            item_obj: Item
             if item_data.get("item_type") == "weapon":
                 from models.Weapon import Weapon
 
@@ -338,5 +363,5 @@ class Mobile(StatefulItem):
 
         return mob
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Mobile({self.name}, room={self.current_room}, state={self.state}, stamina={self.stamina}/{self.max_stamina})"

@@ -39,6 +39,15 @@ repos:
         files: ^backend/(socket_server\.py|event_handlers\.py|commands/auth\.py|managers/(auth|player)\.py|utils\.py)
         args: [--skip, "B104"]  # Skip: bind all (intentional for server)
 
+  # Type checking with mypy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        files: ^backend/
+        exclude: /tests/
+        args: [--ignore-missing-imports, --strict]
+
   - repo: local
     hooks:
       - id: backend-tests-with-coverage

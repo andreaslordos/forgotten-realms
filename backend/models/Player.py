@@ -2,12 +2,38 @@
 
 import asyncio
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Set, Tuple
 from models.Levels import levels
 from models.Item import Item
 
 
 class Player:
-    def __init__(self, name, sex="M", email=None, spawn_room="village_center"):
+    name: str
+    email: Optional[str]
+    sex: str
+    points: int
+    inventory: List[Item]
+    stamina: int
+    max_stamina: int
+    strength: int
+    dexterity: int
+    magic: int
+    carrying_capacity_num: int
+    level: str
+    visited: Set[str]
+    current_level_at: int
+    next_level_at: int
+    created_at: datetime
+    current_room: str
+    last_active: datetime
+
+    def __init__(
+        self,
+        name: str,
+        sex: str = "M",
+        email: Optional[str] = None,
+        spawn_room: str = "village_center",
+    ) -> None:
         self.name = name
         self.email = email
         self.sex = sex
@@ -29,7 +55,11 @@ class Player:
         self.current_room = spawn_room  # Always start at spawn room on login/restart
         self.last_active = datetime.now()
 
-    def level_up(self, sio=None, online_sessions=None):
+    def level_up(
+        self,
+        sio: Optional[Any] = None,
+        online_sessions: Optional[Dict[str, Any]] = None,
+    ) -> bool:
         """
         Calculate the appropriate level based on current points.
         This version supports jumping multiple levels up or down.
@@ -91,12 +121,16 @@ class Player:
         # Return whether the level changed
         return leveled_up
 
-    def add_visited(self, room_id):
+    def add_visited(self, room_id: str) -> None:
         self.visited.add(room_id)
 
     def add_points(
-        self, points, sio=None, online_sessions=None, send_notification=True
-    ):
+        self,
+        points: int,
+        sio: Optional[Any] = None,
+        online_sessions: Optional[Dict[str, Any]] = None,
+        send_notification: bool = True,
+    ) -> Tuple[bool, str]:
         """
         Add points to the player's score and update level if needed.
 
@@ -131,10 +165,10 @@ class Player:
 
         return leveled_up, notification
 
-    def total_inventory_weight(self):
+    def total_inventory_weight(self) -> int:
         return sum(item.weight for item in self.inventory)
 
-    def add_item(self, item):
+    def add_item(self, item: Item) -> Tuple[bool, str]:
         if not item.takeable:
             return False, "Don't be ridiculous!"
         # Check number capacity
@@ -146,24 +180,24 @@ class Player:
         self.inventory.append(item)
         return True, f"{item.name} taken."
 
-    def remove_item(self, item):
+    def remove_item(self, item: Item) -> Tuple[bool, str]:
         if item in self.inventory:
             self.inventory.remove(item)
             return True, f"{item.name} dropped."
         return False, "Item not found in your inventory."
 
-    def drop_all_items(self):
+    def drop_all_items(self) -> List[Item]:
         dropped_items = self.inventory.copy()
         self.inventory.clear()
         return dropped_items
 
-    def set_current_room(self, room_id):
+    def set_current_room(self, room_id: str) -> None:
         self.current_room = room_id
 
-    def update_activity(self):
+    def update_activity(self) -> None:
         self.last_active = datetime.now()
 
-    def return_summary(self):
+    def return_summary(self) -> Dict[str, Any]:
         inv_items = (
             ", ".join(item.name for item in self.inventory)
             if self.inventory
@@ -179,7 +213,7 @@ class Player:
             "last_active": self.last_active.isoformat(),
         }
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
             "email": self.email,
@@ -191,7 +225,7 @@ class Player:
         }
 
     @staticmethod
-    def from_dict(data):
+    def from_dict(data: Dict[str, Any]) -> "Player":
         player = Player(
             data["name"],
             data.get("sex", "M"),

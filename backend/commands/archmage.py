@@ -1,5 +1,6 @@
 # backend/commands/archmage.py
 
+from typing import Any, Dict
 from commands.registry import command_registry
 import logging
 import sys
@@ -12,8 +13,14 @@ logger = logging.getLogger(__name__)
 
 
 async def handle_set_points(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle setting points for another player. Archmage-only command.
     Usage: set <player_name> <points>
@@ -123,8 +130,14 @@ async def handle_set_points(
 
 
 async def handle_reset(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle world reset. Archmage-only command.
     """

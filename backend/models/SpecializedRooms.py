@@ -1,5 +1,6 @@
 # backend/models/SpecializedRooms.py
 
+from typing import Any, Dict, Optional, Tuple
 from models.Room import Room
 
 
@@ -8,15 +9,18 @@ class SwampRoom(Room):
     A specialized room for swamp areas that can consume treasure and award points.
     """
 
+    treasure_destination: Optional[str]
+    awards_points: bool
+
     def __init__(
         self,
-        room_id,
-        name,
-        description,
-        exits=None,
-        treasure_destination=None,
-        awards_points=True,
-    ):
+        room_id: str,
+        name: str,
+        description: str,
+        exits: Optional[Dict[str, str]] = None,
+        treasure_destination: Optional[str] = None,
+        awards_points: bool = True,
+    ) -> None:
         """
         Initialize a SwampRoom.
 
@@ -34,13 +38,13 @@ class SwampRoom(Room):
 
     def handle_treasure_drop(
         self,
-        item,
-        player,
-        game_state,
-        player_manager=None,
-        sio=None,
-        online_sessions=None,
-    ):
+        item: Any,
+        player: Any,
+        game_state: Any,
+        player_manager: Optional[Any] = None,
+        sio: Optional[Any] = None,
+        online_sessions: Optional[Any] = None,
+    ) -> Tuple[bool, str]:
         """
         Special handler for when treasure is dropped in this room.
 
@@ -80,7 +84,7 @@ class SwampRoom(Room):
         # Return standard message for items without value
         return True, f"{item.name.capitalize()} dropped."
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Convert the SwampRoom to a dictionary for serialization."""
         data = super().to_dict()
         data["room_type"] = "swamp"  # Add type identifier
@@ -89,7 +93,7 @@ class SwampRoom(Room):
         return data
 
     @staticmethod
-    def from_dict(data):
+    def from_dict(data: Dict[str, Any]) -> "SwampRoom":
         """Create a SwampRoom from a dictionary representation."""
         return SwampRoom(
             data["room_id"],

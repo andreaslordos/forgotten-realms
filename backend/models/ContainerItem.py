@@ -1,20 +1,27 @@
+from typing import Any, Dict, List, Optional
 from models.StatefulItem import StatefulItem
 from models.Item import Item
 
 
 class ContainerItem(StatefulItem):
+    base_description: str
+    base_weight: int
+    capacity_limit: int
+    capacity_weight: int
+    items: List[Item]
+
     def __init__(
         self,
-        name,
-        id,
-        description,
-        weight=1,
-        value=0,
-        takeable=True,
-        state=None,
-        capacity_limit=10,
-        capacity_weight=100,
-    ):
+        name: str,
+        id: str,
+        description: str,
+        weight: int = 1,
+        value: int = 0,
+        takeable: bool = True,
+        state: Optional[str] = None,
+        capacity_limit: int = 10,
+        capacity_weight: int = 100,
+    ) -> None:
         """
         :param capacity_limit: Maximum number of items the container can hold.
         :param capacity_weight: Maximum total weight (in kg) for the items in the container.
@@ -37,7 +44,7 @@ class ContainerItem(StatefulItem):
         # Add default open/close interactions
         self.setup_default_interactions()
 
-    def setup_default_interactions(self):
+    def setup_default_interactions(self) -> None:
         """Set up the default open and close interactions for containers."""
         # Only add these if we have the add_interaction method (from StatefulItem)
         if hasattr(self, "add_interaction"):
@@ -57,11 +64,11 @@ class ContainerItem(StatefulItem):
                 from_state="open",
             )
 
-    def update_weight(self):
+    def update_weight(self) -> None:
         """Update the container's total weight to be its own base weight plus the weight of its contents."""
         self.weight = self.base_weight + self.current_weight()
 
-    def get_contained(self):
+    def get_contained(self) -> str:
         """Used in inventory command."""
         return_str = f"    The {self.name} contains "
         if len(self.items) > 0:
@@ -73,7 +80,7 @@ class ContainerItem(StatefulItem):
             items_str = "nothing"
         return return_str + items_str
 
-    def update_description(self):
+    def update_description(self) -> None:
         """
         Update the container's full description to follow the required format:
 
@@ -89,7 +96,7 @@ class ContainerItem(StatefulItem):
         full_desc += self.get_contained()
         self.description = full_desc
 
-    def set_state(self, new_state, game_state=None):
+    def set_state(self, new_state: str, game_state: Any = None) -> bool:
         """
         Change the state of the container to "open" or "closed" and update its description.
 
@@ -126,7 +133,7 @@ class ContainerItem(StatefulItem):
 
         return True
 
-    def add_item(self, item):
+    def add_item(self, item: Item) -> bool:
         """
         Attempt to add an item to the container, respecting capacity and weight limits.
         Updates the description and total weight afterward.
@@ -148,7 +155,7 @@ class ContainerItem(StatefulItem):
         self.update_description()
         return True
 
-    def remove_item(self, item_id):
+    def remove_item(self, item_id: str) -> Optional[Item]:
         """
         Remove an item from the container by its id and update the description and total weight.
 
@@ -163,16 +170,16 @@ class ContainerItem(StatefulItem):
                 return removed
         return None
 
-    def current_weight(self):
+    def current_weight(self) -> int:
         """Calculate the total weight of the contained items."""
         return sum(item.weight for item in self.items)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert the container item to a dictionary including its capacity details and contained items.
         Also save the container's intrinsic weight.
         """
-        data = super().to_dict()
+        data: Dict[str, Any] = super().to_dict()
         data["capacity_limit"] = self.capacity_limit
         data["capacity_weight"] = self.capacity_weight
         data["items"] = [item.to_dict() for item in self.items]
@@ -180,7 +187,7 @@ class ContainerItem(StatefulItem):
         return data
 
     @staticmethod
-    def from_dict(data):
+    def from_dict(data: Dict[str, Any]) -> "ContainerItem":
         """
         Reconstruct a ContainerItem from a dictionary representation.
         """
@@ -207,6 +214,6 @@ class ContainerItem(StatefulItem):
         container.update_description()
         return container
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         # Simply return the current description.
         return self.description

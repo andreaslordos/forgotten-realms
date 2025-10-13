@@ -1,6 +1,18 @@
 # backend/models/levels.py
 
-levels = {
+from typing import Dict, TypedDict
+
+
+class LevelStats(TypedDict):
+    name: str
+    stamina: int
+    strength: int
+    dexterity: int
+    magic: int
+    carrying_capacity_num: int
+
+
+levels: Dict[int, LevelStats] = {
     0: {
         "name": "Neophyte",
         "stamina": 45,

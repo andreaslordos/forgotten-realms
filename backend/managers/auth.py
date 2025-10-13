@@ -3,10 +3,14 @@
 import json
 import os
 import hashlib
+from typing import Dict
 
 
 class AuthManager:
-    def __init__(self, save_file="storage/auth.json"):
+    save_file: str
+    credentials: Dict[str, str]
+
+    def __init__(self, save_file: str = "storage/auth.json") -> None:
         self.save_file = save_file
         self.credentials = {}
         # Ensure storage directory exists
@@ -15,22 +19,22 @@ class AuthManager:
             os.makedirs(directory)
         self.load_credentials()
 
-    def load_credentials(self):
+    def load_credentials(self) -> None:
         if os.path.exists(self.save_file):
             with open(self.save_file, "r") as f:
                 self.credentials = json.load(f)
         else:
             self.credentials = {}
 
-    def save_credentials(self):
+    def save_credentials(self) -> None:
         with open(self.save_file, "w") as f:
             json.dump(self.credentials, f, indent=4)
 
-    def hash_password(self, username, password):
+    def hash_password(self, username: str, password: str) -> str:
         salted = password + username
         return hashlib.sha256(salted.encode("utf-8")).hexdigest()
 
-    def register(self, username, password):
+    def register(self, username: str, password: str) -> bool:
         uname = username.lower()
         if uname in self.credentials:
             raise Exception("User already exists.")
@@ -39,7 +43,7 @@ class AuthManager:
         self.save_credentials()
         return True
 
-    def login(self, username, password):
+    def login(self, username: str, password: str) -> bool:
         uname = username.lower()
         hashed = self.hash_password(uname, password)
         if uname in self.credentials and self.credentials[uname] == hashed:

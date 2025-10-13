@@ -1,8 +1,25 @@
 # backend/models/item.py
 
+from typing import Any, Dict
+
 
 class Item:
-    def __init__(self, name, id, description, weight=1, value=0, takeable=True):
+    name: str
+    id: str
+    description: str
+    weight: int
+    value: int
+    takeable: bool
+
+    def __init__(
+        self,
+        name: str,
+        id: str,
+        description: str,
+        weight: int = 1,
+        value: int = 0,
+        takeable: bool = True,
+    ) -> None:
         """
         :param name: The name of the item.
         :param id: The id of the item.
@@ -18,10 +35,10 @@ class Item:
         self.value = value
         self.takeable = takeable
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.name} - {self.description} ({self.weight}kg, {self.value}pts)"
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Convert the item to a dictionary for serialization."""
         return {
             "name": self.name,
@@ -33,7 +50,7 @@ class Item:
         }
 
     @staticmethod
-    def from_dict(data):
+    def from_dict(data: Dict[str, Any]) -> "Item":
         """Create an item from a dictionary representation."""
         return Item(
             name=data["name"],

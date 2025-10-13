@@ -1,6 +1,8 @@
 # backend/commands/container.py
 
 from commands.registry import command_registry
+from typing import Any, Dict, cast
+
 from models.ContainerItem import ContainerItem
 import logging
 from models.Player import Player
@@ -13,8 +15,14 @@ logger = logging.getLogger(__name__)
 
 # ===== PUT COMMAND =====
 async def handle_put(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle putting an item into a container.
     Format: put <item> in <container>
@@ -48,8 +56,10 @@ async def handle_put(
 
     if not container:
         for item in player.inventory:
-            if instrument.lower() in item.name.lower() and isinstance(
-                item, ContainerItem
+            if (
+                instrument
+                and instrument.lower() in item.name.lower()
+                and isinstance(item, ContainerItem)
             ):
                 container = item
                 break
@@ -62,7 +72,7 @@ async def handle_put(
         return f"The {container.name} is closed. You need to open it first."
 
     # Handle special cases: "all" and "t" (treasure)
-    if subject.lower() in ["all", "everything"]:
+    if subject and subject.lower() in ["all", "everything"]:
         if not player.inventory or (
             len(player.inventory) == 1 and container in player.inventory
         ):
@@ -108,7 +118,7 @@ async def handle_put(
             else f"Nothing added to the {container.name}."
         )
 
-    elif subject.lower() in ["treasure", "t"]:
+    elif subject and subject.lower() in ["treasure", "t"]:
         # Get all valuable items (with value > 0) from inventory
         valuable_items = [
             item
@@ -156,7 +166,7 @@ async def handle_put(
 
     if not item_to_put:
         for item in player.inventory:
-            if subject.lower() in item.name.lower():
+            if subject and subject.lower() in item.name.lower():
                 item_to_put = item
                 break
 
@@ -191,8 +201,14 @@ async def handle_put(
 
 
 async def handle_get_from(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle getting an item from a container or stealing from a player.
     Format: get <item> from <container/player>
@@ -241,8 +257,10 @@ async def handle_get_from(
 
     if not container:
         for item in player.inventory:
-            if instrument.lower() in item.name.lower() and isinstance(
-                item, ContainerItem
+            if (
+                instrument
+                and instrument.lower() in item.name.lower()
+                and isinstance(item, ContainerItem)
             ):
                 container = item
                 break
@@ -255,7 +273,7 @@ async def handle_get_from(
         return f"The {container.name} is closed. You need to open it first."
 
     # Handle special cases: "all" and "t" (treasure)
-    if subject.lower() in ["all", "everything"]:
+    if subject and subject.lower() in ["all", "everything"]:
         if not container.items:
             return f"The {container.name} is empty."
 
@@ -273,7 +291,7 @@ async def handle_get_from(
         player_manager.save_players()
         return "\n".join(messages)
 
-    elif subject.lower() in ["treasure", "t"]:
+    elif subject and subject.lower() in ["treasure", "t"]:
         # Get all valuable items (with value > 0)
         valuable_items = [
             item
@@ -308,7 +326,7 @@ async def handle_get_from(
 
     if not item_to_get:
         for item in container.items:
-            if subject.lower() in item.name.lower():
+            if subject and subject.lower() in item.name.lower():
                 item_to_get = item
                 break
 
@@ -322,13 +340,19 @@ async def handle_get_from(
         player_manager.save_players()
         return f"{item_to_get.name} removed from {container.name}."
     else:
-        return message
+        return cast(str, message)
 
 
 # ===== OPEN/CLOSE COMMANDS =====
 async def handle_open(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """Handle opening a container."""
     # Get the subject (container)
     subject = cmd.get("subject")
@@ -353,7 +377,11 @@ async def handle_open(
     if not container:
         # Try player's inventory
         for item in player.inventory:
-            if subject.lower() in item.name.lower() and isinstance(item, ContainerItem):
+            if (
+                subject
+                and subject.lower() in item.name.lower()
+                and isinstance(item, ContainerItem)
+            ):
                 container = item
                 break
 
@@ -361,8 +389,10 @@ async def handle_open(
         if not container:
             current_room = game_state.get_room(player.current_room)
             for item in current_room.get_items(game_state):
-                if subject.lower() in item.name.lower() and isinstance(
-                    item, ContainerItem
+                if (
+                    subject
+                    and subject.lower() in item.name.lower()
+                    and isinstance(item, ContainerItem)
                 ):
                     container = item
                     break
@@ -379,8 +409,14 @@ async def handle_open(
 
 
 async def handle_close(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """Handle closing a container."""
     # Get the subject (container)
     subject = cmd.get("subject")
@@ -405,7 +441,11 @@ async def handle_close(
     if not container:
         # Try player's inventory
         for item in player.inventory:
-            if subject.lower() in item.name.lower() and isinstance(item, ContainerItem):
+            if (
+                subject
+                and subject.lower() in item.name.lower()
+                and isinstance(item, ContainerItem)
+            ):
                 container = item
                 break
 
@@ -413,8 +453,10 @@ async def handle_close(
         if not container:
             current_room = game_state.get_room(player.current_room)
             for item in current_room.get_items(game_state):
-                if subject.lower() in item.name.lower() and isinstance(
-                    item, ContainerItem
+                if (
+                    subject
+                    and subject.lower() in item.name.lower()
+                    and isinstance(item, ContainerItem)
                 ):
                     container = item
                     break
@@ -431,8 +473,14 @@ async def handle_close(
 
 
 async def handle_empty(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle emptying a container, dropping all contained items into the current room.
     Format: empty <container>
@@ -456,7 +504,11 @@ async def handle_empty(
     if not container:
         # Try player's inventory
         for item in player.inventory:
-            if subject.lower() in item.name.lower() and isinstance(item, ContainerItem):
+            if (
+                subject
+                and subject.lower() in item.name.lower()
+                and isinstance(item, ContainerItem)
+            ):
                 container = item
                 break
 

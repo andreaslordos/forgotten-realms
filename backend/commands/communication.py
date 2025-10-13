@@ -1,5 +1,6 @@
 # backend/commands/communication.py
 
+from typing import Dict, Any, Optional
 from commands.registry import command_registry
 import logging
 from commands.rest import wake_player
@@ -9,8 +10,14 @@ logger = logging.getLogger(__name__)
 
 # ===== SHOUT COMMAND =====
 async def handle_shout(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle global shout command.
 
@@ -25,10 +32,10 @@ async def handle_shout(
         str: Confirmation message
     """
     # Get the subject (shout message)
-    subject = cmd.get("subject")
+    subject: Optional[str] = cmd.get("subject")
 
     # Get the current sid from the online_sessions
-    current_sid = None
+    current_sid: Optional[str] = None
     for sid, session in online_sessions.items():
         if session.get("player") == player:
             current_sid = sid
@@ -71,8 +78,14 @@ async def handle_shout(
 
 # ===== SAY COMMAND (ROOM MESSAGE) =====
 async def handle_say(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle saying something in the current room.
 
@@ -87,14 +100,14 @@ async def handle_say(
         str: Confirmation message
     """
     # Get the subject (say message)
-    subject = cmd.get("subject")
+    subject: Optional[str] = cmd.get("subject")
 
     # If no message provided, return an error
     if not subject:
         return "What do you want to say?"
 
     # Get the current sid from the online_sessions
-    current_sid = None
+    current_sid: Optional[str] = None
     for sid, session in online_sessions.items():
         if session.get("player") == player:
             current_sid = sid
@@ -122,14 +135,20 @@ async def handle_say(
 
 # ===== TELL COMMAND (PRIVATE MESSAGE) =====
 async def handle_tell(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle sending a private message to another player.
     """
     # Check if the "verb" is actually a player name (for "name message" pattern)
-    recipient_name = None
-    message = None
+    recipient_name: Optional[str] = None
+    message: Optional[str] = None
 
     # Check the most common format: "<player_name> <message>"
     if cmd.get("verb") and cmd.get("subject") and not cmd.get("instrument"):
@@ -141,7 +160,7 @@ async def handle_tell(
         message = cmd.get("instrument")
 
     # Get the current sid from the online_sessions
-    current_sid = None
+    current_sid: Optional[str] = None
     for sid, session in online_sessions.items():
         if session.get("player") == player:
             current_sid = sid
@@ -164,7 +183,7 @@ async def handle_tell(
         return f"What do you want to tell {recipient_name}?"
 
     # Find the recipient
-    recipient_sid = None
+    recipient_sid: Optional[str] = None
 
     for sid, session_data in online_sessions.items():
         other_player = session_data.get("player")
@@ -187,20 +206,26 @@ async def handle_tell(
 
 # ===== ACT COMMAND =====
 async def handle_act(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Handle acting out an emote in the current room.
     """
     # Get the subject (action text)
-    subject = cmd.get("subject")
+    subject: Optional[str] = cmd.get("subject")
 
     # If no action provided, return an error
     if not subject:
         return "What do you want to do?"
 
     # Get the current sid from the online_sessions
-    current_sid = None
+    current_sid: Optional[str] = None
     for sid, session in online_sessions.items():
         if session.get("player") == player:
             current_sid = sid
@@ -228,13 +253,19 @@ async def handle_act(
 
 # ===== CONVERSE COMMAND =====
 async def handle_converse(
-    cmd, player, game_state, player_manager, online_sessions, sio, utils
-):
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Toggle converse mode for a player.
     """
     # Get the current sid from the online_sessions
-    current_sid = None
+    current_sid: Optional[str] = None
     for sid, session in online_sessions.items():
         if session.get("player") == player:
             current_sid = sid
@@ -261,8 +292,14 @@ async def handle_converse(
 
 # ===== HANDLE PENDING COMMUNICATION =====
 async def handle_pending_communication(
-    pending, message_text, player, sid, online_sessions, sio, utils
-):
+    pending: Dict[str, Any],
+    message_text: str,
+    player: Any,
+    sid: str,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
     """
     Process a pending communication request.
 
@@ -295,8 +332,8 @@ async def handle_pending_communication(
 
     elif pending["type"] == "private":
         # Handle pending private message
-        recipient_name = pending["recipient"].lower()
-        recipient_sid = None
+        recipient_name: str = pending["recipient"].lower()
+        recipient_sid: Optional[str] = None
 
         for osid, osession in online_sessions.items():
             other_player = osession.get("player")

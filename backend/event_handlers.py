@@ -10,6 +10,7 @@ and dispatches in-game commands.
 
 import asyncio
 from datetime import datetime
+from typing import Any, Dict
 from commands.executor import build_look_description
 from commands.combat import handle_combat_disconnect, is_in_combat
 from services.notifications import (
@@ -21,8 +22,13 @@ from globals import version
 
 
 def register_handlers(
-    sio, auth_manager, player_manager, game_state, online_sessions, utils
-):
+    sio: Any,
+    auth_manager: Any,
+    player_manager: Any,
+    game_state: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    utils: Any,
+) -> None:
     """
     Registers all Socket.IO event handlers.
 
@@ -38,7 +44,7 @@ def register_handlers(
                send_stats_update(sio, sid, player))
     """
 
-    async def post_login(sid, player):
+    async def post_login(sid: str, player: Any) -> None:
         """
         Called after a successful login or registration.
         Ensures the player is set to the spawn room, sends updated stats,
@@ -67,7 +73,9 @@ def register_handlers(
         # Notify other players in the room.
         await broadcast_arrival(player)
 
-    async def process_auth_flow(sid, command_text, session):
+    async def process_auth_flow(
+        sid: str, command_text: str, session: Dict[str, Any]
+    ) -> None:
         """
         Processes the authentication/registration flow.
         Depending on the current auth state, this function guides the user
@@ -298,8 +306,8 @@ def register_handlers(
                 await post_login(sid, player)
                 return
 
-    @sio.event
-    async def connect(sid, environ, auth):
+    @sio.event  # type: ignore[misc]
+    async def connect(sid: str, environ: Any, auth: Any) -> None:
         """
         Handles a new client connection.
         Sets up the session and sends the introductory splash message.
@@ -328,8 +336,8 @@ Welcome! By what name shall I call you?
 """
         await utils.send_message(sio, sid, MYSTICAL_SPLASH)
 
-    @sio.event
-    async def disconnect(sid):
+    @sio.event  # type: ignore[misc]
+    async def disconnect(sid: str) -> None:
         """
         Handles client disconnection.
         Returns any carried items to the current room and cleans up session data.
@@ -368,8 +376,8 @@ Welcome! By what name shall I call you?
             # Remove the session
             del online_sessions[sid]
 
-    @sio.event
-    async def command(sid, command_text):
+    @sio.event  # type: ignore[misc]
+    async def command(sid: str, command_text: str) -> None:
         """
         Handles all commands from a client.
         Routes authentication commands if needed; otherwise, queues in-game commands.

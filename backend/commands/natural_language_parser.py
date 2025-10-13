@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import List, Dict, Tuple, Optional, Any
+from typing import List, Dict, Tuple, Optional, Any, Set, Union
 from services.get_online_players import get_online_players
 
 # Set up logging
@@ -42,17 +42,17 @@ class ParserError(Exception):
 class UnknownWordError(ParserError):
     """Error for when a word is not recognized."""
 
-    def __init__(self, word):
-        self.word = word
+    def __init__(self, word: str) -> None:
+        self.word: str = word
         super().__init__(f"I don't know the word '{word}'.")
 
 
 class AmbiguousReferenceError(ParserError):
     """Error for when an object reference is ambiguous."""
 
-    def __init__(self, noun, options):
-        self.noun = noun
-        self.options = options
+    def __init__(self, noun: str, options: List[Any]) -> None:
+        self.noun: str = noun
+        self.options: List[Any] = options
         super().__init__(
             f"Which {noun} do you mean? I can see: {', '.join(str(o) for o in options)}."
         )
@@ -61,15 +61,15 @@ class AmbiguousReferenceError(ParserError):
 class MissingObjectError(ParserError):
     """Error for when a required object is missing."""
 
-    def __init__(self, verb):
-        self.verb = verb
+    def __init__(self, verb: str) -> None:
+        self.verb: str = verb
         super().__init__(f"What do you want to {verb}?")
 
 
 class SyntaxError(ParserError):
     """Error for when the command syntax is invalid."""
 
-    def __init__(self, message):
+    def __init__(self, message: str) -> None:
         super().__init__(message)
 
 
@@ -95,7 +95,7 @@ class Token:
         self.value = value
         self.position = position
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Token({self.type}, '{self.value}', {self.position})"
 
 
@@ -172,7 +172,15 @@ def tokenize(command_str: str) -> List[Token]:
 class VocabularyManager:
     """Manages the vocabulary, abbreviations, and word recognition."""
 
-    def __init__(self):
+    abbreviations: Dict[str, Union[str, Dict[str, str]]]
+    synonyms: Dict[str, str]
+    verbs: Set[str]
+    prepositions: Set[str]
+    preposition_types: Dict[str, str]
+    adverbs: Set[str]
+    directions: Set[str]
+
+    def __init__(self) -> None:
         # Dictionary of abbreviations: {"g": "get", "n": "north", ...}
         # Now enhanced to support context-aware abbreviations
         # Format: {
@@ -206,7 +214,7 @@ class VocabularyManager:
             f"VocabularyManager initialized with {len(self.abbreviations)} abbreviations"
         )
 
-    def _initialize_vocabularies(self):
+    def _initialize_vocabularies(self) -> None:
         """Initialize standard vocabularies with default values."""
         # Standard prepositions (verb X with Y)
         standard_prepositions = {
@@ -331,7 +339,9 @@ class VocabularyManager:
         # Add 'move' as a special verb for movement commands
         self.verbs.add("move")
 
-    def add_abbreviation(self, abbreviation: str, full_word: str, context: str = None):
+    def add_abbreviation(
+        self, abbreviation: str, full_word: str, context: Optional[str] = None
+    ) -> None:
         """
         Add a new abbreviation.
 
@@ -346,19 +356,21 @@ class VocabularyManager:
         if context:
             if abbreviation not in self.abbreviations:
                 self.abbreviations[abbreviation] = {"default": full_word}
-            elif isinstance(self.abbreviations[abbreviation], dict):
-                self.abbreviations[abbreviation][context] = full_word
             else:
-                # Convert simple abbreviation to context-aware
-                default_value = self.abbreviations[abbreviation]
-                self.abbreviations[abbreviation] = {
-                    "default": default_value,
-                    context: full_word,
-                }
+                existing = self.abbreviations[abbreviation]
+                if isinstance(existing, dict):
+                    existing[context] = full_word
+                else:
+                    # Convert simple abbreviation to context-aware
+                    self.abbreviations[abbreviation] = {
+                        "default": existing,
+                        context: full_word,
+                    }
         else:
             # Simple abbreviation
-            if isinstance(self.abbreviations.get(abbreviation), dict):
-                self.abbreviations[abbreviation]["default"] = full_word
+            existing_abbrev = self.abbreviations.get(abbreviation)
+            if isinstance(existing_abbrev, dict):
+                existing_abbrev["default"] = full_word
             else:
                 self.abbreviations[abbreviation] = full_word
 
@@ -367,28 +379,30 @@ class VocabularyManager:
             + (f" (context: {context})" if context else "")
         )
 
-    def add_synonym(self, synonym: str, base_word: str):
+    def add_synonym(self, synonym: str, base_word: str) -> None:
         """Add a new synonym."""
         self.synonyms[synonym.lower()] = base_word.lower()
         logger.debug(f"Added synonym: {synonym} -> {base_word}")
 
-    def add_verb(self, verb: str):
+    def add_verb(self, verb: str) -> None:
         """Add a new verb to the vocabulary."""
         self.verbs.add(verb.lower())
         logger.debug(f"Added verb: {verb}")
 
-    def add_preposition(self, preposition: str, preposition_type: str = "standard"):
+    def add_preposition(
+        self, preposition: str, preposition_type: str = "standard"
+    ) -> None:
         """Add a new preposition to the vocabulary."""
         self.prepositions.add(preposition.lower())
         self.preposition_types[preposition.lower()] = preposition_type
         logger.debug(f"Added preposition: {preposition} (type: {preposition_type})")
 
-    def add_adverb(self, adverb: str):
+    def add_adverb(self, adverb: str) -> None:
         """Add a new adverb to the vocabulary."""
         self.adverbs.add(adverb.lower())
         logger.debug(f"Added adverb: {adverb}")
 
-    def add_direction(self, direction: str):
+    def add_direction(self, direction: str) -> None:
         """Add a new direction to the vocabulary."""
         self.directions.add(direction.lower())
         logger.debug(f"Added direction: {direction}")
@@ -410,19 +424,21 @@ class VocabularyManager:
 
         # Check if it's an abbreviation
         if word in self.abbreviations:
+            abbrev_value = self.abbreviations[word]
             # Handle context-aware abbreviations
-            if isinstance(self.abbreviations[word], dict):
+            if isinstance(abbrev_value, dict):
                 # Improved context detection
+                expanded: Optional[str] = None
                 if position == 0:
                     # First word is likely a verb
-                    expanded = self.abbreviations[word].get("default")
+                    expanded = abbrev_value.get("default")
                 elif position > 0 and position < total_words - 1:
                     # Middle position - more aggressive about using preposition expansion
-                    if "in_prep_position" in self.abbreviations[word]:
+                    if "in_prep_position" in abbrev_value:
                         # Prefer preposition expansions in non-first positions
-                        expanded = self.abbreviations[word]["in_prep_position"]
+                        expanded = abbrev_value["in_prep_position"]
                     else:
-                        expanded = self.abbreviations[word].get("default")
+                        expanded = abbrev_value.get("default")
 
                     # Additional debugging
                     logger.debug(
@@ -431,7 +447,7 @@ class VocabularyManager:
                     )
                 else:
                     # Last word - use default
-                    expanded = self.abbreviations[word].get("default")
+                    expanded = abbrev_value.get("default")
 
                 if expanded:
                     word = expanded
@@ -440,7 +456,7 @@ class VocabularyManager:
                     )
             else:
                 # Simple abbreviation
-                word = self.abbreviations[word]
+                word = abbrev_value
                 logger.debug(f"Expanded abbreviation: {original} -> {word}")
 
         # Check if it's a synonym
@@ -504,7 +520,16 @@ class CommandContext:
     - mob_manager for binding mobs
     """
 
-    def __init__(self, mob_manager=None):
+    last_verb: Optional[str]
+    last_subject: Optional[Any]
+    last_instrument: Optional[Any]
+    last_them: Optional[Any]
+    last_him: Optional[Any]
+    last_her: Optional[Any]
+    last_it: Optional[Any]
+    mob_manager: Optional[Any]
+
+    def __init__(self, mob_manager: Optional[Any] = None) -> None:
         self.last_verb = None
         self.last_subject = None
         self.last_instrument = None
@@ -514,11 +539,17 @@ class CommandContext:
         self.last_it = None
         self.mob_manager = mob_manager
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: Optional[Any] = None) -> Optional[Any]:
         """Get an attribute like a dictionary for compatibility."""
         return getattr(self, key, default)
 
-    def update(self, verb=None, subject=None, instrument=None, gender=None):
+    def update(
+        self,
+        verb: Optional[str] = None,
+        subject: Optional[Any] = None,
+        instrument: Optional[Any] = None,
+        gender: Optional[str] = None,
+    ) -> None:
         """Update the context with new references."""
         if verb:
             self.last_verb = verb
@@ -538,7 +569,9 @@ class CommandContext:
         if instrument:
             self.last_instrument = instrument
 
-    def resolve_pronoun(self, pronoun: str, game_state=None):
+    def resolve_pronoun(
+        self, pronoun: str, game_state: Optional[Any] = None
+    ) -> Optional[Any]:
         """
         Resolve a pronoun to its referent.
 
@@ -579,13 +612,17 @@ class SyntaxPattern:
     - "VERB INSTRUMENT to SUBJECT" (reversed syntax)
     """
 
-    def __init__(self, pattern_str: str, priority: int = 0):
+    pattern_str: str
+    priority: int
+    components: List[Dict[str, str]]
+
+    def __init__(self, pattern_str: str, priority: int = 0) -> None:
         self.pattern_str = pattern_str
         self.priority = priority
         self.components = self._parse_pattern()
         logger.debug(f"Created SyntaxPattern: '{pattern_str}' with priority {priority}")
 
-    def _parse_pattern(self):
+    def _parse_pattern(self) -> List[Dict[str, str]]:
         """Parse the pattern string into components."""
         parts = self.pattern_str.split()
         components = []
@@ -692,8 +729,8 @@ class SyntaxPattern:
                         )
                         logger.debug(f"Bound SUBJECT to '{components_dict['subject']}'")
                     else:
-                        components_dict["subject"] = None
-                        logger.debug("No tokens for SUBJECT, binding to None")
+                        # Don't add subject key if no tokens found
+                        logger.debug("No tokens for SUBJECT, skipping binding")
 
                     pattern_index += 1
 
@@ -729,8 +766,8 @@ class SyntaxPattern:
                             f"Bound INSTRUMENT to '{components_dict['instrument']}'"
                         )
                     else:
-                        components_dict["instrument"] = None
-                        logger.debug("No tokens for INSTRUMENT, binding to None")
+                        # Don't add instrument key if no tokens found
+                        logger.debug("No tokens for INSTRUMENT, skipping binding")
 
                     pattern_index += 1
 
@@ -754,11 +791,13 @@ class SyntaxPattern:
                 ):
                     preposition = component["value"]
                     components_dict["preposition"] = preposition
-                    components_dict["reversed_syntax"] = (
-                        vocabulary_manager.is_reversed_preposition(preposition)
+                    reversed_syntax_value = vocabulary_manager.is_reversed_preposition(
+                        preposition
                     )
+                    # Store boolean as Any to satisfy type checker for components_dict
+                    components_dict["reversed_syntax"] = reversed_syntax_value  # type: ignore[assignment]
                     logger.debug(
-                        f"Found preposition '{preposition}', reversed_syntax: {components_dict['reversed_syntax']}"
+                        f"Found preposition '{preposition}', reversed_syntax: {reversed_syntax_value}"
                     )
 
             logger.debug(
@@ -773,7 +812,9 @@ class SyntaxPattern:
 class CommandStructure:
     """Base class for command structures."""
 
-    def __init__(self, syntax_patterns: List[SyntaxPattern]):
+    syntax_patterns: List[SyntaxPattern]
+
+    def __init__(self, syntax_patterns: List[SyntaxPattern]) -> None:
         self.syntax_patterns = sorted(syntax_patterns, key=lambda p: -p.priority)
         logger.debug(f"Created CommandStructure with {len(syntax_patterns)} patterns")
 
@@ -860,7 +901,14 @@ class ObjectBinder:
     - Filtering by adjectives
     """
 
-    def bind_entity(self, entity_name, entity_type, player, game_state, context):
+    def bind_entity(
+        self,
+        entity_name: str,
+        entity_type: str,
+        player: Any,
+        game_state: Any,
+        context: Any,
+    ) -> Optional[Any]:
         """
         General purpose binding function that tries to bind a name to an entity
         (player, item, etc.) based on context.
@@ -881,7 +929,9 @@ class ObjectBinder:
         # If not a player, let the existing binding code handle it
         return None
 
-    def bind_subject(self, subject_str: str, player, game_state, context):
+    def bind_subject(
+        self, subject_str: str, player: Any, game_state: Any, context: Any
+    ) -> Optional[Any]:
         """
         Bind a subject string to game objects (including mobs).
 
@@ -953,7 +1003,9 @@ class ObjectBinder:
         logger.debug(f"No matching object found for subject: '{subject_str}'")
         return None
 
-    def bind_instrument(self, instrument_str: str, player, game_state, context):
+    def bind_instrument(
+        self, instrument_str: str, player: Any, game_state: Any, context: Any
+    ) -> Optional[Any]:
         """
         Bind an instrument string to game objects (including mobs).
 
@@ -1033,18 +1085,25 @@ class NaturalLanguageParser:
     - Error handling
     """
 
-    def __init__(self, mob_manager=None):
+    vocabulary: VocabularyManager
+    context: CommandContext
+    object_binder: ObjectBinder
+    command_registry: Optional[Any]
+
+    def __init__(self, mob_manager: Optional[Any] = None) -> None:
         self.vocabulary = VocabularyManager()
         self.context = CommandContext(mob_manager=mob_manager)
         self.object_binder = ObjectBinder()
         self.command_registry = None  # Will be set by __init__.py
         logger.debug("NaturalLanguageParser initialized")
 
-    def set_mob_manager(self, mob_manager):
+    def set_mob_manager(self, mob_manager: Any) -> None:
         """Update the mob_manager in the context."""
         self.context.mob_manager = mob_manager
 
-    def parse(self, command_str: str, player, game_state) -> List[Dict[str, Any]]:
+    def parse(
+        self, command_str: str, player: Any, game_state: Any
+    ) -> List[Dict[str, Any]]:
         """
         Parse a command string into structured command objects.
 
@@ -1082,12 +1141,12 @@ class NaturalLanguageParser:
         # Special case for commands starting with a quote (say command)
         if command_str.startswith('"'):
             logger.debug("Processing quote-prefixed command as 'say'")
-            cmd = {
+            say_cmd: Dict[str, Any] = {
                 "verb": "say",
                 "subject": command_str[1:].strip(),
                 "original": command_str,
             }
-            return [cmd]
+            return [say_cmd]
 
         # Check if first token might be a player name (for direct messaging)
         is_direct_message = False
@@ -1153,28 +1212,28 @@ class NaturalLanguageParser:
                     logger.debug(
                         f"'go {direction}' is a movement command, using '{expanded_direction}'"
                     )
-                    cmd = {
+                    go_cmd: Dict[str, Any] = {
                         "verb": expanded_direction,
                         "is_movement": True,
                         "original": command_str,
                     }
-                    return [cmd]
+                    return [go_cmd]
 
         # Check for movement command (just single direction command)
         if tokens and self.vocabulary.is_direction(tokens[0].value):
             logger.debug(f"Detected simple movement command: '{tokens[0].value}'")
-            cmd = {
+            move_cmd: Dict[str, Any] = {
                 "verb": tokens[0].value,
                 "is_movement": True,
                 "original": command_str,
             }
-            return [cmd]
+            return [move_cmd]
 
         # Try all command structures
-        parsed_cmd = None
+        parsed_cmd: Optional[Dict[str, Any]] = None
 
         # IMPORTANT CHANGE: Create a combined list of all syntax patterns
-        all_patterns = []
+        all_patterns: List[SyntaxPattern] = []
         all_patterns.extend(CONTAINER_COMMAND.syntax_patterns)
         all_patterns.extend(STANDARD_SYNTAX_COMMAND.syntax_patterns)
         all_patterns.extend(REVERSED_SYNTAX_COMMAND.syntax_patterns)
@@ -1265,20 +1324,21 @@ class NaturalLanguageParser:
         parsed_cmd["original"] = command_str
 
         # Handle direct message special case
-        if is_direct_message and not parsed_cmd.get("verb") == "tell":
+        if is_direct_message and parsed_cmd and not parsed_cmd.get("verb") == "tell":
             # If first token matched a player name, but wasn't parsed as a tell command
             # we'll convert it to one
             parts = command_str.split(maxsplit=1)
             recipient = parts[0]
             message = parts[1] if len(parts) > 1 else ""
 
-            parsed_cmd = {
+            direct_msg_cmd: Dict[str, Any] = {
                 "verb": "tell",
                 "subject": recipient,
                 "instrument": message,  # Use exact message
                 "original": command_str,
                 "is_direct_message": True,
             }
+            parsed_cmd = direct_msg_cmd
             logger.debug(f"Converted to direct player message: {parsed_cmd}")
 
         # Update context with this command
@@ -1333,9 +1393,9 @@ class NaturalLanguageParser:
 # -------------------------------------------------------------------------
 
 
-def get_players_in_room(room_id, game_state):
+def get_players_in_room(room_id: str, game_state: Any) -> List[Any]:
     """Get all players in a room."""
-    players = []
+    players: List[Any] = []
     # This would need to be implemented based on your game state
     # For now, return an empty list as a placeholder
     return players
@@ -1351,7 +1411,9 @@ natural_language_parser = NaturalLanguageParser()
 
 
 # Export main parsing function
-def parse_command(command_str: str, player, game_state):
+def parse_command(
+    command_str: str, player: Any, game_state: Any
+) -> List[Dict[str, Any]]:
     """
     Parse a command string into structured command objects.
     Main entry point for the parsing system.

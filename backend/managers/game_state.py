@@ -1,17 +1,23 @@
 # backend/managers/game_state.py
 
+from typing import Dict, Optional
+from models.Room import Room
+
 
 class GameState:
-    def __init__(self, save_file="storage/rooms.json"):
+    save_file: str
+    rooms: Dict[str, Room]
+
+    def __init__(self, save_file: str = "storage/rooms.json") -> None:
         self.save_file = save_file
         self.rooms = {}
         # self.load_rooms()
 
-    def add_room(self, room):
+    def add_room(self, room: Room) -> None:
         self.rooms[room.room_id] = room
         # self.save_rooms()
 
-    def get_room(self, room_id):
+    def get_room(self, room_id: str) -> Optional[Room]:
         return self.rooms.get(room_id, None)
 
     """
