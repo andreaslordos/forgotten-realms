@@ -26,22 +26,22 @@ def create_mock_player(name="TestPlayer", level="Novice", **kwargs):
     player = Mock()
     player.name = name
     player.level = level
-    player.health = kwargs.get('health', 100)
-    player.max_health = kwargs.get('max_health', 100)
-    player.strength = kwargs.get('strength', 10)
-    player.dexterity = kwargs.get('dexterity', 10)
-    player.constitution = kwargs.get('constitution', 10)
-    player.intelligence = kwargs.get('intelligence', 10)
-    player.wisdom = kwargs.get('wisdom', 10)
-    player.charisma = kwargs.get('charisma', 10)
-    player.inventory = kwargs.get('inventory', [])
-    player.location = kwargs.get('location', "test_room_1")
-    player.points = kwargs.get('points', 0)
-    player.gold = kwargs.get('gold', 0)
-    player.combat_target = kwargs.get('combat_target', None)
-    player.is_sleeping = kwargs.get('is_sleeping', False)
+    player.health = kwargs.get("health", 100)
+    player.max_health = kwargs.get("max_health", 100)
+    player.strength = kwargs.get("strength", 10)
+    player.dexterity = kwargs.get("dexterity", 10)
+    player.constitution = kwargs.get("constitution", 10)
+    player.intelligence = kwargs.get("intelligence", 10)
+    player.wisdom = kwargs.get("wisdom", 10)
+    player.charisma = kwargs.get("charisma", 10)
+    player.inventory = kwargs.get("inventory", [])
+    player.location = kwargs.get("location", "test_room_1")
+    player.points = kwargs.get("points", 0)
+    player.gold = kwargs.get("gold", 0)
+    player.combat_target = kwargs.get("combat_target", None)
+    player.is_sleeping = kwargs.get("is_sleeping", False)
     player.level_up = Mock()
-    player.to_dict = Mock(return_value={'name': name, 'level': level})
+    player.to_dict = Mock(return_value={"name": name, "level": level})
     player.save = Mock()
     return player
 
@@ -59,17 +59,17 @@ def create_mock_mobile(name="TestMob", **kwargs):
     """
     mob = Mock()
     mob.name = name
-    mob.health = kwargs.get('health', 50)
-    mob.max_health = kwargs.get('max_health', 50)
-    mob.level = kwargs.get('level', 1)
-    mob.strength = kwargs.get('strength', 8)
-    mob.location = kwargs.get('location', "test_room_1")
-    mob.is_dead = kwargs.get('is_dead', False)
-    mob.combat_target = kwargs.get('combat_target', None)
-    mob.loot = kwargs.get('loot', [])
-    mob.respawn_time = kwargs.get('respawn_time', 300)
-    mob.aggressive = kwargs.get('aggressive', False)
-    mob.to_dict = Mock(return_value={'name': name, 'health': mob.health})
+    mob.health = kwargs.get("health", 50)
+    mob.max_health = kwargs.get("max_health", 50)
+    mob.level = kwargs.get("level", 1)
+    mob.strength = kwargs.get("strength", 8)
+    mob.location = kwargs.get("location", "test_room_1")
+    mob.is_dead = kwargs.get("is_dead", False)
+    mob.combat_target = kwargs.get("combat_target", None)
+    mob.loot = kwargs.get("loot", [])
+    mob.respawn_time = kwargs.get("respawn_time", 300)
+    mob.aggressive = kwargs.get("aggressive", False)
+    mob.to_dict = Mock(return_value={"name": name, "health": mob.health})
     return mob
 
 
@@ -86,15 +86,15 @@ def create_mock_item(name="TestItem", **kwargs):
     """
     item = Mock()
     item.name = name
-    item.description = kwargs.get('description', f"A {name}")
-    item.weight = kwargs.get('weight', 1)
-    item.value = kwargs.get('value', 10)
-    item.item_type = kwargs.get('item_type', 'misc')
-    item.is_container = kwargs.get('is_container', False)
-    item.contents = kwargs.get('contents', [])
-    item.is_weapon = kwargs.get('is_weapon', False)
-    item.damage = kwargs.get('damage', 0)
-    item.to_dict = Mock(return_value={'name': name, 'type': item.item_type})
+    item.description = kwargs.get("description", f"A {name}")
+    item.weight = kwargs.get("weight", 1)
+    item.value = kwargs.get("value", 10)
+    item.item_type = kwargs.get("item_type", "misc")
+    item.is_container = kwargs.get("is_container", False)
+    item.contents = kwargs.get("contents", [])
+    item.is_weapon = kwargs.get("is_weapon", False)
+    item.damage = kwargs.get("damage", 0)
+    item.to_dict = Mock(return_value={"name": name, "type": item.item_type})
     return item
 
 
@@ -111,14 +111,14 @@ def create_mock_room(room_id="test_room_1", **kwargs):
     """
     room = Mock()
     room.id = room_id
-    room.name = kwargs.get('name', "Test Room")
-    room.description = kwargs.get('description', "A test room.")
-    room.exits = kwargs.get('exits', {})
-    room.items = kwargs.get('items', [])
-    room.mobs = kwargs.get('mobs', [])
-    room.players = kwargs.get('players', [])
-    room.features = kwargs.get('features', [])
-    room.to_dict = Mock(return_value={'id': room_id, 'name': room.name})
+    room.name = kwargs.get("name", "Test Room")
+    room.description = kwargs.get("description", "A test room.")
+    room.exits = kwargs.get("exits", {})
+    room.items = kwargs.get("items", [])
+    room.mobs = kwargs.get("mobs", [])
+    room.players = kwargs.get("players", [])
+    room.features = kwargs.get("features", [])
+    room.to_dict = Mock(return_value={"id": room_id, "name": room.name})
     return room
 
 
@@ -165,10 +165,10 @@ def create_mock_game_state(**kwargs):
         Mock game state object
     """
     game_state = Mock()
-    game_state.rooms = kwargs.get('rooms', {})
-    game_state.items = kwargs.get('items', {})
-    game_state.mobs = kwargs.get('mobs', {})
-    game_state.players = kwargs.get('players', {})
+    game_state.rooms = kwargs.get("rooms", {})
+    game_state.items = kwargs.get("items", {})
+    game_state.mobs = kwargs.get("mobs", {})
+    game_state.players = kwargs.get("players", {})
     game_state.get_room = Mock(side_effect=lambda rid: game_state.rooms.get(rid))
     return game_state
 
@@ -203,10 +203,7 @@ def create_online_sessions(*players):
     sessions = {}
     for i, player in enumerate(players):
         sid = f"test_sid_{i}"
-        sessions[sid] = {
-            'player': player,
-            'connected_at': '2025-01-01T00:00:00'
-        }
+        sessions[sid] = {"player": player, "connected_at": "2025-01-01T00:00:00"}
     return sessions
 
 
@@ -219,12 +216,14 @@ def patch_file_operations(test_func):
     - json.load
     - json.dump
     """
+
     @wraps(test_func)
-    @patch('builtins.open', create=True)
-    @patch('json.load')
-    @patch('json.dump')
+    @patch("builtins.open", create=True)
+    @patch("json.load")
+    @patch("json.dump")
     def wrapper(*args, **kwargs):
         return test_func(*args, **kwargs)
+
     return wrapper
 
 
@@ -234,9 +233,11 @@ def patch_socket_operations(test_func):
 
     Note: Specific module paths should be adjusted per test file.
     """
+
     @wraps(test_func)
     def wrapper(*args, **kwargs):
         return test_func(*args, **kwargs)
+
     return wrapper
 
 
@@ -244,8 +245,10 @@ def patch_async_sleep(test_func):
     """
     Decorator to patch asyncio.sleep for faster tests.
     """
+
     @wraps(test_func)
-    @patch('asyncio.sleep', new_callable=AsyncMock)
+    @patch("asyncio.sleep", new_callable=AsyncMock)
     def wrapper(*args, **kwargs):
         return test_func(*args, **kwargs)
+
     return wrapper

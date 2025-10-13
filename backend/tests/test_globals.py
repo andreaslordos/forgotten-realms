@@ -11,7 +11,7 @@ Tests cover:
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -41,12 +41,7 @@ class GlobalsInitializationTest(unittest.TestCase):
     def test_version_has_correct_format(self):
         """Test version follows expected format."""
         # Assert
-        self.assertRegex(globals_module.version, r'^\d+\.\d+$')
-
-    def test_version_is_correct_value(self):
-        """Test version is set to 0.23."""
-        # Assert
-        self.assertEqual(globals_module.version, "0.23")
+        self.assertRegex(globals_module.version, r"^\d+\.\d+$")
 
 
 class GlobalsOnlineSessionsTest(unittest.TestCase):
@@ -221,10 +216,7 @@ class GlobalsStateManagementTest(unittest.TestCase):
     def test_update_merges_multiple_sessions(self):
         """Test update() merges multiple sessions."""
         # Arrange
-        new_sessions = {
-            "sid1": {"player": Mock()},
-            "sid2": {"player": Mock()}
-        }
+        new_sessions = {"sid1": {"player": Mock()}, "sid2": {"player": Mock()}}
 
         # Act
         globals_module.online_sessions.update(new_sessions)

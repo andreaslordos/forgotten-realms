@@ -9,7 +9,6 @@ This module provides:
 """
 
 import unittest
-from unittest.mock import Mock, AsyncMock
 from tests.test_helpers import (
     create_mock_sio,
     create_mock_utils,
@@ -45,20 +44,20 @@ class BaseModelTest(unittest.TestCase):
         """Set up common model test fixtures."""
         self.test_data = {}
         self.mock_player_data = {
-            'name': 'TestPlayer',
-            'level': 'Novice',
-            'health': 100,
-            'max_health': 100,
-            'strength': 10,
-            'dexterity': 10,
-            'constitution': 10,
-            'intelligence': 10,
-            'wisdom': 10,
-            'charisma': 10,
-            'inventory': [],
-            'location': 'test_room_1',
-            'points': 0,
-            'gold': 0
+            "name": "TestPlayer",
+            "level": "Novice",
+            "health": 100,
+            "max_health": 100,
+            "strength": 10,
+            "dexterity": 10,
+            "constitution": 10,
+            "intelligence": 10,
+            "wisdom": 10,
+            "charisma": 10,
+            "inventory": [],
+            "location": "test_room_1",
+            "points": 0,
+            "gold": 0,
         }
 
 

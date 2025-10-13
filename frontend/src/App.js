@@ -42,7 +42,7 @@ function App() {
 
   // Establish Socket.IO connection on mount
   useEffect(() => {
-    const SOCKET_URL = process.env.NODE_ENV === 'production' 
+    const SOCKET_URL = process.env.NODE_ENV === 'production'
       ? 'https://api.realms.lordos.tech:8080'  // Use static IP for production
       : 'http://localhost:8080';
 
@@ -113,7 +113,7 @@ function App() {
     if (command.trim() === "" && inputType === "password") {
       return; // Simply do nothing - don't send blank passwords
     }
-    
+
     // For login phase, blank input is allowed and sent to the server.
     let outputCommand = command;
     if (inputType === "password") {
@@ -129,7 +129,7 @@ function App() {
       return newMessages;
     });
     socketRef.current.emit('command', command);
-    
+
     // Only clear input during auth phase, keep it in game phase
     if (phase !== "game") {
       setCommand("");
@@ -143,10 +143,10 @@ function App() {
           return prevHistory;
         });
       }
-      
+
       // Reset history position
       setHistoryPosition(0);
-      
+
       // Select all text for easy overtyping
       setTimeout(() => {
         if (inputRef.current) {
@@ -165,40 +165,40 @@ function App() {
 
     if (e.key === "ArrowUp") {
       e.preventDefault();
-      
+
       // If we're already at the end of history, don't go further
       if (historyPosition >= commandHistory.length) {
         return;
       }
-      
-      // If we're at position 0 (current command) and it's not in history yet, 
+
+      // If we're at position 0 (current command) and it's not in history yet,
       // and it has content, add it to history
-      if (historyPosition === 0 && command.trim() !== "" && 
+      if (historyPosition === 0 && command.trim() !== "" &&
           (commandHistory.length === 0 || commandHistory[0] !== command)) {
         setCommandHistory(prev => [command, ...prev]);
       }
-      
+
       // Move to the next position in history
       const newPosition = historyPosition + 1;
       setHistoryPosition(newPosition);
-      
+
       // Set command to the history item (if available)
       if (newPosition <= commandHistory.length) {
         setCommand(commandHistory[newPosition - 1]);
       }
-    } 
+    }
     else if (e.key === "ArrowDown") {
       e.preventDefault();
-      
+
       // If we're at position 0, can't go further down
       if (historyPosition <= 0) {
         return;
       }
-      
+
       // Move to previous position in history
       const newPosition = historyPosition - 1;
       setHistoryPosition(newPosition);
-      
+
       // If we're back to position 0, clear command
       if (newPosition === 0) {
         setCommand("");

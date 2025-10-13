@@ -1,26 +1,41 @@
 # backend/commands/__init__.py
 
-from globals import online_sessions
-
-# Set up logging
 import logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-logger.info("Initializing commands package")
 
-# Import core modules first
-from commands import registry
-from commands import natural_language_parser
-
-# Import remaining modules
-from commands import parser
-from commands import executor
-from commands import utils
-
-# Export the main functions and objects for easy access
+from commands import executor, natural_language_parser, parser, registry, utils
+from commands.executor import build_look_description, execute_command
 from commands.parser import parse_command_wrapper as parse_command
 from commands.registry import command_registry
-from commands.executor import execute_command, build_look_description
+from globals import online_sessions
+
+# Export public API
+__all__ = [
+    "parse_command",
+    "command_registry",
+    "execute_command",
+    "build_look_description",
+    "online_sessions",
+    "registry",
+    "parser",
+    "executor",
+    "utils",
+    "natural_language_parser",
+    "standard",
+    "communication",
+    "combat",
+    "container",
+    "interaction",
+    "auth",
+    "archmage",
+    "rest",
+    "player_interaction",
+]
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+logger.info("Initializing commands package")
 
 # Initialize vocabularies
 logger.info("Initializing vocabulary manager")
@@ -31,33 +46,69 @@ for verb in command_registry.commands.keys():
     logger.info(f"Added verb to vocabulary: {verb}")
 
 # Add common directions
-directions = ["north", "south", "east", "west", "northeast", "northwest", "southeast", "southwest", "up", "down", "in", "out"]
+directions = [
+    "north",
+    "south",
+    "east",
+    "west",
+    "northeast",
+    "northwest",
+    "southeast",
+    "southwest",
+    "up",
+    "down",
+    "in",
+    "out",
+]
 for direction in directions:
     natural_language_parser.vocabulary_manager.add_direction(direction)
     logger.info(f"Added direction to vocabulary: {direction}")
 
 # Make sure standard verbs are added
-common_verbs = ["look", "get", "take", "drop", "inventory", "help", "quit", "say", "tell", "shout", "attack", "steal", "give"]
+common_verbs = [
+    "look",
+    "get",
+    "take",
+    "drop",
+    "inventory",
+    "help",
+    "quit",
+    "say",
+    "tell",
+    "shout",
+    "attack",
+    "steal",
+    "give",
+]
 for verb in common_verbs:
     natural_language_parser.vocabulary_manager.add_verb(verb)
 
 # Context-aware abbreviations
 # Register "w" as an abbreviation that expands differently based on context
-natural_language_parser.vocabulary_manager.add_abbreviation("w", "with", "in_prep_position")
+natural_language_parser.vocabulary_manager.add_abbreviation(
+    "w", "with", "in_prep_position"
+)
 natural_language_parser.vocabulary_manager.add_abbreviation("w", "west", "default")
 
-# Import command handlers
+# Import command handlers (for side effects - they register commands)
 try:
-    from commands import standard
-    from commands import communication
-    from commands import combat
-    from commands import container
-    from commands import interaction
-    from commands import auth
-    from commands import archmage
-    from commands import rest
-    from commands import player_interaction
+    from commands import (
+        archmage,
+        auth,
+        combat,
+        communication,
+        container,
+        interaction,
+        player_interaction,
+        rest,
+        standard,
+    )
+
     logger.info("All command handlers imported successfully")
+
+    # Register cross-module aliases (after all commands are registered)
+    command_registry.register_alias("remove", "get")
+    logger.info("Registered cross-module alias: 'remove' → 'get'")
 
 except ImportError as e:
     logger.error(f"Error importing command handlers: {e}")

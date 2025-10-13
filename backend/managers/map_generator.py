@@ -2,6 +2,7 @@
 
 from models.Room import Room
 
+
 def generate_3x3_grid():
     """
     Generates a 3x3 grid of rooms with proper exits.

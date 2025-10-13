@@ -22,7 +22,7 @@ from tests.test_helpers import create_mock_player
 class GetOnlinePlayersBasicTest(unittest.TestCase):
     """Test get_online_players basic functionality."""
 
-    @patch('services.get_online_players.online_sessions')
+    @patch("services.get_online_players.online_sessions")
     def test_get_online_players_returns_list(self, mock_sessions):
         """Test get_online_players returns a list."""
         mock_sessions.items.return_value = []
@@ -31,8 +31,10 @@ class GetOnlinePlayersBasicTest(unittest.TestCase):
 
         self.assertIsInstance(result, list)
 
-    @patch('services.get_online_players.online_sessions')
-    def test_get_online_players_returns_empty_list_when_no_sessions(self, mock_sessions):
+    @patch("services.get_online_players.online_sessions")
+    def test_get_online_players_returns_empty_list_when_no_sessions(
+        self, mock_sessions
+    ):
         """Test get_online_players returns empty list when no sessions."""
         mock_sessions.items.return_value = []
 
@@ -40,15 +42,17 @@ class GetOnlinePlayersBasicTest(unittest.TestCase):
 
         self.assertEqual(result, [])
 
-    @patch('services.get_online_players.online_sessions')
-    def test_get_online_players_extracts_players_from_dict_sessions(self, mock_sessions):
+    @patch("services.get_online_players.online_sessions")
+    def test_get_online_players_extracts_players_from_dict_sessions(
+        self, mock_sessions
+    ):
         """Test get_online_players extracts players from dictionary sessions."""
         player1 = create_mock_player(name="Alice")
         player2 = create_mock_player(name="Bob")
 
         mock_sessions.items.return_value = [
             ("sid1", {"player": player1}),
-            ("sid2", {"player": player2})
+            ("sid2", {"player": player2}),
         ]
 
         result = get_online_players()
@@ -57,17 +61,17 @@ class GetOnlinePlayersBasicTest(unittest.TestCase):
         self.assertIn(player1, result)
         self.assertIn(player2, result)
 
-    @patch('services.get_online_players.online_sessions')
-    def test_get_online_players_extracts_players_from_object_sessions(self, mock_sessions):
+    @patch("services.get_online_players.online_sessions")
+    def test_get_online_players_extracts_players_from_object_sessions(
+        self, mock_sessions
+    ):
         """Test get_online_players extracts players from object sessions."""
         player = create_mock_player(name="Charlie")
 
         session_obj = Mock()
         session_obj.player = player
 
-        mock_sessions.items.return_value = [
-            ("sid1", session_obj)
-        ]
+        mock_sessions.items.return_value = [("sid1", session_obj)]
 
         result = get_online_players()
 
@@ -78,7 +82,7 @@ class GetOnlinePlayersBasicTest(unittest.TestCase):
 class GetOnlinePlayersFilteringTest(unittest.TestCase):
     """Test get_online_players filtering."""
 
-    @patch('services.get_online_players.online_sessions')
+    @patch("services.get_online_players.online_sessions")
     def test_get_online_players_skips_sessions_without_player(self, mock_sessions):
         """Test get_online_players skips sessions without a player."""
         player = create_mock_player(name="Alice")
@@ -86,7 +90,7 @@ class GetOnlinePlayersFilteringTest(unittest.TestCase):
         mock_sessions.items.return_value = [
             ("sid1", {"player": player}),
             ("sid2", {"other_data": "value"}),  # No player
-            ("sid3", {"player": None})  # Null player
+            ("sid3", {"player": None}),  # Null player
         ]
 
         result = get_online_players()
@@ -94,7 +98,7 @@ class GetOnlinePlayersFilteringTest(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertIn(player, result)
 
-    @patch('services.get_online_players.online_sessions')
+    @patch("services.get_online_players.online_sessions")
     def test_get_online_players_handles_mixed_session_types(self, mock_sessions):
         """Test get_online_players handles mixed session types."""
         player1 = create_mock_player(name="Alice")
@@ -105,7 +109,7 @@ class GetOnlinePlayersFilteringTest(unittest.TestCase):
 
         mock_sessions.items.return_value = [
             ("sid1", {"player": player1}),
-            ("sid2", session_obj)
+            ("sid2", session_obj),
         ]
 
         result = get_online_players()
@@ -114,8 +118,10 @@ class GetOnlinePlayersFilteringTest(unittest.TestCase):
         self.assertIn(player1, result)
         self.assertIn(player2, result)
 
-    @patch('services.get_online_players.online_sessions')
-    def test_get_online_players_skips_object_sessions_without_player_attribute(self, mock_sessions):
+    @patch("services.get_online_players.online_sessions")
+    def test_get_online_players_skips_object_sessions_without_player_attribute(
+        self, mock_sessions
+    ):
         """Test get_online_players skips object sessions without player attribute."""
         player = create_mock_player(name="Alice")
 
@@ -123,7 +129,7 @@ class GetOnlinePlayersFilteringTest(unittest.TestCase):
 
         mock_sessions.items.return_value = [
             ("sid1", {"player": player}),
-            ("sid2", session_obj)
+            ("sid2", session_obj),
         ]
 
         result = get_online_players()
@@ -135,7 +141,7 @@ class GetOnlinePlayersFilteringTest(unittest.TestCase):
 class GetOnlinePlayersEdgeCasesTest(unittest.TestCase):
     """Test get_online_players edge cases."""
 
-    @patch('services.get_online_players.online_sessions')
+    @patch("services.get_online_players.online_sessions")
     def test_get_online_players_handles_many_sessions(self, mock_sessions):
         """Test get_online_players handles many sessions."""
         players = [create_mock_player(name=f"Player{i}") for i in range(100)]
@@ -149,7 +155,7 @@ class GetOnlinePlayersEdgeCasesTest(unittest.TestCase):
         for player in players:
             self.assertIn(player, result)
 
-    @patch('services.get_online_players.online_sessions')
+    @patch("services.get_online_players.online_sessions")
     def test_get_online_players_maintains_distinct_players(self, mock_sessions):
         """Test get_online_players maintains distinct player instances."""
         player1 = create_mock_player(name="Alice")
@@ -157,7 +163,7 @@ class GetOnlinePlayersEdgeCasesTest(unittest.TestCase):
 
         mock_sessions.items.return_value = [
             ("sid1", {"player": player1}),
-            ("sid2", {"player": player2})
+            ("sid2", {"player": player2}),
         ]
 
         result = get_online_players()

@@ -23,7 +23,7 @@ def get_mob_definitions():
         damage=3,
         min_level="Neophyte",
         min_strength=0,
-        min_dexterity=5
+        min_dexterity=5,
     )
 
     gold_coin = Item(
@@ -32,7 +32,7 @@ def get_mob_definitions():
         description="A shiny gold coin.",
         weight=0.01,
         value=10,
-        takeable=True
+        takeable=True,
     )
 
     tattered_cloak = Item(
@@ -41,7 +41,7 @@ def get_mob_definitions():
         description="A worn, tattered cloak that has seen better days.",
         weight=0.3,
         value=3,
-        takeable=True
+        takeable=True,
     )
 
     wolf_pelt = Item(
@@ -50,7 +50,7 @@ def get_mob_definitions():
         description="A thick wolf pelt, still warm.",
         weight=2,
         value=15,
-        takeable=True
+        takeable=True,
     )
 
     ancient_key = Item(
@@ -59,7 +59,7 @@ def get_mob_definitions():
         description="An ornate key covered in mysterious runes.",
         weight=0.1,
         value=0,
-        takeable=True
+        takeable=True,
     )
 
     return {
@@ -78,13 +78,12 @@ def get_mob_definitions():
             "movement_interval": 0,
             "loot_table": [
                 {"item": gold_coin, "chance": 0.8},
-                {"item": gold_coin, "chance": 0.5}  # Can drop multiple coins
+                {"item": gold_coin, "chance": 0.5},  # Can drop multiple coins
             ],
             "instant_death": False,
             "point_value": 20,
-            "pronouns": "he"
+            "pronouns": "he",
         },
-
         # Goblin scout - demonstrates delayed aggression and patrolling
         "goblin_scout": {
             "name": "goblin scout",
@@ -96,18 +95,22 @@ def get_mob_definitions():
             "aggressive": True,
             "aggro_delay_min": 3,  # Becomes aggressive after 3-8 ticks
             "aggro_delay_max": 8,
-            "patrol_rooms": ["forest_clearing", "forest_edge", "northern_path", "forest_hideaway"],
+            "patrol_rooms": [
+                "forest_clearing",
+                "forest_edge",
+                "northern_path",
+                "forest_hideaway",
+            ],
             "movement_interval": 80,  # Moves every 8 ticks
             "loot_table": [
                 {"item": rusty_dagger, "chance": 0.3},
                 {"item": gold_coin, "chance": 0.6},
-                {"item": tattered_cloak, "chance": 0.2}
+                {"item": tattered_cloak, "chance": 0.2},
             ],
             "instant_death": False,
             "point_value": 50,
-            "pronouns": "it"
+            "pronouns": "it",
         },
-
         # Dire wolf - demonstrates instant aggressive (no delay) and valuable loot
         "dire_wolf": {
             "name": "dire wolf",
@@ -123,13 +126,12 @@ def get_mob_definitions():
             "movement_interval": 0,  # No movement
             "loot_table": [
                 {"item": wolf_pelt, "chance": 0.9},
-                {"item": gold_coin, "chance": 0.4}
+                {"item": gold_coin, "chance": 0.4},
             ],
             "instant_death": False,
             "point_value": 100,
-            "pronouns": "it"
+            "pronouns": "it",
         },
-
         # Fragile skeleton - demonstrates instant death mechanic
         "brittle_skeleton": {
             "name": "brittle skeleton",
@@ -145,13 +147,12 @@ def get_mob_definitions():
             "movement_interval": 10,
             "loot_table": [
                 {"item": ancient_key, "chance": 0.15},  # Rare drop
-                {"item": rusty_dagger, "chance": 0.5}
+                {"item": rusty_dagger, "chance": 0.5},
             ],
             "instant_death": True,  # Dies in one hit
             "point_value": 30,
-            "pronouns": "it"
+            "pronouns": "it",
         },
-
         # Wandering elder - peaceful mob that patrols (for quests/interactions)
         "elder_sage": {
             "name": "Elder",
@@ -170,9 +171,8 @@ def get_mob_definitions():
             ],
             "instant_death": False,
             "point_value": 0,  # No points for killing peaceful NPCs
-            "pronouns": "she"
+            "pronouns": "she",
         },
-
         # Guard captain - strong mob with high stats
         "guard_captain": {
             "name": "guard captain",
@@ -189,10 +189,10 @@ def get_mob_definitions():
             "loot_table": [
                 {"item": gold_coin, "chance": 1.0},
                 {"item": gold_coin, "chance": 0.8},
-                {"item": gold_coin, "chance": 0.6}
+                {"item": gold_coin, "chance": 0.6},
             ],
             "instant_death": False,
             "point_value": 150,
-            "pronouns": "he"
-        }
+            "pronouns": "he",
+        },
     }

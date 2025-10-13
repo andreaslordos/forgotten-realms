@@ -23,7 +23,7 @@ from commands.container import (
     handle_get_from,
     handle_open,
     handle_close,
-    handle_empty
+    handle_empty,
 )
 from models.Player import Player
 from models.Item import Item
@@ -61,10 +61,13 @@ class AsyncTestCase(unittest.IsolatedAsyncioTestCase):
 
         # Create test container
         self.bag = ContainerItem(
-            "Bag", "bag_1", "A leather bag",
-            weight=2, value=10,
+            "Bag",
+            "bag_1",
+            "A leather bag",
+            weight=2,
+            value=10,
             capacity_weight=20,
-            capacity_limit=5
+            capacity_limit=5,
         )
         self.bag.set_state("open")
 
@@ -80,8 +83,13 @@ class PutCommandTest(AsyncTestCase):
         cmd = {"verb": "put", "subject": "gem", "instrument": "bag"}
 
         result = await handle_put(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("Gem now inside", result)
@@ -93,8 +101,13 @@ class PutCommandTest(AsyncTestCase):
         cmd = {"verb": "put"}
 
         result = await handle_put(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertEqual(result, "What do you want to put?")
@@ -106,8 +119,13 @@ class PutCommandTest(AsyncTestCase):
         cmd = {"verb": "put", "subject": "gem"}
 
         result = await handle_put(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("only insert items into objects", result)
@@ -121,8 +139,13 @@ class PutCommandTest(AsyncTestCase):
         cmd = {"verb": "put", "subject": "gem", "instrument": "bag"}
 
         result = await handle_put(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("closed", result.lower())
@@ -137,8 +160,13 @@ class PutCommandTest(AsyncTestCase):
         cmd = {"verb": "put", "subject": "small", "instrument": "bag"}
 
         result = await handle_put(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("Infinite recursion", result)
@@ -152,8 +180,13 @@ class PutCommandTest(AsyncTestCase):
         cmd = {"verb": "put", "subject": "all", "instrument": "bag"}
 
         result = await handle_put(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("Gem now inside", result)
@@ -170,8 +203,13 @@ class PutCommandTest(AsyncTestCase):
         cmd = {"verb": "put", "subject": "treasure", "instrument": "bag"}
 
         result = await handle_put(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("Gem", result)
@@ -188,13 +226,27 @@ class PutCommandTest(AsyncTestCase):
 
         # Put first item
         cmd1 = {"verb": "put", "subject": "gem", "instrument": "bag"}
-        await handle_put(cmd1, self.player, self.game_state, self.player_manager,
-                        self.online_sessions, self.sio, self.utils)
+        await handle_put(
+            cmd1,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         # Try to put second item
         cmd2 = {"verb": "put", "subject": "coin", "instrument": "bag"}
-        result = await handle_put(cmd2, self.player, self.game_state, self.player_manager,
-                                 self.online_sessions, self.sio, self.utils)
+        result = await handle_put(
+            cmd2,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("full", result.lower())
 
@@ -207,8 +259,15 @@ class PutCommandTest(AsyncTestCase):
         self.player.add_item(heavy_item)
 
         cmd = {"verb": "put", "subject": "boulder", "instrument": "bag"}
-        result = await handle_put(cmd, self.player, self.game_state, self.player_manager,
-                                 self.online_sessions, self.sio, self.utils)
+        result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("heavy", result.lower())
 
@@ -224,8 +283,13 @@ class GetFromCommandTest(AsyncTestCase):
         cmd = {"verb": "get", "subject": "gem", "instrument": "bag"}
 
         result = await handle_get_from(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("removed from", result)
@@ -237,8 +301,13 @@ class GetFromCommandTest(AsyncTestCase):
         cmd = {"verb": "get"}
 
         result = await handle_get_from(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertEqual(result, "What do you want to get?")
@@ -248,8 +317,13 @@ class GetFromCommandTest(AsyncTestCase):
         cmd = {"verb": "get", "subject": "gem"}
 
         result = await handle_get_from(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("Where do you want to get", result)
@@ -263,8 +337,13 @@ class GetFromCommandTest(AsyncTestCase):
         cmd = {"verb": "get", "subject": "gem", "instrument": "bag"}
 
         result = await handle_get_from(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("closed", result.lower())
@@ -278,8 +357,13 @@ class GetFromCommandTest(AsyncTestCase):
         cmd = {"verb": "get", "subject": "all", "instrument": "bag"}
 
         result = await handle_get_from(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("Gem removed", result)
@@ -296,8 +380,13 @@ class GetFromCommandTest(AsyncTestCase):
         cmd = {"verb": "get", "subject": "treasure", "instrument": "bag"}
 
         result = await handle_get_from(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("Gem", result)
@@ -312,8 +401,13 @@ class GetFromCommandTest(AsyncTestCase):
         cmd = {"verb": "get", "subject": "all", "instrument": "bag"}
 
         result = await handle_get_from(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("empty", result.lower())
@@ -326,8 +420,13 @@ class GetFromCommandTest(AsyncTestCase):
         cmd = {"verb": "get", "subject": "sword", "instrument": "bag"}
 
         result = await handle_get_from(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("no 'sword'", result)
@@ -344,8 +443,13 @@ class OpenCloseCommandTest(AsyncTestCase):
         cmd = {"verb": "open", "subject": "bag"}
 
         result = await handle_open(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("open", result)
@@ -359,8 +463,13 @@ class OpenCloseCommandTest(AsyncTestCase):
         cmd = {"verb": "open", "subject": "bag"}
 
         result = await handle_open(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("open", result)
@@ -374,8 +483,13 @@ class OpenCloseCommandTest(AsyncTestCase):
         cmd = {"verb": "open", "subject": "bag"}
 
         result = await handle_open(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("already open", result)
@@ -385,8 +499,13 @@ class OpenCloseCommandTest(AsyncTestCase):
         cmd = {"verb": "open"}
 
         result = await handle_open(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertEqual(result, "What do you want to open?")
@@ -399,8 +518,13 @@ class OpenCloseCommandTest(AsyncTestCase):
         cmd = {"verb": "close", "subject": "bag"}
 
         result = await handle_close(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("close", result)
@@ -414,8 +538,13 @@ class OpenCloseCommandTest(AsyncTestCase):
         cmd = {"verb": "close", "subject": "bag"}
 
         result = await handle_close(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("already closed", result)
@@ -425,8 +554,13 @@ class OpenCloseCommandTest(AsyncTestCase):
         cmd = {"verb": "close"}
 
         result = await handle_close(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertEqual(result, "What do you want to close?")
@@ -444,8 +578,13 @@ class EmptyCommandTest(AsyncTestCase):
         cmd = {"verb": "empty", "subject": "bag"}
 
         result = await handle_empty(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("Gem dropped", result)
@@ -461,8 +600,13 @@ class EmptyCommandTest(AsyncTestCase):
         cmd = {"verb": "empty", "subject": "bag"}
 
         result = await handle_empty(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("already empty", result)
@@ -476,8 +620,13 @@ class EmptyCommandTest(AsyncTestCase):
         cmd = {"verb": "empty", "subject": "bag"}
 
         result = await handle_empty(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("dropped", result)
@@ -489,8 +638,13 @@ class EmptyCommandTest(AsyncTestCase):
         cmd = {"verb": "empty"}
 
         result = await handle_empty(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("What container", result)
@@ -500,8 +654,13 @@ class EmptyCommandTest(AsyncTestCase):
         cmd = {"verb": "empty", "subject": "chest"}
 
         result = await handle_empty(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("don't see", result)
@@ -520,12 +679,17 @@ class ContainerObjectBindingTest(AsyncTestCase):
             "subject": "gem",
             "subject_object": self.item1,
             "instrument": "bag",
-            "instrument_object": self.bag
+            "instrument_object": self.bag,
         }
 
         result = await handle_put(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("now inside", result)
@@ -541,12 +705,17 @@ class ContainerObjectBindingTest(AsyncTestCase):
             "subject": "gem",
             "subject_object": self.item1,
             "instrument": "bag",
-            "instrument_object": self.bag
+            "instrument_object": self.bag,
         }
 
         result = await handle_get_from(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("removed from", result)
@@ -557,15 +726,16 @@ class ContainerObjectBindingTest(AsyncTestCase):
         self.bag.set_state("closed")
         self.player.add_item(self.bag)
 
-        cmd = {
-            "verb": "open",
-            "subject": "bag",
-            "subject_object": self.bag
-        }
+        cmd = {"verb": "open", "subject": "bag", "subject_object": self.bag}
 
         result = await handle_open(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("open", result)

@@ -1,32 +1,30 @@
 #!/usr/bin/env python3
-import os
-import sys
 import asyncio
-import ssl
-import socketio
-from aiohttp import web
 import logging
+import os
+import ssl
+import sys
+
+import socketio
+import utils
+from aiohttp import web
+
+from event_handlers import register_handlers
+from globals import online_sessions
+from managers.auth import AuthManager
+from managers.game_state import GameState
+from managers.mob_definitions import get_mob_definitions
+from managers.mob_manager import MobManager
+from managers.player import PlayerManager
+from managers.village_generator import generate_village_of_chronos
+from services.notifications import set_context
+from tick_service import start_background_tick
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-# Import your managers, game state, and helper modules.
-from managers.auth import AuthManager
-from managers.player import PlayerManager
-from managers.game_state import GameState
-from managers.mob_manager import MobManager
-from managers.mob_definitions import get_mob_definitions
-from managers.map_generator import generate_3x3_grid
-from managers.village_generator import generate_village_of_chronos
-from globals import online_sessions
-from services.notifications import set_context
-from event_handlers import register_handlers
-from tick_service import start_background_tick
-import utils  # This module contains send_message and send_stats_update
 
 # Determine if we're in test mode (skip SSL) using a -test flag
 TEST_MODE = "-test" in sys.argv
@@ -34,13 +32,13 @@ TEST_MODE = "-test" in sys.argv
 # Setup Socket.IO server and the web app.
 logger.info("Initializing Socket.IO server and web app.")
 sio = socketio.AsyncServer(
-    async_mode='aiohttp', 
-    cors_allowed_origins='*',
+    async_mode="aiohttp",
+    cors_allowed_origins="*",
     ping_timeout=180,
     ping_interval=60,
     reconnection=False,
     logger=True,
-    engineio_logger=True
+    engineio_logger=True,
 )
 app = web.Application()
 sio.attach(app)
@@ -81,7 +79,7 @@ register_handlers(sio, auth_manager, player_manager, game_state, online_sessions
 logger.info("Socket.IO event handlers registered.")
 
 # Determine the port.
-port = int(os.environ.get('PORT', 8080))
+port = int(os.environ.get("PORT", 8080))
 logger.info(f"Configured to run on port: {port}")
 
 # Setup SSL only if not in test mode.
@@ -90,8 +88,8 @@ if not TEST_MODE:
     try:
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         ssl_context.load_cert_chain(
-            certfile='/etc/letsencrypt/live/api.realms.lordos.tech/fullchain.pem',
-            keyfile='/etc/letsencrypt/live/api.realms.lordos.tech/privkey.pem'
+            certfile="/etc/letsencrypt/live/api.realms.lordos.tech/fullchain.pem",
+            keyfile="/etc/letsencrypt/live/api.realms.lordos.tech/privkey.pem",
         )
         logger.info("🔒 Running with SSL enabled (Production Mode)")
     except Exception as e:
@@ -100,34 +98,45 @@ if not TEST_MODE:
 else:
     logger.info("🛠 Running without SSL (Test Mode)")
 
+
 async def main():
     try:
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, '0.0.0.0', port, ssl_context=ssl_context)
-        logger.info(f"Server starting at {'https' if ssl_context else 'http'}://0.0.0.0:{port}")
+        site = web.TCPSite(runner, "0.0.0.0", port, ssl_context=ssl_context)
+        logger.info(
+            f"Server starting at {'https' if ssl_context else 'http'}://0.0.0.0:{port}"
+        )
         await site.start()
-        
+
         # Start background tick in a separate task.
-        asyncio.create_task(start_background_tick(sio, online_sessions, player_manager, game_state, utils))
+        asyncio.create_task(
+            start_background_tick(
+                sio, online_sessions, player_manager, game_state, utils
+            )
+        )
         logger.info("Background tick service started.")
-        
+
         # Keep the server running.
         while True:
             await asyncio.sleep(3600)
-    except Exception as e:
+    except Exception:
         logger.exception("An error occurred in the main loop:")
     finally:
         await runner.cleanup()
         logger.info("Server runner cleanup complete.")
 
+
 async def handle_root(request):
     logger.info("Received request on root endpoint.")
-    return web.Response(text="Socket.IO server is running" + (" over HTTPS." if ssl_context else "."))
+    return web.Response(
+        text="Socket.IO server is running" + (" over HTTPS." if ssl_context else ".")
+    )
 
-app.router.add_get('/', handle_root)
 
-if __name__ == '__main__':
+app.router.add_get("/", handle_root)
+
+if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

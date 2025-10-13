@@ -1,4 +1,3 @@
-import asyncio
 import sys
 import unittest
 from pathlib import Path
@@ -67,24 +66,24 @@ class TickServiceTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_processes_command_queue_and_echoes(self):
         player = FakePlayer()
         session = {
-            'command_queue': ['look'],
-            'player': player,
+            "command_queue": ["look"],
+            "player": player,
         }
-        online_sessions = {'sid-1': session}
+        online_sessions = {"sid-1": session}
 
         parse_calls = []
         execute_calls = []
 
         def fake_parse(cmd_str, **_kwargs):
             parse_calls.append(cmd_str)
-            return [{'original': cmd_str, 'verb': 'look'}]
+            return [{"original": cmd_str, "verb": "look"}]
 
         async def fake_execute(cmd, *args, **kwargs):
             execute_calls.append((cmd, args))
-            return 'it works'
+            return "it works"
 
         async def fake_pending(*_args, **_kwargs):
-            return ''
+            return ""
 
         async def fake_combat(*_args, **_kwargs):
             return None
@@ -113,13 +112,13 @@ class TickServiceTestCase(unittest.IsolatedAsyncioTestCase):
 
         await service.tick_once()
 
-        self.assertEqual(parse_calls, ['look'])
+        self.assertEqual(parse_calls, ["look"])
         self.assertEqual(len(execute_calls), 1)
-        self.assertEqual(session['command_queue'], [])
+        self.assertEqual(session["command_queue"], [])
 
         messages = [message for _sid, message in self.utils.messages]
-        self.assertIn('look', messages)
-        self.assertIn('it works', messages)
+        self.assertIn("look", messages)
+        self.assertIn("it works", messages)
         self.assertEqual(len(self.utils.stats_updates), 1)
 
     async def test_combat_tick_runs_after_interval(self):
@@ -180,22 +179,22 @@ class TickServiceTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_command_error_logged_and_user_notified(self):
         player = FakePlayer()
         session = {
-            'command_queue': ['boom'],
-            'player': player,
+            "command_queue": ["boom"],
+            "player": player,
         }
-        online_sessions = {'sid-1': session}
+        online_sessions = {"sid-1": session}
 
         def fake_parse(cmd_str, **_kwargs):
-            return [{'original': cmd_str, 'verb': 'boom'}]
+            return [{"original": cmd_str, "verb": "boom"}]
 
         async def failing_execute(*_args, **_kwargs):
-            raise ValueError('nope')
+            raise ValueError("nope")
 
         async def sleeping_players(*_args, **_kwargs):
             return None
 
         async def fake_pending(*_args, **_kwargs):
-            return ''
+            return ""
 
         async def fake_combat(*_args, **_kwargs):
             return None
@@ -222,11 +221,15 @@ class TickServiceTestCase(unittest.IsolatedAsyncioTestCase):
             broadcast_logout_callable=fake_broadcast,
         )
 
-        with self.assertLogs('tick_service', level='ERROR') as log_context:
+        with self.assertLogs("tick_service", level="ERROR") as log_context:
             await service.tick_once()
 
-        self.assertTrue(any('nope' in entry for entry in log_context.output))
-        error_messages = [msg for _sid, msg in self.utils.messages if 'Error processing command' in msg]
+        self.assertTrue(any("nope" in entry for entry in log_context.output))
+        error_messages = [
+            msg
+            for _sid, msg in self.utils.messages
+            if "Error processing command" in msg
+        ]
         self.assertEqual(len(error_messages), 1)
         self.assertEqual(len(self.utils.stats_updates), 1)
 
@@ -234,14 +237,14 @@ class TickServiceTestCase(unittest.IsolatedAsyncioTestCase):
         """Test sleeping player cannot execute most commands."""
         player = FakePlayer()
         session = {
-            'command_queue': ['look'],
-            'player': player,
-            'sleeping': True,
+            "command_queue": ["look"],
+            "player": player,
+            "sleeping": True,
         }
-        online_sessions = {'sid-1': session}
+        online_sessions = {"sid-1": session}
 
         def fake_parse(cmd_str, **_kwargs):
-            return [{'original': cmd_str, 'verb': 'look'}]
+            return [{"original": cmd_str, "verb": "look"}]
 
         service = TickService(
             self.sio,
@@ -259,19 +262,19 @@ class TickServiceTestCase(unittest.IsolatedAsyncioTestCase):
         await service.tick_once()
 
         messages = [message for _sid, message in self.utils.messages]
-        self.assertIn('You are asleep.', messages)
+        self.assertIn("You are asleep.", messages)
 
     async def test_quit_command_triggers_disconnect(self):
         """Test quit command sets should_disconnect flag."""
         player = FakePlayer()
         session = {
-            'command_queue': ['quit'],
-            'player': player,
+            "command_queue": ["quit"],
+            "player": player,
         }
-        online_sessions = {'sid-1': session}
+        online_sessions = {"sid-1": session}
 
         def fake_parse(cmd_str, **_kwargs):
-            return [{'original': cmd_str, 'verb': 'quit'}]
+            return [{"original": cmd_str, "verb": "quit"}]
 
         async def quit_execute(*_args, **_kwargs):
             return "quit"
@@ -295,22 +298,22 @@ class TickServiceTestCase(unittest.IsolatedAsyncioTestCase):
 
         await service.tick_once()
 
-        self.assertTrue(session.get('should_disconnect'))
-        self.assertIn('sid-1', self.sio.disconnected)
+        self.assertTrue(session.get("should_disconnect"))
+        self.assertIn("sid-1", self.sio.disconnected)
 
     async def test_multiple_commands_requeued(self):
         """Test multiple parsed commands are requeued properly."""
         player = FakePlayer()
         session = {
-            'command_queue': ['n;s'],
-            'player': player,
+            "command_queue": ["n;s"],
+            "player": player,
         }
-        online_sessions = {'sid-1': session}
+        online_sessions = {"sid-1": session}
 
         def fake_parse(cmd_str, **_kwargs):
             return [
-                {'original': 'n', 'verb': 'north'},
-                {'original': 's', 'verb': 'south'}
+                {"original": "n", "verb": "north"},
+                {"original": "s", "verb": "south"},
             ]
 
         async def fake_execute(cmd, *args, **kwargs):
@@ -332,17 +335,17 @@ class TickServiceTestCase(unittest.IsolatedAsyncioTestCase):
         await service.tick_once()
 
         # Second command should be requeued
-        self.assertEqual(session['command_queue'], ['s'])
+        self.assertEqual(session["command_queue"], ["s"])
 
     async def test_pending_communication_handled(self):
         """Test pending communication is processed."""
         player = FakePlayer()
         session = {
-            'command_queue': ['response'],
-            'player': player,
-            'pending_comm': {'type': 'tell'},
+            "command_queue": ["response"],
+            "player": player,
+            "pending_comm": {"type": "tell"},
         }
-        online_sessions = {'sid-1': session}
+        online_sessions = {"sid-1": session}
 
         async def fake_pending(pending_comm, cmd_str, *args, **kwargs):
             return f"Handled: {cmd_str}"
@@ -362,23 +365,23 @@ class TickServiceTestCase(unittest.IsolatedAsyncioTestCase):
         await service.tick_once()
 
         messages = [message for _sid, message in self.utils.messages]
-        self.assertTrue(any('Handled: response' in msg for msg in messages))
+        self.assertTrue(any("Handled: response" in msg for msg in messages))
 
     async def test_converse_mode_prepends_say(self):
         """Test converse mode prepends 'say' to commands."""
         player = FakePlayer()
         session = {
-            'command_queue': ['hello world'],
-            'player': player,
-            'converse_mode': True,
+            "command_queue": ["hello world"],
+            "player": player,
+            "converse_mode": True,
         }
-        online_sessions = {'sid-1': session}
+        online_sessions = {"sid-1": session}
 
         parse_calls = []
 
         def fake_parse(cmd_str, **_kwargs):
             parse_calls.append(cmd_str)
-            return [{'original': cmd_str, 'verb': 'say'}]
+            return [{"original": cmd_str, "verb": "say"}]
 
         async def fake_execute(cmd, *args, **kwargs):
             return "You say something"
@@ -398,17 +401,17 @@ class TickServiceTestCase(unittest.IsolatedAsyncioTestCase):
 
         await service.tick_once()
 
-        self.assertTrue(any('say hello world' in call for call in parse_calls))
+        self.assertTrue(any("say hello world" in call for call in parse_calls))
 
     async def test_converse_mode_exits_with_star(self):
         """Test converse mode exits with * prefix."""
         player = FakePlayer()
         session = {
-            'command_queue': ['*look'],
-            'player': player,
-            'converse_mode': True,
+            "command_queue": ["*look"],
+            "player": player,
+            "converse_mode": True,
         }
-        online_sessions = {'sid-1': session}
+        online_sessions = {"sid-1": session}
 
         service = TickService(
             self.sio,
@@ -425,18 +428,18 @@ class TickServiceTestCase(unittest.IsolatedAsyncioTestCase):
 
         await service.tick_once()
 
-        self.assertFalse(session.get('converse_mode'))
+        self.assertFalse(session.get("converse_mode"))
         messages = [message for _sid, message in self.utils.messages]
-        self.assertTrue(any('Converse mode OFF' in msg for msg in messages))
+        self.assertTrue(any("Converse mode OFF" in msg for msg in messages))
 
     async def test_unparseable_command_returns_error(self):
         """Test unparseable commands return error message."""
         player = FakePlayer()
         session = {
-            'command_queue': ['invalid'],
-            'player': player,
+            "command_queue": ["invalid"],
+            "player": player,
         }
-        online_sessions = {'sid-1': session}
+        online_sessions = {"sid-1": session}
 
         def fake_parse(cmd_str, **_kwargs):
             return []
@@ -463,19 +466,19 @@ class TickServiceTestCase(unittest.IsolatedAsyncioTestCase):
         """Test player_sid is passed to execute_command for respawn interception."""
         player = FakePlayer()
         session = {
-            'command_queue': ['look'],
-            'player': player,
+            "command_queue": ["look"],
+            "player": player,
         }
-        online_sessions = {'sid-123': session}
+        online_sessions = {"sid-123": session}
 
         execute_kwargs = {}
 
         def fake_parse(cmd_str, **_kwargs):
-            return [{'original': cmd_str, 'verb': 'look'}]
+            return [{"original": cmd_str, "verb": "look"}]
 
         async def fake_execute(cmd, *args, **kwargs):
             execute_kwargs.update(kwargs)
-            return 'ok'
+            return "ok"
 
         service = TickService(
             self.sio,
@@ -493,9 +496,9 @@ class TickServiceTestCase(unittest.IsolatedAsyncioTestCase):
         await service.tick_once()
 
         # Verify player_sid was passed
-        self.assertIn('player_sid', execute_kwargs)
-        self.assertEqual(execute_kwargs['player_sid'], 'sid-123')
+        self.assertIn("player_sid", execute_kwargs)
+        self.assertEqual(execute_kwargs["player_sid"], "sid-123")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

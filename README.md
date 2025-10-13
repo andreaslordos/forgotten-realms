@@ -20,3 +20,4 @@ AI MUD is a text-based multiplayer online role-playing game (MMORPG) that uses A
 - **Frontend**: From the `frontend/` directory, install deps with `npm install` and launch the React dev server with `npm start` (serves on http://localhost:3000 and proxies API traffic to the backend on 8080).
 - **Tests**: Run the deterministic tick service tests with `python3 -m unittest -v backend.tests.test_tick_service`. Additional Python tests can be discovered with `python3 -m unittest` from the repo root.
 - **Tooling**: Install developer tooling with `pip install pre-commit coverage` and enable hooks via `pre-commit install`. Commits will run formatting (Black), linting (Ruff), and block if backend coverage from `scripts/run_backend_tests.sh` drops below 80% or if any tests fail.
+test change

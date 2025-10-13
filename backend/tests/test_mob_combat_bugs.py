@@ -1,4 +1,3 @@
-import asyncio
 import sys
 import unittest
 from pathlib import Path
@@ -85,7 +84,9 @@ class MobCombatBugsTestCase(unittest.IsolatedAsyncioTestCase):
 
     @patch("commands.combat.random.uniform", return_value=1.0)
     @patch("commands.combat.random.randint", return_value=10)
-    async def test_player_attacks_mob_after_mob_initiates(self, mock_randint, mock_uniform):
+    async def test_player_attacks_mob_after_mob_initiates(
+        self, mock_randint, mock_uniform
+    ):
         """
         Test that when a mob initiates combat with a player, and the player
         then tries to attack the mob, they don't start duplicate combat.
@@ -107,7 +108,9 @@ class MobCombatBugsTestCase(unittest.IsolatedAsyncioTestCase):
         sio = _DummySio()
 
         # Mob initiates combat first
-        await mob_initiate_attack(mob, player, "sid1", player_manager, game_state, online_sessions, sio, utils)
+        await mob_initiate_attack(
+            mob, player, "sid1", player_manager, game_state, online_sessions, sio, utils
+        )
 
         # Verify combat was initiated
         self.assertIn(mob.id, active_combats)
@@ -122,22 +125,28 @@ class MobCombatBugsTestCase(unittest.IsolatedAsyncioTestCase):
             "subject": "elder",
             "subject_object": mob,
             "instrument": "sword",
-            "instrument_object": weapon
+            "instrument_object": weapon,
         }
 
-        result = await handle_attack(cmd, player, game_state, player_manager, online_sessions, sio, utils)
+        result = await handle_attack(
+            cmd, player, game_state, player_manager, online_sessions, sio, utils
+        )
 
         # Should not create duplicate combat - should inform player they're already fighting
         self.assertEqual(result, f"You're already fighting {mob.name}!")
 
         # Should NOT have any combat dialogue messages (PvP messages)
         message_texts = [msg for _sid, msg in utils.messages]
-        self.assertFalse(any("attacks you" in msg for msg in message_texts),
-                        "Should not show PvP 'attacks you' messages when already in combat")
+        self.assertFalse(
+            any("attacks you" in msg for msg in message_texts),
+            "Should not show PvP 'attacks you' messages when already in combat",
+        )
 
     @patch("commands.combat.random.uniform", return_value=1.0)
     @patch("commands.combat.random.randint", return_value=10)
-    async def test_aggressive_mob_attacks_then_player_attacks_back(self, mock_randint, mock_uniform):
+    async def test_aggressive_mob_attacks_then_player_attacks_back(
+        self, mock_randint, mock_uniform
+    ):
         """
         Test the exact scenario from the bug report:
         1. Elder (aggressive mob) arrives in room
@@ -159,7 +168,7 @@ class MobCombatBugsTestCase(unittest.IsolatedAsyncioTestCase):
             current_room="room1",
             aggressive=True,
             aggro_delay_min=0,
-            aggro_delay_max=0
+            aggro_delay_max=0,
         )
         mob.initialize_aggro_delay()
         mob.aggro_counter = 0  # Ready to attack immediately
@@ -174,7 +183,9 @@ class MobCombatBugsTestCase(unittest.IsolatedAsyncioTestCase):
 
         # Step 1: Mob attacks player (simulating mob tick aggression)
         self.assertTrue(mob.can_attack_player())
-        await mob_initiate_attack(mob, player, "sid1", player_manager, game_state, online_sessions, sio, utils)
+        await mob_initiate_attack(
+            mob, player, "sid1", player_manager, game_state, online_sessions, sio, utils
+        )
 
         # Verify combat established
         self.assertIn(mob.id, active_combats)
@@ -188,18 +199,22 @@ class MobCombatBugsTestCase(unittest.IsolatedAsyncioTestCase):
             "subject": "elder",
             "subject_object": mob,
             "instrument": "sword",
-            "instrument_object": weapon
+            "instrument_object": weapon,
         }
 
-        result = await handle_attack(cmd, player, game_state, player_manager, online_sessions, sio, utils)
+        result = await handle_attack(
+            cmd, player, game_state, player_manager, online_sessions, sio, utils
+        )
 
         # Should inform player they're already in combat
         self.assertIn("already fighting", result.lower())
 
         # Should NOT receive own "attacks you" messages
         message_texts = [msg for _sid, msg in utils.messages]
-        self.assertFalse(any(f"{player.name} attacks you" in msg for msg in message_texts),
-                        "Player should not receive message saying they attack themselves")
+        self.assertFalse(
+            any(f"{player.name} attacks you" in msg for msg in message_texts),
+            "Player should not receive message saying they attack themselves",
+        )
 
     async def test_mob_cannot_move_during_combat(self):
         """
@@ -267,8 +282,10 @@ class MobCombatBugsTestCase(unittest.IsolatedAsyncioTestCase):
 
         # Should not have any movement messages
         message_texts = [msg for _sid, msg in utils.messages]
-        self.assertFalse(any("leaves" in msg or "arrives" in msg for msg in message_texts),
-                        "Mob should not move during combat")
+        self.assertFalse(
+            any("leaves" in msg or "arrives" in msg for msg in message_texts),
+            "Mob should not move during combat",
+        )
 
 
 if __name__ == "__main__":

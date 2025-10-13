@@ -17,7 +17,6 @@ from unittest.mock import AsyncMock, Mock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tests.test_base import BaseCommandTest
-from tests.test_helpers import create_mock_player
 from commands.auth import handle_password, handle_password_input
 
 
@@ -32,15 +31,21 @@ class HandlePasswordInitializationTest(BaseCommandTest):
         cmd = {"original": "password"}
 
         # Act
-        result = await handle_password(
-            cmd, self.player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+        await handle_password(
+            cmd,
+            self.player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
-        self.assertIn('pwd_change', self.online_sessions[sid])
-        self.assertEqual(self.online_sessions[sid]['pwd_change']['stage'], 'old_password')
+        self.assertIn("pwd_change", self.online_sessions[sid])
+        self.assertEqual(
+            self.online_sessions[sid]["pwd_change"]["stage"], "old_password"
+        )
         self.mock_utils.send_message.assert_called_once()
         call_args = self.mock_utils.send_message.call_args[0]
         self.assertIn("present password", call_args[2])
@@ -54,13 +59,17 @@ class HandlePasswordInitializationTest(BaseCommandTest):
 
         # Act
         await handle_password(
-            cmd, self.player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
-        self.mock_sio.emit.assert_called_with('setInputType', 'password', room=sid)
+        self.mock_sio.emit.assert_called_with("setInputType", "password", room=sid)
 
     async def test_handle_password_returns_empty_string_on_init(self):
         """Test handle_password returns empty string on initialization."""
@@ -71,9 +80,13 @@ class HandlePasswordInitializationTest(BaseCommandTest):
 
         # Act
         result = await handle_password(
-            cmd, self.player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -86,9 +99,13 @@ class HandlePasswordInitializationTest(BaseCommandTest):
 
         # Act
         result = await handle_password(
-            cmd, self.player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -107,8 +124,8 @@ class HandlePasswordOldPasswordTest(BaseCommandTest):
             "pwd_change": {
                 "stage": "old_password",
                 "old_password": None,
-                "new_password": None
-            }
+                "new_password": None,
+            },
         }
         cmd = {"original": "oldpass123"}
 
@@ -118,15 +135,23 @@ class HandlePasswordOldPasswordTest(BaseCommandTest):
 
         # Act
         await handle_password(
-            cmd, self.player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
-        self.assertEqual(self.online_sessions[sid]['pwd_change']['stage'], 'new_password')
-        self.assertEqual(self.online_sessions[sid]['pwd_change']['old_password'], 'oldpass123')
-        mock_auth.login.assert_called_once_with(self.player.name, 'oldpass123')
+        self.assertEqual(
+            self.online_sessions[sid]["pwd_change"]["stage"], "new_password"
+        )
+        self.assertEqual(
+            self.online_sessions[sid]["pwd_change"]["old_password"], "oldpass123"
+        )
+        mock_auth.login.assert_called_once_with(self.player.name, "oldpass123")
 
     async def test_handle_password_rejects_invalid_old_password(self):
         """Test handle_password rejects invalid old password."""
@@ -137,8 +162,8 @@ class HandlePasswordOldPasswordTest(BaseCommandTest):
             "pwd_change": {
                 "stage": "old_password",
                 "old_password": None,
-                "new_password": None
-            }
+                "new_password": None,
+            },
         }
         cmd = {"original": "wrongpass"}
 
@@ -148,15 +173,19 @@ class HandlePasswordOldPasswordTest(BaseCommandTest):
 
         # Act
         result = await handle_password(
-            cmd, self.player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
-        self.assertNotIn('pwd_change', self.online_sessions[sid])
+        self.assertNotIn("pwd_change", self.online_sessions[sid])
         self.assertIn("Incorrect", result)
-        self.mock_sio.emit.assert_called_with('setInputType', 'text', room=sid)
+        self.mock_sio.emit.assert_called_with("setInputType", "text", room=sid)
 
     async def test_handle_password_rejects_blank_old_password(self):
         """Test handle_password rejects blank old password."""
@@ -167,21 +196,27 @@ class HandlePasswordOldPasswordTest(BaseCommandTest):
             "pwd_change": {
                 "stage": "old_password",
                 "old_password": None,
-                "new_password": None
-            }
+                "new_password": None,
+            },
         }
         cmd = {"original": "   "}
 
         # Act
         result = await handle_password(
-            cmd, self.player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
         self.assertEqual(result, "")
-        self.assertEqual(self.online_sessions[sid]['pwd_change']['stage'], 'old_password')
+        self.assertEqual(
+            self.online_sessions[sid]["pwd_change"]["stage"], "old_password"
+        )
         self.mock_utils.send_message.assert_called()
         call_args = self.mock_utils.send_message.call_args[0]
         self.assertIn("cannot be blank", call_args[2])
@@ -199,21 +234,29 @@ class HandlePasswordNewPasswordTest(BaseCommandTest):
             "pwd_change": {
                 "stage": "new_password",
                 "old_password": "oldpass123",
-                "new_password": None
-            }
+                "new_password": None,
+            },
         }
         cmd = {"original": "newpass456"}
 
         # Act
         await handle_password(
-            cmd, self.player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
-        self.assertEqual(self.online_sessions[sid]['pwd_change']['stage'], 'confirm_password')
-        self.assertEqual(self.online_sessions[sid]['pwd_change']['new_password'], 'newpass456')
+        self.assertEqual(
+            self.online_sessions[sid]["pwd_change"]["stage"], "confirm_password"
+        )
+        self.assertEqual(
+            self.online_sessions[sid]["pwd_change"]["new_password"], "newpass456"
+        )
 
     async def test_handle_password_rejects_blank_new_password(self):
         """Test handle_password rejects blank new password."""
@@ -224,21 +267,27 @@ class HandlePasswordNewPasswordTest(BaseCommandTest):
             "pwd_change": {
                 "stage": "new_password",
                 "old_password": "oldpass123",
-                "new_password": None
-            }
+                "new_password": None,
+            },
         }
         cmd = {"original": "   "}
 
         # Act
         result = await handle_password(
-            cmd, self.player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
         self.assertEqual(result, "")
-        self.assertEqual(self.online_sessions[sid]['pwd_change']['stage'], 'new_password')
+        self.assertEqual(
+            self.online_sessions[sid]["pwd_change"]["stage"], "new_password"
+        )
         self.mock_utils.send_message.assert_called()
 
 
@@ -254,8 +303,8 @@ class HandlePasswordConfirmationTest(BaseCommandTest):
             "pwd_change": {
                 "stage": "confirm_password",
                 "old_password": "oldpass123",
-                "new_password": "newpass456"
-            }
+                "new_password": "newpass456",
+            },
         }
         cmd = {"original": "newpass456"}
 
@@ -267,16 +316,20 @@ class HandlePasswordConfirmationTest(BaseCommandTest):
 
         # Act
         result = await handle_password(
-            cmd, self.player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
-        self.assertNotIn('pwd_change', self.online_sessions[sid])
+        self.assertNotIn("pwd_change", self.online_sessions[sid])
         self.assertIn("successfully", result)
         mock_auth.save_credentials.assert_called_once()
-        self.mock_sio.emit.assert_called_with('setInputType', 'text', room=sid)
+        self.mock_sio.emit.assert_called_with("setInputType", "text", room=sid)
 
     async def test_handle_password_rejects_mismatched_confirmation(self):
         """Test handle_password rejects mismatched password confirmation."""
@@ -287,23 +340,27 @@ class HandlePasswordConfirmationTest(BaseCommandTest):
             "pwd_change": {
                 "stage": "confirm_password",
                 "old_password": "oldpass123",
-                "new_password": "newpass456"
-            }
+                "new_password": "newpass456",
+            },
         }
         cmd = {"original": "differentpass"}
 
         # Act
         result = await handle_password(
-            cmd, self.player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
-        self.assertNotIn('pwd_change', self.online_sessions[sid])
+        self.assertNotIn("pwd_change", self.online_sessions[sid])
         self.assertIn("different", result)
         self.assertIn("unchanged", result)
-        self.mock_sio.emit.assert_called_with('setInputType', 'text', room=sid)
+        self.mock_sio.emit.assert_called_with("setInputType", "text", room=sid)
 
     async def test_handle_password_rejects_blank_confirmation(self):
         """Test handle_password rejects blank confirmation."""
@@ -314,21 +371,27 @@ class HandlePasswordConfirmationTest(BaseCommandTest):
             "pwd_change": {
                 "stage": "confirm_password",
                 "old_password": "oldpass123",
-                "new_password": "newpass456"
-            }
+                "new_password": "newpass456",
+            },
         }
         cmd = {"original": "   "}
 
         # Act
         result = await handle_password(
-            cmd, self.player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
         self.assertEqual(result, "")
-        self.assertEqual(self.online_sessions[sid]['pwd_change']['stage'], 'confirm_password')
+        self.assertEqual(
+            self.online_sessions[sid]["pwd_change"]["stage"], "confirm_password"
+        )
 
 
 class HandlePasswordInputTest(BaseCommandTest):
@@ -343,19 +406,25 @@ class HandlePasswordInputTest(BaseCommandTest):
             "pwd_change": {
                 "stage": "old_password",
                 "old_password": None,
-                "new_password": None
-            }
+                "new_password": None,
+            },
         }
         cmd = {"original": "test_input"}
 
-        with patch('commands.auth.handle_password', new_callable=AsyncMock) as mock_handle_pwd:
+        with patch(
+            "commands.auth.handle_password", new_callable=AsyncMock
+        ) as mock_handle_pwd:
             mock_handle_pwd.return_value = "redirected"
 
             # Act
             result = await handle_password_input(
-                cmd, self.player, self.mock_game_state,
-                self.mock_player_manager, self.online_sessions,
-                self.mock_sio, self.mock_utils
+                cmd,
+                self.player,
+                self.mock_game_state,
+                self.mock_player_manager,
+                self.online_sessions,
+                self.mock_sio,
+                self.mock_utils,
             )
 
             # Assert
@@ -371,9 +440,13 @@ class HandlePasswordInputTest(BaseCommandTest):
 
         # Act
         result = await handle_password_input(
-            cmd, self.player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert

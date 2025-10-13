@@ -2,14 +2,24 @@
 
 from models.Room import Room
 
+
 class SwampRoom(Room):
     """
     A specialized room for swamp areas that can consume treasure and award points.
     """
-    def __init__(self, room_id, name, description, exits=None, treasure_destination=None, awards_points=True):
+
+    def __init__(
+        self,
+        room_id,
+        name,
+        description,
+        exits=None,
+        treasure_destination=None,
+        awards_points=True,
+    ):
         """
         Initialize a SwampRoom.
-        
+
         Args:
             room_id (str): Unique identifier for the room
             name (str): Display name of the room
@@ -21,11 +31,19 @@ class SwampRoom(Room):
         super().__init__(room_id, name, description, exits)
         self.treasure_destination = treasure_destination
         self.awards_points = awards_points
-    
-    def handle_treasure_drop(self, item, player, game_state, player_manager=None, sio=None, online_sessions=None):
+
+    def handle_treasure_drop(
+        self,
+        item,
+        player,
+        game_state,
+        player_manager=None,
+        sio=None,
+        online_sessions=None,
+    ):
         """
         Special handler for when treasure is dropped in this room.
-        
+
         Args:
             item: The treasure item being dropped
             player: The player dropping the item
@@ -33,7 +51,7 @@ class SwampRoom(Room):
             player_manager: Optional player manager for saving player state
             sio: Optional socket.io instance for notifications
             online_sessions: Optional session data for notifications
-            
+
         Returns:
             tuple: (bool, str) indicating success and a message
         """
@@ -42,22 +60,26 @@ class SwampRoom(Room):
             dest_room = game_state.get_room(self.treasure_destination)
             if dest_room:
                 dest_room.add_item(item)
-        
+
         # Award points if enabled
-        if self.awards_points and hasattr(item, 'value') and item.value > 0:
+        if self.awards_points and hasattr(item, "value") and item.value > 0:
             points_awarded = item.value
             if player and player_manager:
                 # Don't send notification, just get the text
-                _, points_notification = player.add_points(points_awarded, sio, online_sessions, send_notification=False)
+                _, points_notification = player.add_points(
+                    points_awarded, sio, online_sessions, send_notification=False
+                )
                 player_manager.save_players()
-                
+
                 # Build a combined message with the drop and points notification
-                combined_message = f"{item.name.capitalize()} dropped.\n{points_notification}"
+                combined_message = (
+                    f"{item.name.capitalize()} dropped.\n{points_notification}"
+                )
                 return True, combined_message
-        
+
         # Return standard message for items without value
         return True, f"{item.name.capitalize()} dropped."
-    
+
     def to_dict(self):
         """Convert the SwampRoom to a dictionary for serialization."""
         data = super().to_dict()
@@ -65,7 +87,7 @@ class SwampRoom(Room):
         data["treasure_destination"] = self.treasure_destination
         data["awards_points"] = self.awards_points
         return data
-    
+
     @staticmethod
     def from_dict(data):
         """Create a SwampRoom from a dictionary representation."""
@@ -75,5 +97,5 @@ class SwampRoom(Room):
             data["description"],
             exits=data.get("exits", {}),
             treasure_destination=data.get("treasure_destination"),
-            awards_points=data.get("awards_points", True)
+            awards_points=data.get("awards_points", True),
         )

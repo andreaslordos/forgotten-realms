@@ -56,7 +56,7 @@ class AsyncTestCase(unittest.IsolatedAsyncioTestCase):
         self.online_sessions = {
             "sid1": {"player": self.player},
             "sid2": {"player": self.other_player},
-            "sid3": {"player": self.remote_player}
+            "sid3": {"player": self.remote_player},
         }
 
         # Create test items
@@ -75,12 +75,17 @@ class GiveCommandTest(AsyncTestCase):
             "verb": "give",
             "instrument": "sword",
             "subject": "Bob",
-            "reversed_syntax": True
+            "reversed_syntax": True,
         }
 
         result = await handle_give(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("given to Bob", result)
@@ -95,12 +100,17 @@ class GiveCommandTest(AsyncTestCase):
             "verb": "give",
             "subject": "Bob",
             "instrument": "sword",
-            "reversed_syntax": False
+            "reversed_syntax": False,
         }
 
         result = await handle_give(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("given to Bob", result)
@@ -108,14 +118,16 @@ class GiveCommandTest(AsyncTestCase):
 
     async def test_give_without_item_returns_error(self):
         """Test give without specifying item."""
-        cmd = {
-            "verb": "give",
-            "subject": "Bob"
-        }
+        cmd = {"verb": "give", "subject": "Bob"}
 
         result = await handle_give(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertEqual(result, "What do you want to give?")
@@ -124,15 +136,16 @@ class GiveCommandTest(AsyncTestCase):
         """Test give without specifying target."""
         self.player.add_item(self.item1)
 
-        cmd = {
-            "verb": "give",
-            "instrument": "sword",
-            "reversed_syntax": True
-        }
+        cmd = {"verb": "give", "instrument": "sword", "reversed_syntax": True}
 
         result = await handle_give(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertEqual(result, "To whom do you want to give something?")
@@ -143,12 +156,17 @@ class GiveCommandTest(AsyncTestCase):
             "verb": "give",
             "instrument": "sword",
             "subject": "Bob",
-            "reversed_syntax": True
+            "reversed_syntax": True,
         }
 
         result = await handle_give(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("don't have", result)
@@ -161,12 +179,17 @@ class GiveCommandTest(AsyncTestCase):
             "verb": "give",
             "instrument": "sword",
             "subject": "Charlie",  # In different room
-            "reversed_syntax": True
+            "reversed_syntax": True,
         }
 
         result = await handle_give(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("don't see", result)
@@ -185,12 +208,17 @@ class GiveCommandTest(AsyncTestCase):
             "verb": "give",
             "instrument": "sword",
             "subject": "Bob",
-            "reversed_syntax": True
+            "reversed_syntax": True,
         }
 
         result = await handle_give(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("cannot carry", result)
@@ -209,12 +237,17 @@ class GiveCommandTest(AsyncTestCase):
             "verb": "give",
             "instrument": "sword",
             "subject": "Bob",
-            "reversed_syntax": True
+            "reversed_syntax": True,
         }
 
         await handle_give(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should send message to Bob and Observer
@@ -230,12 +263,17 @@ class GiveCommandTest(AsyncTestCase):
             "instrument_object": self.item1,
             "subject": "Bob",
             "subject_object": self.other_player,
-            "reversed_syntax": True
+            "reversed_syntax": True,
         }
 
         result = await handle_give(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("given to Bob", result)
@@ -250,8 +288,13 @@ class StealCommandTest(AsyncTestCase):
         cmd = {"verb": "steal", "instrument": "sword"}
 
         result = await handle_steal(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertEqual(result, "Steal from whom?")
@@ -261,8 +304,13 @@ class StealCommandTest(AsyncTestCase):
         cmd = {"verb": "steal", "subject": "Bob"}
 
         result = await handle_steal(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertEqual(result, "What do you want to steal?")
@@ -272,32 +320,38 @@ class StealCommandTest(AsyncTestCase):
         cmd = {
             "verb": "steal",
             "subject": "Charlie",  # In different room
-            "instrument": "sword"
+            "instrument": "sword",
         }
 
         result = await handle_steal(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("don't see", result)
 
     async def test_steal_item_target_doesnt_have(self):
         """Test stealing item target doesn't have."""
-        cmd = {
-            "verb": "steal",
-            "subject": "Bob",
-            "instrument": "sword"
-        }
+        cmd = {"verb": "steal", "subject": "Bob", "instrument": "sword"}
 
         result = await handle_steal(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("doesn't have", result)
 
-    @patch('random.randint')
+    @patch("random.randint")
     async def test_steal_success(self, mock_randint):
         """Test successful steal attempt."""
         # Force successful steal (roll = 1, will be <= steal_chance)
@@ -309,19 +363,24 @@ class StealCommandTest(AsyncTestCase):
             "verb": "steal",
             "subject": "sword",  # Will be swapped to become target
             "instrument": "Bob",  # Will be swapped to become item
-            "preposition": "from"
+            "preposition": "from",
         }
 
         result = await handle_steal(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("stolen from Bob", result)
         self.assertIn(self.item1, self.player.inventory)
         self.assertNotIn(self.item1, self.other_player.inventory)
 
-    @patch('random.randint')
+    @patch("random.randint")
     async def test_steal_failure(self, mock_randint):
         """Test failed steal attempt."""
         # Force failed steal (roll = 100, will be > steal_chance)
@@ -333,19 +392,24 @@ class StealCommandTest(AsyncTestCase):
             "verb": "steal",
             "subject": "sword",  # Will be swapped to become target
             "instrument": "Bob",  # Will be swapped to become item
-            "preposition": "from"
+            "preposition": "from",
         }
 
         result = await handle_steal(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("discovers your attempt", result)
         self.assertNotIn(self.item1, self.player.inventory)
         self.assertIn(self.item1, self.other_player.inventory)
 
-    @patch('random.randint')
+    @patch("random.randint")
     async def test_steal_with_high_dexterity(self, mock_randint):
         """Test steal chance calculation with high dexterity."""
         # Set high dexterity for thief
@@ -361,12 +425,17 @@ class StealCommandTest(AsyncTestCase):
             "verb": "steal",
             "subject": "sword",  # Will be swapped to become target
             "instrument": "Bob",  # Will be swapped to become item
-            "preposition": "from"
+            "preposition": "from",
         }
 
         result = await handle_steal(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # With 100 vs 10 dex, steal chance should be very high
@@ -374,7 +443,7 @@ class StealCommandTest(AsyncTestCase):
         # Roll of 80 should succeed
         self.assertIn("stolen", result)
 
-    @patch('random.randint')
+    @patch("random.randint")
     async def test_steal_with_low_dexterity(self, mock_randint):
         """Test steal chance calculation with low dexterity."""
         # Set low dexterity for thief
@@ -390,12 +459,17 @@ class StealCommandTest(AsyncTestCase):
             "verb": "steal",
             "subject": "sword",  # Will be swapped to become target
             "instrument": "Bob",  # Will be swapped to become item
-            "preposition": "from"
+            "preposition": "from",
         }
 
         result = await handle_steal(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # With 10 vs 100 dex, steal chance should be low
@@ -403,7 +477,7 @@ class StealCommandTest(AsyncTestCase):
         # Roll of 20 should fail
         self.assertIn("discovers", result)
 
-    @patch('random.randint')
+    @patch("random.randint")
     async def test_steal_broadcasts_on_success(self, mock_randint):
         """Test that successful steal broadcasts to all players."""
         mock_randint.return_value = 1
@@ -419,18 +493,23 @@ class StealCommandTest(AsyncTestCase):
             "verb": "steal",
             "subject": "sword",  # Will be swapped to become target
             "instrument": "Bob",  # Will be swapped to become item
-            "preposition": "from"
+            "preposition": "from",
         }
 
         await handle_steal(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should send to Bob and Observer
         self.assertEqual(self.utils.send_message.call_count, 2)
 
-    @patch('random.randint')
+    @patch("random.randint")
     async def test_steal_broadcasts_on_failure(self, mock_randint):
         """Test that failed steal broadcasts to all players."""
         mock_randint.return_value = 100
@@ -446,18 +525,23 @@ class StealCommandTest(AsyncTestCase):
             "verb": "steal",
             "subject": "sword",  # Will be swapped to become target
             "instrument": "Bob",  # Will be swapped to become item
-            "preposition": "from"
+            "preposition": "from",
         }
 
         await handle_steal(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should send to Bob and Observer
         self.assertEqual(self.utils.send_message.call_count, 2)
 
-    @patch('random.randint')
+    @patch("random.randint")
     async def test_steal_when_thief_inventory_full(self, mock_randint):
         """Test steal fails if thief's inventory is full."""
         mock_randint.return_value = 1
@@ -474,12 +558,17 @@ class StealCommandTest(AsyncTestCase):
             "verb": "steal",
             "subject": "sword",  # Will be swapped to become target
             "instrument": "Bob",  # Will be swapped to become item
-            "preposition": "from"
+            "preposition": "from",
         }
 
         result = await handle_steal(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("can't carry", result)
@@ -493,13 +582,18 @@ class StealCommandTest(AsyncTestCase):
             "verb": "steal",
             "subject": "sword",  # Will be swapped
             "instrument": "Bob",  # Will be swapped
-            "preposition": "from"
+            "preposition": "from",
         }
 
-        with patch('random.randint', return_value=1):
+        with patch("random.randint", return_value=1):
             result = await handle_steal(
-                cmd, self.player, self.game_state, self.player_manager,
-                self.online_sessions, self.sio, self.utils
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
             )
 
         self.assertIn("stolen", result)
@@ -516,12 +610,17 @@ class PlayerInteractionEdgeCasesTest(AsyncTestCase):
             "verb": "give",
             "instrument": "sword",
             "subject": "Alice",  # Self
-            "reversed_syntax": True
+            "reversed_syntax": True,
         }
 
         result = await handle_give(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should not find self as target
@@ -531,15 +630,16 @@ class PlayerInteractionEdgeCasesTest(AsyncTestCase):
         """Test that you can't steal from yourself."""
         self.player.add_item(self.item1)
 
-        cmd = {
-            "verb": "steal",
-            "subject": "Alice",  # Self
-            "instrument": "sword"
-        }
+        cmd = {"verb": "steal", "subject": "Alice", "instrument": "sword"}  # Self
 
         result = await handle_steal(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should not find self as target
@@ -553,12 +653,17 @@ class PlayerInteractionEdgeCasesTest(AsyncTestCase):
             "verb": "give",
             "instrument": "sword",
             "subject": "bob",  # Lowercase
-            "reversed_syntax": True
+            "reversed_syntax": True,
         }
 
         result = await handle_give(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("given to Bob", result)
@@ -571,13 +676,18 @@ class PlayerInteractionEdgeCasesTest(AsyncTestCase):
             "verb": "steal",
             "subject": "sword",  # Will be swapped to become target
             "instrument": "bob",  # Will be swapped to become item (lowercase)
-            "preposition": "from"
+            "preposition": "from",
         }
 
-        with patch('random.randint', return_value=1):
+        with patch("random.randint", return_value=1):
             result = await handle_steal(
-                cmd, self.player, self.game_state, self.player_manager,
-                self.online_sessions, self.sio, self.utils
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
             )
 
         self.assertIn("stolen", result)

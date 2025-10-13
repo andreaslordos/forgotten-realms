@@ -26,7 +26,7 @@ class ItemInitializationTest(unittest.TestCase):
             description="An old rusty key",
             weight=0.5,
             value=10,
-            takeable=True
+            takeable=True,
         )
 
         self.assertEqual(item.name, "Rusty Key")
@@ -51,7 +51,7 @@ class ItemInitializationTest(unittest.TestCase):
             "statue_1",
             "A massive stone statue",
             weight=1000,
-            takeable=False
+            takeable=False,
         )
 
         self.assertFalse(item.takeable)
@@ -72,12 +72,7 @@ class ItemSerializationTest(unittest.TestCase):
     def test_to_dict_returns_all_attributes(self):
         """Test converting item to dictionary."""
         item = Item(
-            "Torch",
-            "torch_1",
-            "A burning torch",
-            weight=1.5,
-            value=15,
-            takeable=True
+            "Torch", "torch_1", "A burning torch", weight=1.5, value=15, takeable=True
         )
         item_dict = item.to_dict()
 
@@ -96,7 +91,7 @@ class ItemSerializationTest(unittest.TestCase):
             "description": "A treasure map",
             "weight": 0.2,
             "value": 50,
-            "takeable": True
+            "takeable": True,
         }
         item = Item.from_dict(data)
 

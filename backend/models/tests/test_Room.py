@@ -30,7 +30,7 @@ class RoomInitializationTest(unittest.TestCase):
             room_id="room1",
             name="Test Chamber",
             description="A dark chamber",
-            exits=exits
+            exits=exits,
         )
 
         self.assertEqual(room.room_id, "room1")
@@ -118,7 +118,9 @@ class RoomHiddenItemsTest(unittest.TestCase):
 
     def test_add_hidden_item_adds_to_hidden_items_dict(self):
         """Test adding hidden items to a room."""
-        condition = lambda game_state: False
+
+        def condition(game_state):
+            return False
 
         self.room.add_hidden_item(self.hidden_item, condition)
 
@@ -126,7 +128,10 @@ class RoomHiddenItemsTest(unittest.TestCase):
 
     def test_get_items_hides_items_when_condition_false(self):
         """Test that hidden items are not visible when condition is false."""
-        condition = lambda game_state: False
+
+        def condition(game_state):
+            return False
+
         self.room.add_hidden_item(self.hidden_item, condition)
 
         # Create a dummy game state
@@ -138,7 +143,10 @@ class RoomHiddenItemsTest(unittest.TestCase):
 
     def test_get_items_shows_items_when_condition_true(self):
         """Test that hidden items become visible when condition is true."""
-        condition = lambda game_state: True
+
+        def condition(game_state):
+            return True
+
         self.room.add_hidden_item(self.hidden_item, condition)
 
         game_state = GameState()
@@ -149,8 +157,10 @@ class RoomHiddenItemsTest(unittest.TestCase):
 
     def test_get_items_evaluates_state_based_condition(self):
         """Test hidden item with condition based on game state."""
+
         # Item appears only if a flag is set in game state
-        condition = lambda gs: hasattr(gs, 'door_opened') and gs.door_opened
+        def condition(gs):
+            return hasattr(gs, "door_opened") and gs.door_opened
 
         self.room.add_hidden_item(self.hidden_item, condition)
 
@@ -167,7 +177,10 @@ class RoomHiddenItemsTest(unittest.TestCase):
 
     def test_remove_hidden_item_removes_from_dict(self):
         """Test removing hidden items."""
-        condition = lambda gs: True
+
+        def condition(gs):
+            return True
+
         self.room.add_hidden_item(self.hidden_item, condition)
 
         success = self.room.remove_hidden_item("key_1")
@@ -213,7 +226,7 @@ class RoomExitsTest(unittest.TestCase):
             "north": "room_n",
             "south": "room_s",
             "east": "room_e",
-            "west": "room_w"
+            "west": "room_w",
         }
         room = Room("center", "Central Hub", "A crossroads", exits=exits)
 
@@ -229,7 +242,7 @@ class RoomExitsTest(unittest.TestCase):
             "up": "tower_top",
             "down": "dungeon",
             "in": "building",
-            "out": "courtyard"
+            "out": "courtyard",
         }
         room = Room("tower", "Tower Base", "Base of a tower", exits=exits)
 
@@ -273,7 +286,7 @@ class RoomSerializationTest(unittest.TestCase):
             "name": "Library",
             "description": "A dusty library",
             "exits": {"west": "hallway"},
-            "items": []
+            "items": [],
         }
 
         room = Room.from_dict(data)
@@ -286,10 +299,7 @@ class RoomSerializationTest(unittest.TestCase):
     def test_to_dict_from_dict_round_trip(self):
         """Test complete serialization cycle."""
         original = Room(
-            "test",
-            "Test Room",
-            "A test room",
-            exits={"north": "n", "south": "s"}
+            "test", "Test Room", "A test room", exits={"north": "n", "south": "s"}
         )
 
         serialized = original.to_dict()

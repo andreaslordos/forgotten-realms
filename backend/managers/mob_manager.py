@@ -60,7 +60,9 @@ class MobManager:
         mob = Mobile(
             name=template["name"],
             id=mob_id,
-            description=template.get("description", f"A {template['name']} stands here."),
+            description=template.get(
+                "description", f"A {template['name']} stands here."
+            ),
             strength=template.get("strength", 20),
             dexterity=template.get("dexterity", 20),
             max_stamina=template.get("max_stamina", 100),
@@ -74,7 +76,7 @@ class MobManager:
             instant_death=template.get("instant_death", False),
             point_value=template.get("point_value", 0),
             pronouns=template.get("pronouns", "it"),
-            current_room=room_id
+            current_room=room_id,
         )
 
         # Initialize aggro delay
@@ -133,13 +135,19 @@ class MobManager:
         Returns:
             list: List of Mobile objects in the room
         """
-        return [mob for mob in self.mobs.values() if mob.current_room == room_id and mob.state == "alive"]
+        return [
+            mob
+            for mob in self.mobs.values()
+            if mob.current_room == room_id and mob.state == "alive"
+        ]
 
     def get_all_mobs(self):
         """Get all mobs (alive and dead)."""
         return list(self.mobs.values())
 
-    async def tick_all_mobs(self, sio, online_sessions, player_manager, game_state, utils):
+    async def tick_all_mobs(
+        self, sio, online_sessions, player_manager, game_state, utils
+    ):
         """
         Process one tick for all mobs (AI, movement, aggro).
 
@@ -167,11 +175,15 @@ class MobManager:
 
             # Check if mob should move
             if mob.should_move(self.global_tick_counter):
-                await self._process_mob_movement(mob, game_state, online_sessions, sio, utils)
+                await self._process_mob_movement(
+                    mob, game_state, online_sessions, sio, utils
+                )
 
             # Check if mob should initiate combat
             if mob.can_attack_player():
-                await self._process_mob_aggression(mob, online_sessions, player_manager, game_state, sio, utils)
+                await self._process_mob_aggression(
+                    mob, online_sessions, player_manager, game_state, sio, utils
+                )
 
     async def _process_mob_movement(self, mob, game_state, online_sessions, sio, utils):
         """
@@ -198,9 +210,11 @@ class MobManager:
             # Notify players in old room
             if online_sessions and sio and utils:
                 for sid, session_data in online_sessions.items():
-                    player = session_data.get('player')
+                    player = session_data.get("player")
                     if player and player.current_room == old_room_id:
-                        await utils.send_message(sio, sid, f"{mob.name.capitalize()} leaves.")
+                        await utils.send_message(
+                            sio, sid, f"{mob.name.capitalize()} leaves."
+                        )
 
         # Move mob
         mob.move_to_room(new_room_id, self.global_tick_counter)
@@ -213,11 +227,15 @@ class MobManager:
             # Notify players in new room
             if online_sessions and sio and utils:
                 for sid, session_data in online_sessions.items():
-                    player = session_data.get('player')
+                    player = session_data.get("player")
                     if player and player.current_room == new_room_id:
-                        await utils.send_message(sio, sid, f"{mob.name.capitalize()} arrives.")
+                        await utils.send_message(
+                            sio, sid, f"{mob.name.capitalize()} arrives."
+                        )
 
-    async def _process_mob_aggression(self, mob, online_sessions, player_manager, game_state, sio, utils):
+    async def _process_mob_aggression(
+        self, mob, online_sessions, player_manager, game_state, sio, utils
+    ):
         """
         Handle aggressive mob initiating combat.
 
@@ -235,7 +253,7 @@ class MobManager:
 
         if online_sessions:
             for sid, session_data in online_sessions.items():
-                player = session_data.get('player')
+                player = session_data.get("player")
                 # Players in limbo (current_room == None) won't match
                 if player and player.current_room == mob.current_room:
                     target_player = player
@@ -247,4 +265,14 @@ class MobManager:
 
         # Import combat module to initiate attack
         from commands.combat import mob_initiate_attack
-        await mob_initiate_attack(mob, target_player, target_sid, player_manager, game_state, online_sessions, sio, utils)
+
+        await mob_initiate_attack(
+            mob,
+            target_player,
+            target_sid,
+            player_manager,
+            game_state,
+            online_sessions,
+            sio,
+            utils,
+        )

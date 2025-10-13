@@ -35,12 +35,12 @@ class PlayerInitializationTest(BaseModelTest):
     def test___init___sets_default_sex_to_male(self):
         """Test __init__ sets default sex to M."""
         player = Player("TestPlayer")
-        self.assertEqual(player.sex, 'M')
+        self.assertEqual(player.sex, "M")
 
     def test___init___accepts_custom_sex(self):
         """Test __init__ accepts custom sex parameter."""
-        player = Player("TestPlayer", sex='F')
-        self.assertEqual(player.sex, 'F')
+        player = Player("TestPlayer", sex="F")
+        self.assertEqual(player.sex, "F")
 
     def test___init___sets_email(self):
         """Test __init__ sets email when provided."""
@@ -71,12 +71,12 @@ class PlayerInitializationTest(BaseModelTest):
     def test___init___sets_starting_level_stats(self):
         """Test __init__ sets stats from level 0."""
         player = Player("TestPlayer")
-        self.assertEqual(player.level, levels[0]['name'])
-        self.assertEqual(player.stamina, levels[0]['stamina'])
-        self.assertEqual(player.max_stamina, levels[0]['stamina'])
-        self.assertEqual(player.strength, levels[0]['strength'])
-        self.assertEqual(player.dexterity, levels[0]['dexterity'])
-        self.assertEqual(player.magic, levels[0]['magic'])
+        self.assertEqual(player.level, levels[0]["name"])
+        self.assertEqual(player.stamina, levels[0]["stamina"])
+        self.assertEqual(player.max_stamina, levels[0]["stamina"])
+        self.assertEqual(player.strength, levels[0]["strength"])
+        self.assertEqual(player.dexterity, levels[0]["dexterity"])
+        self.assertEqual(player.magic, levels[0]["magic"])
 
     def test___init___sets_created_at_timestamp(self):
         """Test __init__ sets created_at timestamp."""
@@ -109,9 +109,9 @@ class PlayerLevelUpTest(unittest.TestCase):
 
         player.level_up()
 
-        self.assertEqual(player.stamina, levels[800]['stamina'])
-        self.assertEqual(player.max_stamina, levels[800]['stamina'])
-        self.assertEqual(player.strength, levels[800]['strength'])
+        self.assertEqual(player.stamina, levels[800]["stamina"])
+        self.assertEqual(player.max_stamina, levels[800]["stamina"])
+        self.assertEqual(player.strength, levels[800]["strength"])
 
     def test_level_up_returns_false_when_no_level_change(self):
         """Test level_up returns False when level doesn't change."""
@@ -150,7 +150,7 @@ class PlayerLevelUpTest(unittest.TestCase):
 
         self.assertEqual(player.next_level_at, -1)
 
-    @patch('asyncio.create_task')
+    @patch("asyncio.create_task")
     def test_level_up_sends_notification_when_leveled_up(self, mock_create_task):
         """Test level_up sends notification when level increases."""
         player = Player("TestPlayer")
@@ -200,14 +200,18 @@ class PlayerAddPointsTest(unittest.TestCase):
 
         self.assertFalse(leveled_up)
 
-    @patch('asyncio.create_task')
-    def test_add_points_sends_notification_when_send_notification_true(self, mock_create_task):
+    @patch("asyncio.create_task")
+    def test_add_points_sends_notification_when_send_notification_true(
+        self, mock_create_task
+    ):
         """Test add_points sends notification when send_notification=True."""
         player = Player("TestPlayer")
         mock_sio = AsyncMock()
         online_sessions = {"sid1": {"player": player}}
 
-        player.add_points(50, sio=mock_sio, online_sessions=online_sessions, send_notification=True)
+        player.add_points(
+            50, sio=mock_sio, online_sessions=online_sessions, send_notification=True
+        )
 
         self.assertTrue(mock_create_task.called)
 
@@ -337,18 +341,18 @@ class PlayerSerializationTest(unittest.TestCase):
 
     def test_to_dict_includes_all_attributes(self):
         """Test to_dict includes all required attributes."""
-        player = Player("TestPlayer", sex='F', email="test@example.com")
+        player = Player("TestPlayer", sex="F", email="test@example.com")
         player.points = 500
 
         data = player.to_dict()
 
-        self.assertEqual(data['name'], "TestPlayer")
-        self.assertEqual(data['sex'], 'F')
-        self.assertEqual(data['email'], "test@example.com")
-        self.assertEqual(data['points'], 500)
-        self.assertIn('inventory', data)
-        self.assertIn('level', data)
-        self.assertIn('current_room', data)
+        self.assertEqual(data["name"], "TestPlayer")
+        self.assertEqual(data["sex"], "F")
+        self.assertEqual(data["email"], "test@example.com")
+        self.assertEqual(data["points"], 500)
+        self.assertIn("inventory", data)
+        self.assertIn("level", data)
+        self.assertIn("current_room", data)
 
     def test_to_dict_serializes_inventory(self):
         """Test to_dict serializes inventory items."""
@@ -359,7 +363,7 @@ class PlayerSerializationTest(unittest.TestCase):
 
         data = player.to_dict()
 
-        self.assertEqual(len(data['inventory']), 1)
+        self.assertEqual(len(data["inventory"]), 1)
 
     def test_from_dict_recreates_player(self):
         """Test from_dict recreates player from dictionary."""
@@ -370,7 +374,7 @@ class PlayerSerializationTest(unittest.TestCase):
             "points": 500,
             "inventory": [],
             "level": "Novice",
-            "current_room": "tavern"
+            "current_room": "tavern",
         }
 
         player = Player.from_dict(data)
@@ -387,13 +391,13 @@ class PlayerSerializationTest(unittest.TestCase):
             "points": 800,  # Acolyte level
             "inventory": [],
             "level": "Acolyte",
-            "current_room": "village_center"
+            "current_room": "village_center",
         }
 
         player = Player.from_dict(data)
 
-        self.assertEqual(player.max_stamina, levels[800]['stamina'])
-        self.assertEqual(player.strength, levels[800]['strength'])
+        self.assertEqual(player.max_stamina, levels[800]["stamina"])
+        self.assertEqual(player.strength, levels[800]["strength"])
 
     def test_return_summary_provides_overview(self):
         """Test return_summary provides player overview."""
@@ -402,10 +406,10 @@ class PlayerSerializationTest(unittest.TestCase):
 
         summary = player.return_summary()
 
-        self.assertEqual(summary['name'], "TestPlayer")
-        self.assertEqual(summary['points'], 100)
-        self.assertIn('stamina', summary)
-        self.assertIn('inventory', summary)
+        self.assertEqual(summary["name"], "TestPlayer")
+        self.assertEqual(summary["points"], 100)
+        self.assertIn("stamina", summary)
+        self.assertIn("inventory", summary)
 
 
 class PlayerActivityTest(unittest.TestCase):
@@ -417,6 +421,7 @@ class PlayerActivityTest(unittest.TestCase):
         old_time = player.last_active
 
         import time
+
         time.sleep(0.01)  # Small delay
         player.update_activity()
 

@@ -19,16 +19,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from commands.natural_language_parser import (
     tokenize,
-    Token,
     TokenType,
     VocabularyManager,
     CommandContext,
     SyntaxPattern,
-    CommandStructure,
     ObjectBinder,
-    NaturalLanguageParser,
     parse_command,
-    is_movement_command
+    is_movement_command,
 )
 from models.Player import Player
 from models.Item import Item
@@ -287,7 +284,9 @@ class ObjectBindingTest(unittest.TestCase):
         sword = Item("Sword", "sword_1", "A sharp sword")
         self.player.add_item(sword)
 
-        bound = self.binder.bind_subject("sword", self.player, self.game_state, self.context)
+        bound = self.binder.bind_subject(
+            "sword", self.player, self.game_state, self.context
+        )
 
         self.assertEqual(bound, sword)
 
@@ -296,19 +295,25 @@ class ObjectBindingTest(unittest.TestCase):
         torch = Item("Torch", "torch_1", "A burning torch")
         self.room.add_item(torch)
 
-        bound = self.binder.bind_subject("torch", self.player, self.game_state, self.context)
+        bound = self.binder.bind_subject(
+            "torch", self.player, self.game_state, self.context
+        )
 
         self.assertEqual(bound, torch)
 
     def test_bind_special_keyword_all(self):
         """Test binding special 'all' keyword."""
-        bound = self.binder.bind_subject("all", self.player, self.game_state, self.context)
+        bound = self.binder.bind_subject(
+            "all", self.player, self.game_state, self.context
+        )
 
         self.assertEqual(bound, "all")
 
     def test_bind_nonexistent_object(self):
         """Test binding to nonexistent object."""
-        bound = self.binder.bind_subject("dragon", self.player, self.game_state, self.context)
+        bound = self.binder.bind_subject(
+            "dragon", self.player, self.game_state, self.context
+        )
 
         self.assertIsNone(bound)
 
@@ -317,7 +322,9 @@ class ObjectBindingTest(unittest.TestCase):
         sword = Item("Sword", "sword_1", "A sword")
         self.player.add_item(sword)
 
-        bound = self.binder.bind_instrument("sword", self.player, self.game_state, self.context)
+        bound = self.binder.bind_instrument(
+            "sword", self.player, self.game_state, self.context
+        )
 
         self.assertEqual(bound, sword)
 
@@ -370,7 +377,9 @@ class FullCommandParsingTest(unittest.TestCase):
 
     def test_parse_attack_with_weapon(self):
         """Test parsing attack command with weapon."""
-        commands = parse_command("attack goblin with sword", self.player, self.game_state)
+        commands = parse_command(
+            "attack goblin with sword", self.player, self.game_state
+        )
 
         self.assertEqual(len(commands), 1)
         self.assertEqual(commands[0]["verb"], "attack")

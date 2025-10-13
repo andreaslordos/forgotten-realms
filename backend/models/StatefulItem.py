@@ -7,15 +7,18 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
 class StatefulItem(Item):
-    def __init__(self, name, id, description, weight=1, value=0, takeable=True, state=None):
+    def __init__(
+        self, name, id, description, weight=1, value=0, takeable=True, state=None
+    ):
         super().__init__(name, id, description, weight, value, takeable)
         self.state = state
         self.state_descriptions = {}
         self.interactions = {}  # Maps verbs to required instruments and effects
         self.room_id = None  # Track which room this item is in
         self.linked_items = []  # IDs of linked items (like other side of a door)
-        
+
         if state:
             # When a state is provided, use the given description for that state.
             self.state_descriptions[state] = description
@@ -36,7 +39,7 @@ class StatefulItem(Item):
         """
         Link this item to another item (e.g., door with another door).
         Linked items change state together.
-        
+
         Args:
             item_id (str): ID of the item to link with
         """
@@ -44,13 +47,24 @@ class StatefulItem(Item):
             self.linked_items.append(item_id)
             logger.debug(f"Linked {self.id} with {item_id}")
 
-    def add_interaction(self, verb, required_instrument=None, target_state=None, 
-                       message=None, add_exit=None, remove_exit=None, 
-                       conditional_fn=None, from_state=None, consume_instrument=False,
-                       drop_instrument=False, reciprocal_exit=None, remove_item=False):
+    def add_interaction(
+        self,
+        verb,
+        required_instrument=None,
+        target_state=None,
+        message=None,
+        add_exit=None,
+        remove_exit=None,
+        conditional_fn=None,
+        from_state=None,
+        consume_instrument=False,
+        drop_instrument=False,
+        reciprocal_exit=None,
+        remove_item=False,
+    ):
         """
         Register an interaction for this item.
-        
+
         Args:
             verb (str): The verb that triggers this interaction (e.g., 'open', 'light')
             required_instrument (str, optional): Item required to perform the action
@@ -65,36 +79,36 @@ class StatefulItem(Item):
             reciprocal_exit (tuple, optional): (room_id, direction, target_room_id) for return path
         """
         verb = verb.lower()
-        
+
         # Create a list for this verb if it doesn't exist
         if verb not in self.interactions:
             self.interactions[verb] = []
-            
+
         # Create the new interaction dictionary explicitly
         interaction = {}
         if required_instrument is not None:
-            interaction['required_instrument'] = required_instrument
+            interaction["required_instrument"] = required_instrument
         if target_state is not None:
-            interaction['target_state'] = target_state
+            interaction["target_state"] = target_state
         if message is not None:
-            interaction['message'] = message
+            interaction["message"] = message
         if add_exit is not None:
-            interaction['add_exit'] = add_exit
+            interaction["add_exit"] = add_exit
         if remove_exit is not None:
-            interaction['remove_exit'] = remove_exit
+            interaction["remove_exit"] = remove_exit
         if conditional_fn is not None:
-            interaction['conditional_fn'] = conditional_fn
+            interaction["conditional_fn"] = conditional_fn
         if from_state is not None:
-            interaction['from_state'] = from_state
+            interaction["from_state"] = from_state
         if consume_instrument:
-            interaction['consume_instrument'] = True
+            interaction["consume_instrument"] = True
         if drop_instrument:
-            interaction['drop_instrument'] = True
+            interaction["drop_instrument"] = True
         if reciprocal_exit is not None:
-            interaction['reciprocal_exit'] = reciprocal_exit
+            interaction["reciprocal_exit"] = reciprocal_exit
         if remove_item:
-            interaction['remove_item'] = True
-            
+            interaction["remove_item"] = True
+
         # Add the interaction to the list
         self.interactions[verb].append(interaction)
 
@@ -102,58 +116,64 @@ class StatefulItem(Item):
         """
         Change the state of the item and update room exits if needed.
         Also update any linked items to maintain consistency.
-        
+
         Args:
             new_state (str): The new state to set
             game_state (GameState, optional): Game state for updating room exits
-            
+
         Returns:
             bool: True if state was changed, False if invalid
         """
         if new_state not in self.state_descriptions:
             return False
-            
+
         # Change this item's state
         old_state = self.state
         self.state = new_state
         self.description = self.state_descriptions[new_state]
-        
+
         # If we have game_state, update room exits and linked items
         if game_state:
             # Process exit changes for this item
             self._process_exit_changes(game_state, old_state, new_state)
-            
+
             # Update any linked items (e.g., the other side of a door)
             self._update_linked_items(game_state, new_state)
-            
+
         return True
-    
+
     def _process_exit_changes(self, game_state, old_state, new_state):
         """Process exit changes based on state change."""
         if self.room_id:
             room = game_state.get_room(self.room_id)
             if room:
                 # Check if this state change should add/remove exits
-                if hasattr(self, 'interactions'):
+                if hasattr(self, "interactions"):
                     for verb in self.interactions:
                         interactions_list = self.interactions[verb]
-                        
+
                         if not isinstance(interactions_list, list):
                             interactions_list = [interactions_list]
-                        
+
                         for interaction in interactions_list:
                             if not isinstance(interaction, dict):
                                 continue
-                                
-                            if 'target_state' in interaction and interaction['target_state'] == new_state:
-                                if 'add_exit' in interaction:
-                                    direction, target_room = interaction['add_exit']
+
+                            if (
+                                "target_state" in interaction
+                                and interaction["target_state"] == new_state
+                            ):
+                                if "add_exit" in interaction:
+                                    direction, target_room = interaction["add_exit"]
                                     room.exits[direction] = target_room
-                                    
-                                if 'remove_exit' in interaction and interaction['remove_exit'] in room.exits:
-                                    del room.exits[interaction['remove_exit']]
-                                
-                                if interaction.get('remove_item', False):
+
+                                if (
+                                    "remove_exit" in interaction
+                                    and interaction["remove_exit"] in room.exits
+                                ):
+                                    del room.exits[interaction["remove_exit"]]
+
+                                if interaction.get("remove_item", False):
                                     room.remove_item(self)
 
     def _update_linked_items(self, game_state, new_state):
@@ -162,16 +182,18 @@ class StatefulItem(Item):
             # Find the linked item in all rooms
             for room_id, room in game_state.rooms.items():
                 for item in room.items:
-                    if hasattr(item, 'id') and item.id == item_id:
+                    if hasattr(item, "id") and item.id == item_id:
                         # Found the linked item - update its state without triggering another link update
-                        if hasattr(item, 'state') and item.state != new_state:
+                        if hasattr(item, "state") and item.state != new_state:
                             # Set state directly without calling set_state to avoid infinite recursion
                             item.state = new_state
                             if new_state in item.state_descriptions:
                                 item.description = item.state_descriptions[new_state]
                             # Process exit changes for the linked item
-                            if hasattr(item, '_process_exit_changes'):
-                                item._process_exit_changes(game_state, item.state, new_state)
+                            if hasattr(item, "_process_exit_changes"):
+                                item._process_exit_changes(
+                                    game_state, item.state, new_state
+                                )
                         break
 
     def to_dict(self):
@@ -195,7 +217,7 @@ class StatefulItem(Item):
             weight=data.get("weight", 1),
             value=data.get("value", 0),
             takeable=data.get("takeable", True),
-            state=data.get("state", None)
+            state=data.get("state", None),
         )
         if "state_descriptions" in data:
             item.state_descriptions = data["state_descriptions"]

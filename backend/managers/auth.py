@@ -4,6 +4,7 @@ import json
 import os
 import hashlib
 
+
 class AuthManager:
     def __init__(self, save_file="storage/auth.json"):
         self.save_file = save_file

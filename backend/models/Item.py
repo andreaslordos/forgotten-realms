@@ -1,5 +1,6 @@
 # backend/models/item.py
 
+
 class Item:
     def __init__(self, name, id, description, weight=1, value=0, takeable=True):
         """
@@ -28,7 +29,7 @@ class Item:
             "description": self.description,
             "weight": self.weight,
             "value": self.value,
-            "takeable": self.takeable
+            "takeable": self.takeable,
         }
 
     @staticmethod
@@ -40,5 +41,5 @@ class Item:
             description=data["description"],
             weight=data.get("weight", 1),
             value=data.get("value", 0),
-            takeable=data.get("takeable", True)
+            takeable=data.get("takeable", True),
         )

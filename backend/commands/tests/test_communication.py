@@ -13,8 +13,7 @@ Tests cover:
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
-import asyncio
+from unittest.mock import AsyncMock, Mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -24,7 +23,7 @@ from commands.communication import (
     handle_shout,
     handle_act,
     handle_converse,
-    handle_pending_communication
+    handle_pending_communication,
 )
 from models.Player import Player
 
@@ -52,7 +51,7 @@ class AsyncTestCase(unittest.IsolatedAsyncioTestCase):
         self.online_sessions = {
             "sid1": {"player": self.player},
             "sid2": {"player": self.other_player},
-            "sid3": {"player": self.remote_player}
+            "sid3": {"player": self.remote_player},
         }
 
         self.game_state = None
@@ -67,8 +66,13 @@ class SayCommandTest(AsyncTestCase):
         cmd = {"verb": "say", "subject": "Hello everyone!"}
 
         result = await handle_say(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should return empty string
@@ -86,8 +90,13 @@ class SayCommandTest(AsyncTestCase):
         cmd = {"verb": "say"}
 
         result = await handle_say(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertEqual(result, "What do you want to say?")
@@ -98,8 +107,13 @@ class SayCommandTest(AsyncTestCase):
         cmd = {"verb": "say", "subject": "Hello!"}
 
         await handle_say(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should only be called once (for sid2), not for sid3
@@ -113,15 +127,16 @@ class TellCommandTest(AsyncTestCase):
 
     async def test_tell_sends_private_message(self):
         """Test sending a private message to another player."""
-        cmd = {
-            "verb": "tell",
-            "subject": "OtherPlayer",
-            "instrument": "Secret message"
-        }
+        cmd = {"verb": "tell", "subject": "OtherPlayer", "instrument": "Secret message"}
 
         result = await handle_tell(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should confirm message sent
@@ -140,8 +155,13 @@ class TellCommandTest(AsyncTestCase):
         cmd = {"verb": "tell"}
 
         result = await handle_tell(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("who do you want to tell", result.lower())
@@ -151,12 +171,17 @@ class TellCommandTest(AsyncTestCase):
         cmd = {
             "verb": "tell",
             "subject": "OfflinePlayer",
-            "instrument": "Are you there?"
+            "instrument": "Are you there?",
         }
 
         result = await handle_tell(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("not online", result)
@@ -167,12 +192,17 @@ class TellCommandTest(AsyncTestCase):
         cmd = {
             "verb": "tell",
             "subject": "otherplayer",  # lowercase
-            "instrument": "Hello!"
+            "instrument": "Hello!",
         }
 
         result = await handle_tell(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("You tell", result)
@@ -187,8 +217,13 @@ class ShoutCommandTest(AsyncTestCase):
         cmd = {"verb": "shout", "subject": "Important announcement!"}
 
         result = await handle_shout(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should return empty string
@@ -208,8 +243,13 @@ class ShoutCommandTest(AsyncTestCase):
         cmd = {"verb": "shout"}
 
         result = await handle_shout(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("tell me the message", result.lower())
@@ -223,8 +263,13 @@ class ActCommandTest(AsyncTestCase):
         cmd = {"verb": "act", "subject": "waves hello"}
 
         result = await handle_act(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should return formatted action
@@ -240,8 +285,13 @@ class ActCommandTest(AsyncTestCase):
         cmd = {"verb": "act"}
 
         result = await handle_act(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertEqual(result, "What do you want to do?")
@@ -255,8 +305,13 @@ class ConverseCommandTest(AsyncTestCase):
         cmd = {"verb": "converse"}
 
         result = await handle_converse(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("ON", result)
@@ -270,8 +325,13 @@ class ConverseCommandTest(AsyncTestCase):
         cmd = {"verb": "converse"}
 
         result = await handle_converse(
-            cmd, self.player, self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         self.assertIn("OFF", result)
@@ -289,9 +349,14 @@ class PendingCommunicationTest(AsyncTestCase):
         # Set up pending_comm in session
         self.online_sessions["sid1"]["pending_comm"] = pending
 
-        result = await handle_pending_communication(
-            pending, message, self.player, "sid1",
-            self.online_sessions, self.sio, self.utils
+        await handle_pending_communication(
+            pending,
+            message,
+            self.player,
+            "sid1",
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should broadcast to others
@@ -308,9 +373,14 @@ class PendingCommunicationTest(AsyncTestCase):
         # Set up pending_comm in session
         self.online_sessions["sid1"]["pending_comm"] = pending
 
-        result = await handle_pending_communication(
-            pending, message, self.player, "sid1",
-            self.online_sessions, self.sio, self.utils
+        await handle_pending_communication(
+            pending,
+            message,
+            self.player,
+            "sid1",
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should send to recipient
@@ -325,8 +395,7 @@ class PendingCommunicationTest(AsyncTestCase):
         self.online_sessions["sid1"]["pending_comm"] = pending
 
         result = await handle_pending_communication(
-            pending, "", self.player, "sid1",
-            self.online_sessions, self.sio, self.utils
+            pending, "", self.player, "sid1", self.online_sessions, self.sio, self.utils
         )
 
         self.assertIn("cancelled", result.lower())

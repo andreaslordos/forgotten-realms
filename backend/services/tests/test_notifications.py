@@ -60,10 +60,7 @@ class BroadcastRoomTest(BaseAsyncTest):
         player2 = create_mock_player(name="Bob", location="room1")
         player2.current_room = "room1"
 
-        mock_sessions = {
-            "sid1": {"player": player1},
-            "sid2": {"player": player2}
-        }
+        mock_sessions = {"sid1": {"player": player1}, "sid2": {"player": player2}}
         mock_send = AsyncMock()
 
         notifications.set_context(mock_sessions, mock_send)
@@ -82,16 +79,15 @@ class BroadcastRoomTest(BaseAsyncTest):
         player2 = create_mock_player(name="Bob", location="room1")
         player2.current_room = "room1"
 
-        mock_sessions = {
-            "sid1": {"player": player1},
-            "sid2": {"player": player2}
-        }
+        mock_sessions = {"sid1": {"player": player1}, "sid2": {"player": player2}}
         mock_send = AsyncMock()
 
         notifications.set_context(mock_sessions, mock_send)
 
         # Act
-        await notifications.broadcast_room("room1", "Test message", exclude_player=["Alice"])
+        await notifications.broadcast_room(
+            "room1", "Test message", exclude_player=["Alice"]
+        )
 
         # Assert
         self.assertEqual(mock_send.call_count, 1)
@@ -105,9 +101,7 @@ class BroadcastRoomTest(BaseAsyncTest):
         player1 = create_mock_player(name="Alice", location="room1")
         player1.current_room = "room1"
 
-        mock_sessions = {
-            "sid1": {"player": player1, "sleeping": True}
-        }
+        mock_sessions = {"sid1": {"player": player1, "sleeping": True}}
         mock_send = AsyncMock()
 
         notifications.set_context(mock_sessions, mock_send)
@@ -126,10 +120,7 @@ class BroadcastRoomTest(BaseAsyncTest):
         player2 = create_mock_player(name="Bob", location="room2")
         player2.current_room = "room2"
 
-        mock_sessions = {
-            "sid1": {"player": player1},
-            "sid2": {"player": player2}
-        }
+        mock_sessions = {"sid1": {"player": player1}, "sid2": {"player": player2}}
         mock_send = AsyncMock()
 
         notifications.set_context(mock_sessions, mock_send)
@@ -157,7 +148,7 @@ class BroadcastRoomTest(BaseAsyncTest):
 class BroadcastArrivalTest(BaseAsyncTest):
     """Test broadcast_arrival functionality."""
 
-    @patch('services.notifications.broadcast_room', new_callable=AsyncMock)
+    @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
     async def test_broadcast_arrival_broadcasts_to_current_room(self, mock_broadcast):
         """Test broadcast_arrival broadcasts to player's current room."""
         # Arrange
@@ -174,7 +165,7 @@ class BroadcastArrivalTest(BaseAsyncTest):
         self.assertIn("Alice", call_args[1])
         self.assertIn("Hero", call_args[1])
 
-    @patch('services.notifications.broadcast_room', new_callable=AsyncMock)
+    @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
     async def test_broadcast_arrival_excludes_arriving_player(self, mock_broadcast):
         """Test broadcast_arrival excludes the arriving player."""
         # Arrange
@@ -186,13 +177,13 @@ class BroadcastArrivalTest(BaseAsyncTest):
 
         # Assert
         call_kwargs = mock_broadcast.call_args[1]
-        self.assertIn("Alice", call_kwargs['exclude_player'])
+        self.assertIn("Alice", call_kwargs["exclude_player"])
 
 
 class BroadcastDepartureTest(BaseAsyncTest):
     """Test broadcast_departure functionality."""
 
-    @patch('services.notifications.broadcast_room', new_callable=AsyncMock)
+    @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
     async def test_broadcast_departure_broadcasts_to_room(self, mock_broadcast):
         """Test broadcast_departure broadcasts to specified room."""
         # Arrange
@@ -208,7 +199,7 @@ class BroadcastDepartureTest(BaseAsyncTest):
         self.assertIn("Bob", call_args[1])
         self.assertIn("Warrior", call_args[1])
 
-    @patch('services.notifications.broadcast_room', new_callable=AsyncMock)
+    @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
     async def test_broadcast_departure_excludes_departing_player(self, mock_broadcast):
         """Test broadcast_departure excludes the departing player."""
         # Arrange
@@ -219,13 +210,13 @@ class BroadcastDepartureTest(BaseAsyncTest):
 
         # Assert
         call_kwargs = mock_broadcast.call_args[1]
-        self.assertIn("Bob", call_kwargs['exclude_player'])
+        self.assertIn("Bob", call_kwargs["exclude_player"])
 
 
 class BroadcastLogoutTest(BaseAsyncTest):
     """Test broadcast_logout functionality."""
 
-    @patch('services.notifications.broadcast_room', new_callable=AsyncMock)
+    @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
     async def test_broadcast_logout_broadcasts_to_current_room(self, mock_broadcast):
         """Test broadcast_logout broadcasts to player's current room."""
         # Arrange
@@ -242,7 +233,7 @@ class BroadcastLogoutTest(BaseAsyncTest):
         self.assertIn("Charlie", call_args[1])
         self.assertIn("passed on", call_args[1])
 
-    @patch('services.notifications.broadcast_room', new_callable=AsyncMock)
+    @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
     async def test_broadcast_logout_excludes_logging_out_player(self, mock_broadcast):
         """Test broadcast_logout excludes the logging out player."""
         # Arrange
@@ -254,7 +245,7 @@ class BroadcastLogoutTest(BaseAsyncTest):
 
         # Assert
         call_kwargs = mock_broadcast.call_args[1]
-        self.assertIn("Charlie", call_kwargs['exclude_player'])
+        self.assertIn("Charlie", call_kwargs["exclude_player"])
 
 
 if __name__ == "__main__":

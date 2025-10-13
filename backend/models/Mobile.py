@@ -16,12 +16,26 @@ class Mobile(StatefulItem):
     Inherits from StatefulItem to enable special interactions (e.g., give/show commands).
     """
 
-    def __init__(self, name, id, description,
-                 strength=20, dexterity=20, max_stamina=100, damage=5,
-                 aggressive=False, aggro_delay_min=0, aggro_delay_max=0,
-                 patrol_rooms=None, movement_interval=10,
-                 loot_table=None, instant_death=False, point_value=0,
-                 pronouns="it", current_room=None):
+    def __init__(
+        self,
+        name,
+        id,
+        description,
+        strength=20,
+        dexterity=20,
+        max_stamina=100,
+        damage=5,
+        aggressive=False,
+        aggro_delay_min=0,
+        aggro_delay_max=0,
+        patrol_rooms=None,
+        movement_interval=10,
+        loot_table=None,
+        instant_death=False,
+        point_value=0,
+        pronouns="it",
+        current_room=None,
+    ):
         """
         Initialize a Mobile.
 
@@ -45,8 +59,15 @@ class Mobile(StatefulItem):
             current_room (str): Current room ID
         """
         # Initialize as StatefulItem (for interactions), not takeable
-        super().__init__(name=name, id=id, description=description,
-                        weight=9999, value=0, takeable=False, state="alive")
+        super().__init__(
+            name=name,
+            id=id,
+            description=description,
+            weight=9999,
+            value=0,
+            takeable=False,
+            state="alive",
+        )
 
         # Combat stats
         self.strength = strength
@@ -89,8 +110,12 @@ class Mobile(StatefulItem):
         Called when the mob is spawned.
         """
         if self.aggressive and self.aggro_delay_max > 0:
-            self.aggro_tick_counter = random.randint(self.aggro_delay_min, self.aggro_delay_max)
-            logger.debug(f"{self.name} will become aggressive in {self.aggro_tick_counter} ticks")
+            self.aggro_tick_counter = random.randint(
+                self.aggro_delay_min, self.aggro_delay_max
+            )
+            logger.debug(
+                f"{self.name} will become aggressive in {self.aggro_tick_counter} ticks"
+            )
         else:
             self.aggro_tick_counter = 0
 
@@ -161,7 +186,9 @@ class Mobile(StatefulItem):
             return self.current_room
 
         # Move to next room in patrol list (circular)
-        self.current_patrol_index = (self.current_patrol_index + 1) % len(self.patrol_rooms)
+        self.current_patrol_index = (self.current_patrol_index + 1) % len(
+            self.patrol_rooms
+        )
         return self.patrol_rooms[self.current_patrol_index]
 
     def move_to_room(self, room_id, current_tick):
@@ -197,7 +224,9 @@ class Mobile(StatefulItem):
 
         if self.stamina <= 0:
             self.state = "dead"
-            self.description = self.state_descriptions.get("dead", f"The corpse of {self.name}.")
+            self.description = self.state_descriptions.get(
+                "dead", f"The corpse of {self.name}."
+            )
             logger.info(f"{self.name} has been slain!")
             return True, 0
 
@@ -231,28 +260,33 @@ class Mobile(StatefulItem):
     def to_dict(self):
         """Convert the mobile to a dictionary for serialization."""
         data = super().to_dict()
-        data.update({
-            "mob_type": "mobile",
-            "strength": self.strength,
-            "dexterity": self.dexterity,
-            "max_stamina": self.max_stamina,
-            "stamina": self.stamina,
-            "damage": self.damage,
-            "instant_death": self.instant_death,
-            "point_value": self.point_value,
-            "aggressive": self.aggressive,
-            "aggro_delay_min": self.aggro_delay_min,
-            "aggro_delay_max": self.aggro_delay_max,
-            "aggro_tick_counter": self.aggro_tick_counter,
-            "patrol_rooms": self.patrol_rooms,
-            "movement_interval": self.movement_interval,
-            "last_move_tick": self.last_move_tick,
-            "current_patrol_index": self.current_patrol_index,
-            "loot_table": [{"item": item.to_dict(), "chance": entry["chance"]}
-                          for entry in self.loot_table for item in [entry["item"]]],
-            "current_room": self.current_room,
-            "pronouns": self.pronouns
-        })
+        data.update(
+            {
+                "mob_type": "mobile",
+                "strength": self.strength,
+                "dexterity": self.dexterity,
+                "max_stamina": self.max_stamina,
+                "stamina": self.stamina,
+                "damage": self.damage,
+                "instant_death": self.instant_death,
+                "point_value": self.point_value,
+                "aggressive": self.aggressive,
+                "aggro_delay_min": self.aggro_delay_min,
+                "aggro_delay_max": self.aggro_delay_max,
+                "aggro_tick_counter": self.aggro_tick_counter,
+                "patrol_rooms": self.patrol_rooms,
+                "movement_interval": self.movement_interval,
+                "last_move_tick": self.last_move_tick,
+                "current_patrol_index": self.current_patrol_index,
+                "loot_table": [
+                    {"item": item.to_dict(), "chance": entry["chance"]}
+                    for entry in self.loot_table
+                    for item in [entry["item"]]
+                ],
+                "current_room": self.current_room,
+                "pronouns": self.pronouns,
+            }
+        )
         return data
 
     @staticmethod
@@ -265,6 +299,7 @@ class Mobile(StatefulItem):
             # Reconstruct item based on type
             if item_data.get("item_type") == "weapon":
                 from models.Weapon import Weapon
+
                 item_obj = Weapon.from_dict(item_data)
             else:
                 item_obj = Item.from_dict(item_data)
@@ -287,7 +322,7 @@ class Mobile(StatefulItem):
             instant_death=data.get("instant_death", False),
             point_value=data.get("point_value", 0),
             pronouns=data.get("pronouns", "it"),
-            current_room=data.get("current_room")
+            current_room=data.get("current_room"),
         )
 
         # Restore state

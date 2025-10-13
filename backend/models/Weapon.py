@@ -2,16 +2,29 @@
 
 from models.Item import Item
 
+
 class Weapon(Item):
     """
     A weapon that can be used in combat.
     Extends the base Item class with combat-specific attributes.
     """
-    def __init__(self, name, id, description, weight=1, value=0, takeable=True, 
-                damage=5, min_level=0, min_strength=0, min_dexterity=0):
+
+    def __init__(
+        self,
+        name,
+        id,
+        description,
+        weight=1,
+        value=0,
+        takeable=True,
+        damage=5,
+        min_level=0,
+        min_strength=0,
+        min_dexterity=0,
+    ):
         """
         Initialize a Weapon.
-        
+
         Args:
             name (str): The name of the weapon
             id (str): The unique identifier
@@ -30,14 +43,14 @@ class Weapon(Item):
         self.min_strength = min_strength
         self.min_dexterity = min_dexterity
         self.weapon_type = "melee"  # Default weapon type
-    
+
     def can_use(self, player):
         """
         Check if a player meets the requirements to use this weapon.
-        
+
         Args:
             player (Player): The player to check
-            
+
         Returns:
             tuple: (bool, str) indicating if the player can use the weapon and why not
         """
@@ -53,26 +66,29 @@ class Weapon(Item):
                 "Warlock": 6,
                 "Guardian": 7,
                 "Sovereign": 8,
-                "Archmage": 9
+                "Archmage": 9,
             }
-            
+
             # Get the numeric level of the player and required level
             player_level_num = level_names.get(player.level, -1)
             required_level_num = level_names.get(self.min_level, -1)
-            
+
             if player_level_num < required_level_num:
-                return False, f"You must be at least a {self.min_level} to use {self.name}."
-        
+                return (
+                    False,
+                    f"You must be at least a {self.min_level} to use {self.name}.",
+                )
+
         # Check strength requirement
         if self.min_strength > 0 and player.strength < self.min_strength:
             return False, f"You need {self.min_strength} strength to wield {self.name}."
-        
+
         # Check dexterity requirement
         if self.min_dexterity > 0 and player.dexterity < self.min_dexterity:
             return False, f"You need {self.min_dexterity} dexterity to use {self.name}."
-        
+
         return True, ""
-    
+
     def to_dict(self):
         """Convert the weapon to a dictionary for serialization."""
         data = super().to_dict()
@@ -83,7 +99,7 @@ class Weapon(Item):
         data["weapon_type"] = self.weapon_type
         data["item_type"] = "weapon"  # Add type marker
         return data
-    
+
     @staticmethod
     def from_dict(data):
         """Create a weapon from a dictionary representation."""
@@ -97,7 +113,7 @@ class Weapon(Item):
             damage=data.get("damage", 5),
             min_level=data.get("min_level", 0),
             min_strength=data.get("min_strength", 0),
-            min_dexterity=data.get("min_dexterity", 0)
+            min_dexterity=data.get("min_dexterity", 0),
         )
         if "weapon_type" in data:
             weapon.weapon_type = data["weapon_type"]

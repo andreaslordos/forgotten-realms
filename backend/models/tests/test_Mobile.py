@@ -43,7 +43,15 @@ class MobileInitializationTest(BaseModelTest):
 
     def test___init___sets_combat_stats(self):
         """Test __init__ sets combat stats."""
-        mob = Mobile("Orc", "orc_1", "desc", strength=30, dexterity=25, max_stamina=150, damage=10)
+        mob = Mobile(
+            "Orc",
+            "orc_1",
+            "desc",
+            strength=30,
+            dexterity=25,
+            max_stamina=150,
+            damage=10,
+        )
         self.assertEqual(mob.strength, 30)
         self.assertEqual(mob.dexterity, 25)
         self.assertEqual(mob.max_stamina, 150)
@@ -123,7 +131,14 @@ class MobileAggroTest(unittest.TestCase):
 
     def test_initialize_aggro_delay_respects_min_max_range(self):
         """Test initialize_aggro_delay respects min/max range."""
-        mob = Mobile("Orc", "orc_1", "desc", aggressive=True, aggro_delay_min=5, aggro_delay_max=5)
+        mob = Mobile(
+            "Orc",
+            "orc_1",
+            "desc",
+            aggressive=True,
+            aggro_delay_min=5,
+            aggro_delay_max=5,
+        )
 
         mob.initialize_aggro_delay()
 
@@ -200,7 +215,13 @@ class MobileMovementTest(unittest.TestCase):
 
     def test_should_move_returns_true_when_interval_elapsed(self):
         """Test should_move returns True when movement interval elapsed."""
-        mob = Mobile("Orc", "orc_1", "desc", patrol_rooms=["room1", "room2"], movement_interval=10)
+        mob = Mobile(
+            "Orc",
+            "orc_1",
+            "desc",
+            patrol_rooms=["room1", "room2"],
+            movement_interval=10,
+        )
         mob.last_move_tick = 0
 
         should_move = mob.should_move(10)
@@ -209,7 +230,13 @@ class MobileMovementTest(unittest.TestCase):
 
     def test_should_move_returns_false_when_interval_not_elapsed(self):
         """Test should_move returns False when interval not elapsed."""
-        mob = Mobile("Orc", "orc_1", "desc", patrol_rooms=["room1", "room2"], movement_interval=10)
+        mob = Mobile(
+            "Orc",
+            "orc_1",
+            "desc",
+            patrol_rooms=["room1", "room2"],
+            movement_interval=10,
+        )
         mob.last_move_tick = 5
 
         should_move = mob.should_move(10)
@@ -342,7 +369,7 @@ class MobileCombatTest(unittest.TestCase):
 class MobileLootTest(unittest.TestCase):
     """Test Mobile loot mechanics."""
 
-    @patch('models.Mobile.random.random')
+    @patch("models.Mobile.random.random")
     def test_drop_loot_returns_items_based_on_chance(self, mock_random):
         """Test drop_loot returns items based on chance."""
         item = create_mock_item(name="gold coin")
@@ -355,7 +382,7 @@ class MobileLootTest(unittest.TestCase):
         self.assertEqual(len(dropped), 1)
         self.assertEqual(dropped[0], item)
 
-    @patch('models.Mobile.random.random')
+    @patch("models.Mobile.random.random")
     def test_drop_loot_respects_chance_threshold(self, mock_random):
         """Test drop_loot respects chance threshold."""
         item = create_mock_item(name="gold coin")
@@ -385,7 +412,7 @@ class MobileSerializationTest(unittest.TestCase):
 
         data = mob.to_dict()
 
-        self.assertEqual(data['mob_type'], 'mobile')
+        self.assertEqual(data["mob_type"], "mobile")
 
     def test_to_dict_includes_combat_stats(self):
         """Test to_dict includes combat stats."""
@@ -393,8 +420,8 @@ class MobileSerializationTest(unittest.TestCase):
 
         data = mob.to_dict()
 
-        self.assertEqual(data['strength'], 30)
-        self.assertEqual(data['max_stamina'], 150)
+        self.assertEqual(data["strength"], 30)
+        self.assertEqual(data["max_stamina"], 150)
 
     def test_to_dict_includes_behavior_settings(self):
         """Test to_dict includes behavior settings."""
@@ -402,8 +429,8 @@ class MobileSerializationTest(unittest.TestCase):
 
         data = mob.to_dict()
 
-        self.assertTrue(data['aggressive'])
-        self.assertEqual(data['patrol_rooms'], ["r1", "r2"])
+        self.assertTrue(data["aggressive"])
+        self.assertEqual(data["patrol_rooms"], ["r1", "r2"])
 
     def test_is_mob_returns_true(self):
         """Test is_mob returns True."""

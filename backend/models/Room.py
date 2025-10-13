@@ -1,5 +1,6 @@
 # Update models/Room.py to add hidden items support
 
+
 class Room:
     def __init__(self, room_id, name, description, exits=None):
         self.room_id = room_id
@@ -16,7 +17,7 @@ class Room:
     def add_hidden_item(self, item, condition_func):
         """
         Add a hidden item that only appears when a condition is met.
-        
+
         Args:
             item: The item to add
             condition_func: A function that takes (game_state) and returns True when item should be visible
@@ -39,16 +40,16 @@ class Room:
 
     def get_items(self, game_state=None):
         """
-        Get all visible items in the room, including hidden items 
+        Get all visible items in the room, including hidden items
         whose conditions are satisfied.
         """
         visible_items = list(self.items)
-        
+
         if game_state:
             for item_id, (item, condition) in self.hidden_items.items():
                 if condition(game_state):
                     visible_items.append(item)
-        
+
         return visible_items
 
     def to_dict(self):
@@ -67,7 +68,12 @@ class Room:
     @staticmethod
     def from_dict(data):
         """Create a room from a dictionary representation."""
-        room = Room(data["room_id"], data["name"], data["description"], exits=data.get("exits", {}))
+        room = Room(
+            data["room_id"],
+            data["name"],
+            data["description"],
+            exits=data.get("exits", {}),
+        )
         # room.items = [Item.from_dict(item_data) for item_data in data.get("items", [])]
         # Note: condition functions can't be easily serialized, so they'd need to be re-attached
         # after loading by custom code in the game initialization

@@ -11,12 +11,12 @@ Tests cover:
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tests.test_base import BaseAsyncTest
-from tests.test_helpers import create_mock_player, create_mock_sio
+from tests.test_helpers import create_mock_player
 from utils import send_message, send_stats_update, create_linked_doors
 
 
@@ -33,7 +33,7 @@ class SendMessageTest(BaseAsyncTest):
         await send_message(self.mock_sio, sid, message)
 
         # Assert
-        self.mock_sio.emit.assert_called_once_with('message', message, room=sid)
+        self.mock_sio.emit.assert_called_once_with("message", message, room=sid)
 
     async def test_send_message_handles_empty_message(self):
         """Test send_message handles empty message."""
@@ -80,10 +80,10 @@ class SendStatsUpdateTest(BaseAsyncTest):
         call_args = self.mock_sio.emit.call_args
         self.assertEqual(call_args[0][0], "statsUpdate")
         stats_data = call_args[0][1]
-        self.assertEqual(stats_data['name'], "TestPlayer")
-        self.assertEqual(stats_data['score'], 1000)
-        self.assertEqual(stats_data['stamina'], 75)
-        self.assertEqual(stats_data['max_stamina'], 100)
+        self.assertEqual(stats_data["name"], "TestPlayer")
+        self.assertEqual(stats_data["score"], 1000)
+        self.assertEqual(stats_data["stamina"], 75)
+        self.assertEqual(stats_data["max_stamina"], 100)
 
     async def test_send_stats_update_returns_early_when_player_none(self):
         """Test send_stats_update returns early when player is None."""
@@ -99,7 +99,7 @@ class SendStatsUpdateTest(BaseAsyncTest):
     async def test_send_stats_update_validates_required_attributes(self):
         """Test send_stats_update validates player has required attributes."""
         # Arrange
-        invalid_player = Mock(spec=['name'])  # Only has name, missing other attrs
+        invalid_player = Mock(spec=["name"])  # Only has name, missing other attrs
         invalid_player.name = "Test"
         sid = "test_sid_123"
 
@@ -112,7 +112,7 @@ class SendStatsUpdateTest(BaseAsyncTest):
     async def test_send_stats_update_handles_mob_objects(self):
         """Test send_stats_update handles non-player objects gracefully."""
         # Arrange
-        mob = Mock(spec=['name'])  # Only has name, missing points
+        mob = Mock(spec=["name"])  # Only has name, missing points
         mob.name = "Orc"
         sid = "test_sid_123"
 
@@ -131,8 +131,7 @@ class CreateLinkedDoorsTest(unittest.TestCase):
         """Test create_linked_doors returns two door objects."""
         # Act
         door1, door2 = create_linked_doors(
-            "room1", "room2", "door1", "door2", "wooden door",
-            "north", "south"
+            "room1", "room2", "door1", "door2", "wooden door", "north", "south"
         )
 
         # Assert
@@ -143,8 +142,7 @@ class CreateLinkedDoorsTest(unittest.TestCase):
         """Test create_linked_doors sets correct door names."""
         # Act
         door1, door2 = create_linked_doors(
-            "room1", "room2", "door1", "door2", "iron door",
-            "north", "south"
+            "room1", "room2", "door1", "door2", "iron door", "north", "south"
         )
 
         # Assert
@@ -155,8 +153,14 @@ class CreateLinkedDoorsTest(unittest.TestCase):
         """Test create_linked_doors sets initial state to closed."""
         # Act
         door1, door2 = create_linked_doors(
-            "room1", "room2", "door1", "door2", "door",
-            "north", "south", initial_state="closed"
+            "room1",
+            "room2",
+            "door1",
+            "door2",
+            "door",
+            "north",
+            "south",
+            initial_state="closed",
         )
 
         # Assert
@@ -167,8 +171,14 @@ class CreateLinkedDoorsTest(unittest.TestCase):
         """Test create_linked_doors sets initial state to open."""
         # Act
         door1, door2 = create_linked_doors(
-            "room1", "room2", "door1", "door2", "door",
-            "north", "south", initial_state="open"
+            "room1",
+            "room2",
+            "door1",
+            "door2",
+            "door",
+            "north",
+            "south",
+            initial_state="open",
         )
 
         # Assert
@@ -179,8 +189,7 @@ class CreateLinkedDoorsTest(unittest.TestCase):
         """Test create_linked_doors links doors together."""
         # Act
         door1, door2 = create_linked_doors(
-            "room1", "room2", "door1_id", "door2_id", "door",
-            "north", "south"
+            "room1", "room2", "door1_id", "door2_id", "door", "north", "south"
         )
 
         # Assert
@@ -194,8 +203,7 @@ class CreateLinkedDoorsTest(unittest.TestCase):
         """Test create_linked_doors sets room IDs on doors."""
         # Act
         door1, door2 = create_linked_doors(
-            "tavern", "street", "door1", "door2", "door",
-            "out", "in"
+            "tavern", "street", "door1", "door2", "door", "out", "in"
         )
 
         # Assert
@@ -206,8 +214,7 @@ class CreateLinkedDoorsTest(unittest.TestCase):
         """Test create_linked_doors adds open interaction."""
         # Act
         door1, door2 = create_linked_doors(
-            "room1", "room2", "door1", "door2", "door",
-            "north", "south"
+            "room1", "room2", "door1", "door2", "door", "north", "south"
         )
 
         # Assert
@@ -218,8 +225,7 @@ class CreateLinkedDoorsTest(unittest.TestCase):
         """Test create_linked_doors adds close interaction."""
         # Act
         door1, door2 = create_linked_doors(
-            "room1", "room2", "door1", "door2", "door",
-            "north", "south"
+            "room1", "room2", "door1", "door2", "door", "north", "south"
         )
 
         # Assert
@@ -230,8 +236,7 @@ class CreateLinkedDoorsTest(unittest.TestCase):
         """Test create_linked_doors sets doors as not takeable."""
         # Act
         door1, door2 = create_linked_doors(
-            "room1", "room2", "door1", "door2", "door",
-            "north", "south"
+            "room1", "room2", "door1", "door2", "door", "north", "south"
         )
 
         # Assert
@@ -249,8 +254,14 @@ class CreateLinkedDoorsTest(unittest.TestCase):
 
         # Act
         door1, door2 = create_linked_doors(
-            "room1", "room2", "door1", "door2", "door",
-            "north", "south", game_state=game_state
+            "room1",
+            "room2",
+            "door1",
+            "door2",
+            "door",
+            "north",
+            "south",
+            game_state=game_state,
         )
 
         # Assert
@@ -268,8 +279,7 @@ class CreateLinkedDoorsTest(unittest.TestCase):
 
         # Act
         door1, door2 = create_linked_doors(
-            "room1", "room2", "door1", "door2", "door",
-            "north", "south", rooms=rooms
+            "room1", "room2", "door1", "door2", "door", "north", "south", rooms=rooms
         )
 
         # Assert
@@ -287,8 +297,15 @@ class CreateLinkedDoorsTest(unittest.TestCase):
 
         # Act
         door1, door2 = create_linked_doors(
-            "room1", "room2", "door1", "door2", "door",
-            "north", "south", initial_state="open", rooms=rooms
+            "room1",
+            "room2",
+            "door1",
+            "door2",
+            "door",
+            "north",
+            "south",
+            initial_state="open",
+            rooms=rooms,
         )
 
         # Assert

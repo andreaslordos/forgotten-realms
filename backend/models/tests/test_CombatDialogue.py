@@ -14,7 +14,7 @@ Tests cover:
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -42,11 +42,13 @@ class CombatDialoguePlayerHitTest(unittest.TestCase):
         self.assertIn("longsword", result)
         self.assertIn("orc", result)
 
-    @patch('models.CombatDialogue.random.choice')
+    @patch("models.CombatDialogue.random.choice")
     def test_get_player_hit_message_uses_weapon_messages(self, mock_choice):
         """Test get_player_hit_message uses weapon-specific messages."""
         weapon = create_mock_item(name="sword")
-        mock_choice.return_value = "Your {weapon} slices into {target} with deadly precision!"
+        mock_choice.return_value = (
+            "Your {weapon} slices into {target} with deadly precision!"
+        )
 
         result = CombatDialogue.get_player_hit_message("orc", weapon=weapon)
 

@@ -1,4 +1,3 @@
-import asyncio
 import sys
 import unittest
 from pathlib import Path
@@ -180,7 +179,9 @@ class MobBehaviorTestCase(unittest.IsolatedAsyncioTestCase):
 
     @patch("commands.combat.random.uniform", return_value=1.0)
     @patch("commands.combat.random.randint", return_value=10)
-    async def test_process_combat_tick_handles_missing_defender_entry(self, mock_randint, mock_uniform):
+    async def test_process_combat_tick_handles_missing_defender_entry(
+        self, mock_randint, mock_uniform
+    ):
         player = Player("Hero")
         player.current_room = "room1"
 
@@ -228,7 +229,14 @@ class MobBehaviorTestCase(unittest.IsolatedAsyncioTestCase):
         player = Player("Hero")
         player.current_room = "room1"
 
-        mob = Mobile("Elder", "elder_cleanup", "An elder", current_room="room1", max_stamina=5, damage=1)
+        mob = Mobile(
+            "Elder",
+            "elder_cleanup",
+            "An elder",
+            current_room="room1",
+            max_stamina=5,
+            damage=1,
+        )
 
         mob_manager = MobManager()
         mob_manager.mobs[mob.id] = mob
@@ -270,11 +278,19 @@ class MobBehaviorTestCase(unittest.IsolatedAsyncioTestCase):
 
     @patch("commands.combat.random.uniform", return_value=1.0)
     @patch("commands.combat.random.randint", return_value=10)
-    async def test_dead_mob_entries_removed_on_subsequent_ticks(self, mock_randint, mock_uniform):
+    async def test_dead_mob_entries_removed_on_subsequent_ticks(
+        self, mock_randint, mock_uniform
+    ):
         player = Player("Hero")
         player.current_room = "room1"
 
-        mob = Mobile("Elder", "elder_cleanup_tick", "An elder", current_room="room1", max_stamina=5)
+        mob = Mobile(
+            "Elder",
+            "elder_cleanup_tick",
+            "An elder",
+            current_room="room1",
+            max_stamina=5,
+        )
 
         mob_manager = MobManager()
         mob_manager.mobs[mob.id] = mob

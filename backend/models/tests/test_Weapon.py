@@ -40,7 +40,7 @@ class WeaponInitializationTest(unittest.TestCase):
             weight=5,
             damage=25,
             min_strength=15,
-            min_dexterity=10
+            min_dexterity=10,
         )
 
         self.assertEqual(weapon.damage, 25)
@@ -77,11 +77,7 @@ class WeaponRequirementsTest(unittest.TestCase):
     def test_can_use_returns_false_insufficient_strength(self):
         """Test player cannot use weapon due to insufficient strength."""
         weapon = Weapon(
-            "Warhammer",
-            "hammer_1",
-            "A massive warhammer",
-            damage=40,
-            min_strength=20
+            "Warhammer", "hammer_1", "A massive warhammer", damage=40, min_strength=20
         )
         can_use, message = weapon.can_use(self.player)
 
@@ -92,11 +88,7 @@ class WeaponRequirementsTest(unittest.TestCase):
     def test_can_use_returns_false_insufficient_dexterity(self):
         """Test player cannot use weapon due to insufficient dexterity."""
         weapon = Weapon(
-            "Rapier",
-            "rapier_1",
-            "A nimble rapier",
-            damage=15,
-            min_dexterity=15
+            "Rapier", "rapier_1", "A nimble rapier", damage=15, min_dexterity=15
         )
         can_use, message = weapon.can_use(self.player)
 
@@ -115,7 +107,7 @@ class WeaponRequirementsTest(unittest.TestCase):
             "A balanced sword",
             damage=20,
             min_strength=12,
-            min_dexterity=10
+            min_dexterity=10,
         )
         can_use, message = weapon.can_use(self.player)
 
@@ -136,7 +128,7 @@ class WeaponSerializationTest(unittest.TestCase):
             value=100,
             damage=35,
             min_strength=18,
-            min_dexterity=8
+            min_dexterity=8,
         )
         weapon_dict = weapon.to_dict()
 
@@ -157,7 +149,7 @@ class WeaponSerializationTest(unittest.TestCase):
             "damage": 18,
             "min_strength": 10,
             "min_dexterity": 12,
-            "weapon_type": "melee"
+            "weapon_type": "melee",
         }
         weapon = Weapon.from_dict(data)
 
@@ -168,13 +160,7 @@ class WeaponSerializationTest(unittest.TestCase):
 
     def test_to_dict_from_dict_round_trip(self):
         """Test serializing and deserializing a weapon."""
-        original = Weapon(
-            "Bow",
-            "bow_1",
-            "A hunting bow",
-            damage=22,
-            min_dexterity=14
-        )
+        original = Weapon("Bow", "bow_1", "A hunting bow", damage=22, min_dexterity=14)
         serialized = original.to_dict()
         reconstructed = Weapon.from_dict(serialized)
 

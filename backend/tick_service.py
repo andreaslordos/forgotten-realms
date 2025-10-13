@@ -94,7 +94,9 @@ class TickService:
         await self._handle_inactivity_reset(current_time)
         await self._maybe_process_combat(current_time)
         await self._process_mob_ai()
-        await self.sleeping_players_callable(self.sio, self.online_sessions, self.player_manager, self.utils)
+        await self.sleeping_players_callable(
+            self.sio, self.online_sessions, self.player_manager, self.utils
+        )
 
         if not self.online_sessions:
             return
@@ -102,11 +104,11 @@ class TickService:
         for sid, session in list(self.online_sessions.items()):
             self._update_last_activity(session, current_time)
 
-            command_queue: Optional[List[str]] = session.get('command_queue')
+            command_queue: Optional[List[str]] = session.get("command_queue")
             if not command_queue:
                 continue
 
-            player = session.get('player')
+            player = session.get("player")
             if not player:
                 continue
 
@@ -149,15 +151,21 @@ class TickService:
             )
 
     def _get_mob_manager(self):
-        return getattr(self.utils, 'mob_manager', None)
+        return getattr(self.utils, "mob_manager", None)
 
     def _update_last_activity(self, session, current_time: float) -> None:
-        if session.get('command_queue') or session.get('player'):
+        if session.get("command_queue") or session.get("player"):
             self._last_activity = current_time
 
-    async def _process_player_command(self, sid, session, player, command_queue: List[str]) -> None:
+    async def _process_player_command(
+        self, sid, session, player, command_queue: List[str]
+    ) -> None:
         cmd_str = command_queue.pop(0)
-        logger.info("Processing command: %s for player %s", cmd_str, getattr(player, 'name', 'unknown'))
+        logger.info(
+            "Processing command: %s for player %s",
+            cmd_str,
+            getattr(player, "name", "unknown"),
+        )
 
         try:
             if await self._handle_sleeping_player(sid, session, cmd_str):
@@ -169,7 +177,9 @@ class TickService:
             if await self._handle_pending_communication(sid, session, player, cmd_str):
                 return
 
-            cmd_str, skip_processing = await self._handle_converse_mode(sid, session, cmd_str)
+            cmd_str, skip_processing = await self._handle_converse_mode(
+                sid, session, cmd_str
+            )
             if skip_processing:
                 return
 
@@ -179,18 +189,22 @@ class TickService:
                 await self.utils.send_message(self.sio, sid, f"{cmd_str}")
                 first_cmd = parsed_cmds[0]
                 for i in range(len(parsed_cmds) - 1, 0, -1):
-                    cmd_to_requeue = parsed_cmds[i].get('original', '')
+                    cmd_to_requeue = parsed_cmds[i].get("original", "")
                     if cmd_to_requeue:
                         command_queue.insert(0, cmd_to_requeue)
                 parsed_cmds = [first_cmd]
 
             cmd = parsed_cmds[0] if parsed_cmds else None
             if not cmd:
-                await self.utils.send_message(self.sio, sid, "Huh? I didn't understand that.")
+                await self.utils.send_message(
+                    self.sio, sid, "Huh? I didn't understand that."
+                )
                 return
 
             if len(parsed_cmds) <= 1:
-                await self.utils.send_message(self.sio, sid, f"{cmd.get('original', cmd_str)}")
+                await self.utils.send_message(
+                    self.sio, sid, f"{cmd.get('original', cmd_str)}"
+                )
 
             result = await self.execute_command(
                 cmd,
@@ -207,22 +221,24 @@ class TickService:
                 await self.utils.send_message(self.sio, sid, result)
 
             if result == "quit":
-                session['should_disconnect'] = True
+                session["should_disconnect"] = True
         except Exception as exc:
             logger.error(
                 "Command '%s' failed for %s: %s",
                 cmd_str,
-                getattr(player, 'name', 'unknown'),
+                getattr(player, "name", "unknown"),
                 exc,
                 exc_info=True,
             )
             print(f"[Error] Command '{cmd_str}' failed for {player.name}: {str(exc)}")
-            await self.utils.send_message(self.sio, sid, f"Error processing command: {str(exc)}")
+            await self.utils.send_message(
+                self.sio, sid, f"Error processing command: {str(exc)}"
+            )
         finally:
             await self._send_stats_and_handle_disconnect(sid, session, player)
 
     async def _handle_sleeping_player(self, sid, session, cmd_str: str) -> bool:
-        if not session.get('sleeping', False):
+        if not session.get("sleeping", False):
             return False
 
         lowered = cmd_str.lower()
@@ -233,7 +249,7 @@ class TickService:
         return True
 
     async def _handle_password_change(self, sid, session, player, cmd_str: str) -> bool:
-        if 'pwd_change' not in session:
+        if "pwd_change" not in session:
             return False
 
         from commands.auth import handle_password  # Local import to avoid cycles
@@ -252,8 +268,10 @@ class TickService:
             await self.utils.send_message(self.sio, sid, result)
         return True
 
-    async def _handle_pending_communication(self, sid, session, player, cmd_str: str) -> bool:
-        pending_comm = session.get('pending_comm')
+    async def _handle_pending_communication(
+        self, sid, session, player, cmd_str: str
+    ) -> bool:
+        pending_comm = session.get("pending_comm")
         if not pending_comm:
             return False
 
@@ -269,12 +287,14 @@ class TickService:
         await self.utils.send_message(self.sio, sid, pending_result)
         return True
 
-    async def _handle_converse_mode(self, sid, session, cmd_str: str) -> Tuple[str, bool]:
-        if not session.get('converse_mode'):
+    async def _handle_converse_mode(
+        self, sid, session, cmd_str: str
+    ) -> Tuple[str, bool]:
+        if not session.get("converse_mode"):
             return cmd_str, False
 
-        if cmd_str.startswith('*') or cmd_str.startswith('>'):
-            session['converse_mode'] = False
+        if cmd_str.startswith("*") or cmd_str.startswith(">"):
+            session["converse_mode"] = False
             await self.utils.send_message(self.sio, sid, "Converse mode OFF.")
             return cmd_str, True
 
@@ -287,16 +307,16 @@ class TickService:
 
         if self.online_sessions:
             for osid, osession in self.online_sessions.items():
-                other_player = osession.get('player')
+                other_player = osession.get("player")
                 if other_player and other_player.current_room == player.current_room:
                     players_in_room.append(other_player)
 
         context = {
-            'player': player,
-            'game_state': self.game_state,
-            'online_sessions': self.online_sessions,
-            'mob_manager': mob_manager,
-            'players_in_room': players_in_room,
+            "player": player,
+            "game_state": self.game_state,
+            "online_sessions": self.online_sessions,
+            "mob_manager": mob_manager,
+            "players_in_room": players_in_room,
         }
 
         return self.parse_command(
@@ -310,21 +330,23 @@ class TickService:
         if player:
             await self.utils.send_stats_update(self.sio, sid, player)
 
-        if session.get('should_disconnect'):
+        if session.get("should_disconnect"):
             try:
                 await self.sio.disconnect(sid)
                 await self.broadcast_logout_callable(player)
             except Exception as exc:
                 logger.error(
                     "Failed to disconnect %s: %s",
-                    getattr(player, 'name', 'unknown'),
+                    getattr(player, "name", "unknown"),
                     exc,
                     exc_info=True,
                 )
                 print(f"[Error] Failed to disconnect {player.name}: {str(exc)}")
 
 
-async def start_background_tick(sio, online_sessions, player_manager, game_state, utils):
+async def start_background_tick(
+    sio, online_sessions, player_manager, game_state, utils
+):
     """Legacy entry point retained for backwards compatibility."""
     print("[Tick] Background tick service starting...")
     logger.info("Background tick service starting")

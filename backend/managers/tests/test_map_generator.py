@@ -44,9 +44,15 @@ class MapGeneratorStructureTest(unittest.TestCase):
     def test_generate_3x3_grid_has_correct_room_ids(self):
         """Test generate_3x3_grid creates correct room IDs."""
         expected_ids = [
-            "room_0_0", "room_0_1", "room_0_2",
-            "room_1_0", "room_1_1", "room_1_2",
-            "room_2_0", "room_2_1", "room_2_2"
+            "room_0_0",
+            "room_0_1",
+            "room_0_2",
+            "room_1_0",
+            "room_1_1",
+            "room_1_2",
+            "room_2_0",
+            "room_2_1",
+            "room_2_2",
         ]
 
         for room_id in expected_ids:
@@ -62,11 +68,11 @@ class MapGeneratorStructureTest(unittest.TestCase):
         """Test room descriptions match their grid positions."""
         self.assertEqual(
             self.rooms["room_0_0"].description,
-            "This is the room located at position (0, 0)."
+            "This is the room located at position (0, 0).",
         )
         self.assertEqual(
             self.rooms["room_1_1"].description,
-            "This is the room located at position (1, 1)."
+            "This is the room located at position (1, 1).",
         )
 
 
@@ -267,14 +273,20 @@ class MapGeneratorBidirectionalExitsTest(unittest.TestCase):
                     "north": "south",
                     "south": "north",
                     "east": "west",
-                    "west": "east"
+                    "west": "east",
                 }[direction]
 
                 # Check that target room has exit back to this room
-                self.assertIn(opposite, target_room.exits,
-                    f"{target_id} missing {opposite} exit back to {room_id}")
-                self.assertEqual(target_room.exits[opposite], room_id,
-                    f"{target_id}'s {opposite} exit doesn't point back to {room_id}")
+                self.assertIn(
+                    opposite,
+                    target_room.exits,
+                    f"{target_id} missing {opposite} exit back to {room_id}",
+                )
+                self.assertEqual(
+                    target_room.exits[opposite],
+                    room_id,
+                    f"{target_id}'s {opposite} exit doesn't point back to {room_id}",
+                )
 
 
 if __name__ == "__main__":

@@ -15,12 +15,16 @@ Tests cover:
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, AsyncMock, patch, call
+from unittest.mock import Mock, AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tests.test_base import BaseAsyncTest
-from tests.test_helpers import create_mock_player, create_mock_sio, create_mock_game_state, create_mock_room
+from tests.test_helpers import (
+    create_mock_player,
+    create_mock_game_state,
+    create_mock_room,
+)
 from managers.mob_manager import MobManager
 from models.Mobile import Mobile
 
@@ -52,7 +56,7 @@ class MobManagerLoadDefinitionsTest(unittest.TestCase):
         manager = MobManager()
         definitions = {
             "goblin": {"name": "goblin", "strength": 20},
-            "wolf": {"name": "wolf", "strength": 30}
+            "wolf": {"name": "wolf", "strength": 30},
         }
 
         manager.load_mob_definitions(definitions)
@@ -101,7 +105,7 @@ class MobManagerSpawnMobTest(unittest.TestCase):
             "loot_table": [],
             "instant_death": False,
             "point_value": 50,
-            "pronouns": "it"
+            "pronouns": "it",
         }
         self.manager.load_mob_definitions({"goblin": self.template})
 
@@ -202,11 +206,7 @@ class MobManagerRemoveMobTest(unittest.TestCase):
     def setUp(self):
         """Set up manager with spawned mob."""
         self.manager = MobManager()
-        template = {
-            "name": "goblin",
-            "strength": 25,
-            "loot_table": []
-        }
+        template = {"name": "goblin", "strength": 25, "loot_table": []}
         self.manager.load_mob_definitions({"goblin": template})
         self.mob = self.manager.spawn_mob("goblin", "room1")
         self.mob_id = self.mob.id
@@ -329,7 +329,7 @@ class MobManagerTickAllMobsTest(BaseAsyncTest):
             "aggressive": True,
             "patrol_rooms": ["room1", "room2"],
             "movement_interval": 5,
-            "loot_table": []
+            "loot_table": [],
         }
         self.manager.load_mob_definitions({"goblin": template})
         self.mob = self.manager.spawn_mob("goblin", "room1")
@@ -338,33 +338,41 @@ class MobManagerTickAllMobsTest(BaseAsyncTest):
         self.mock_game_state = create_mock_game_state()
         self.mock_utils = AsyncMock()
 
-    @patch('commands.combat.is_in_combat')
-    async def test_tick_all_mobs_increments_global_tick_counter(self, mock_is_in_combat):
+    @patch("commands.combat.is_in_combat")
+    async def test_tick_all_mobs_increments_global_tick_counter(
+        self, mock_is_in_combat
+    ):
         """Test tick_all_mobs increments global tick counter."""
         mock_is_in_combat.return_value = False
         initial_tick = self.manager.global_tick_counter
 
         await self.manager.tick_all_mobs(
-            self.mock_sio, {}, self.mock_player_manager,
-            self.mock_game_state, self.mock_utils
+            self.mock_sio,
+            {},
+            self.mock_player_manager,
+            self.mock_game_state,
+            self.mock_utils,
         )
 
         self.assertEqual(self.manager.global_tick_counter, initial_tick + 1)
 
-    @patch('commands.combat.is_in_combat')
+    @patch("commands.combat.is_in_combat")
     async def test_tick_all_mobs_ticks_aggro_counter(self, mock_is_in_combat):
         """Test tick_all_mobs ticks aggro counter for mobs."""
         mock_is_in_combat.return_value = False
         self.mob.aggro_tick_counter = 5
 
         await self.manager.tick_all_mobs(
-            self.mock_sio, {}, self.mock_player_manager,
-            self.mock_game_state, self.mock_utils
+            self.mock_sio,
+            {},
+            self.mock_player_manager,
+            self.mock_game_state,
+            self.mock_utils,
         )
 
         self.assertEqual(self.mob.aggro_tick_counter, 4)
 
-    @patch('commands.combat.is_in_combat')
+    @patch("commands.combat.is_in_combat")
     async def test_tick_all_mobs_skips_dead_mobs(self, mock_is_in_combat):
         """Test tick_all_mobs skips dead mobs."""
         mock_is_in_combat.return_value = False
@@ -372,22 +380,28 @@ class MobManagerTickAllMobsTest(BaseAsyncTest):
         self.mob.aggro_tick_counter = 5
 
         await self.manager.tick_all_mobs(
-            self.mock_sio, {}, self.mock_player_manager,
-            self.mock_game_state, self.mock_utils
+            self.mock_sio,
+            {},
+            self.mock_player_manager,
+            self.mock_game_state,
+            self.mock_utils,
         )
 
         # Aggro counter should not be decremented
         self.assertEqual(self.mob.aggro_tick_counter, 5)
 
-    @patch('commands.combat.is_in_combat')
+    @patch("commands.combat.is_in_combat")
     async def test_tick_all_mobs_skips_mobs_in_combat(self, mock_is_in_combat):
         """Test tick_all_mobs skips movement for mobs in combat."""
         mock_is_in_combat.return_value = True
 
-        with patch.object(self.manager, '_process_mob_movement') as mock_movement:
+        with patch.object(self.manager, "_process_mob_movement") as mock_movement:
             await self.manager.tick_all_mobs(
-                self.mock_sio, {}, self.mock_player_manager,
-                self.mock_game_state, self.mock_utils
+                self.mock_sio,
+                {},
+                self.mock_player_manager,
+                self.mock_game_state,
+                self.mock_utils,
             )
 
             mock_movement.assert_not_called()
@@ -403,16 +417,15 @@ class MobManagerProcessMovementTest(BaseAsyncTest):
         template = {
             "name": "goblin",
             "patrol_rooms": ["room1", "room2"],
-            "loot_table": []
+            "loot_table": [],
         }
         self.manager.load_mob_definitions({"goblin": template})
 
         self.mock_room1 = create_mock_room("room1")
         self.mock_room2 = create_mock_room("room2")
-        self.mock_game_state = create_mock_game_state(rooms={
-            "room1": self.mock_room1,
-            "room2": self.mock_room2
-        })
+        self.mock_game_state = create_mock_game_state(
+            rooms={"room1": self.mock_room1, "room2": self.mock_room2}
+        )
         self.mock_utils = AsyncMock()
         self.mock_utils.send_message = AsyncMock()
 
@@ -462,7 +475,9 @@ class MobManagerProcessMovementTest(BaseAsyncTest):
             mob, self.mock_game_state, online_sessions, self.mock_sio, self.mock_utils
         )
 
-        self.mock_utils.send_message.assert_any_call(self.mock_sio, "sid1", "Goblin leaves.")
+        self.mock_utils.send_message.assert_any_call(
+            self.mock_sio, "sid1", "Goblin leaves."
+        )
 
     async def test_process_mob_movement_notifies_players_in_new_room(self):
         """Test _process_mob_movement notifies players in new room."""
@@ -477,7 +492,9 @@ class MobManagerProcessMovementTest(BaseAsyncTest):
             mob, self.mock_game_state, online_sessions, self.mock_sio, self.mock_utils
         )
 
-        self.mock_utils.send_message.assert_any_call(self.mock_sio, "sid1", "Goblin arrives.")
+        self.mock_utils.send_message.assert_any_call(
+            self.mock_sio, "sid1", "Goblin arrives."
+        )
 
     async def test_process_mob_movement_does_nothing_if_room_unchanged(self):
         """Test _process_mob_movement does nothing if mob stays in same room."""
@@ -498,11 +515,7 @@ class MobManagerProcessAggressionTest(BaseAsyncTest):
         """Set up manager and mocks."""
         super().setUp()
         self.manager = MobManager()
-        template = {
-            "name": "goblin",
-            "aggressive": True,
-            "loot_table": []
-        }
+        template = {"name": "goblin", "aggressive": True, "loot_table": []}
         self.manager.load_mob_definitions({"goblin": template})
         self.mob = self.manager.spawn_mob("goblin", "room1")
 
@@ -510,43 +523,65 @@ class MobManagerProcessAggressionTest(BaseAsyncTest):
         self.mock_game_state = create_mock_game_state()
         self.mock_utils = AsyncMock()
 
-    @patch('commands.combat.mob_initiate_attack', new_callable=AsyncMock)
-    async def test_process_mob_aggression_initiates_attack_on_player_in_room(self, mock_initiate):
+    @patch("commands.combat.mob_initiate_attack", new_callable=AsyncMock)
+    async def test_process_mob_aggression_initiates_attack_on_player_in_room(
+        self, mock_initiate
+    ):
         """Test _process_mob_aggression initiates attack on player."""
         player = create_mock_player(location="room1")
         player.current_room = "room1"
         online_sessions = {"sid1": {"player": player}}
 
         await self.manager._process_mob_aggression(
-            self.mob, online_sessions, self.mock_player_manager,
-            self.mock_game_state, self.mock_sio, self.mock_utils
+            self.mob,
+            online_sessions,
+            self.mock_player_manager,
+            self.mock_game_state,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         mock_initiate.assert_called_once_with(
-            self.mob, player, "sid1", self.mock_player_manager,
-            self.mock_game_state, online_sessions, self.mock_sio, self.mock_utils
+            self.mob,
+            player,
+            "sid1",
+            self.mock_player_manager,
+            self.mock_game_state,
+            online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
-    @patch('commands.combat.mob_initiate_attack', new_callable=AsyncMock)
-    async def test_process_mob_aggression_does_nothing_if_no_player_in_room(self, mock_initiate):
+    @patch("commands.combat.mob_initiate_attack", new_callable=AsyncMock)
+    async def test_process_mob_aggression_does_nothing_if_no_player_in_room(
+        self, mock_initiate
+    ):
         """Test _process_mob_aggression does nothing if no player in room."""
         player = create_mock_player(location="room2")
         player.current_room = "room2"
         online_sessions = {"sid1": {"player": player}}
 
         await self.manager._process_mob_aggression(
-            self.mob, online_sessions, self.mock_player_manager,
-            self.mock_game_state, self.mock_sio, self.mock_utils
+            self.mob,
+            online_sessions,
+            self.mock_player_manager,
+            self.mock_game_state,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         mock_initiate.assert_not_called()
 
-    @patch('commands.combat.mob_initiate_attack', new_callable=AsyncMock)
+    @patch("commands.combat.mob_initiate_attack", new_callable=AsyncMock)
     async def test_process_mob_aggression_handles_empty_sessions(self, mock_initiate):
         """Test _process_mob_aggression handles empty online_sessions."""
         await self.manager._process_mob_aggression(
-            self.mob, {}, self.mock_player_manager,
-            self.mock_game_state, self.mock_sio, self.mock_utils
+            self.mob,
+            {},
+            self.mock_player_manager,
+            self.mock_game_state,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         mock_initiate.assert_not_called()

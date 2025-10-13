@@ -21,12 +21,7 @@ class StatefulItemTest(unittest.TestCase):
 
     def test___init___with_state(self):
         """Test creating a stateful item."""
-        item = StatefulItem(
-            "Door",
-            "door_1",
-            "A wooden door, closed",
-            state="closed"
-        )
+        item = StatefulItem("Door", "door_1", "A wooden door, closed", state="closed")
 
         self.assertEqual(item.state, "closed")
         self.assertIn("closed", item.state_descriptions)
@@ -66,7 +61,7 @@ class StatefulItemTest(unittest.TestCase):
             verb="unlock",
             required_instrument="key",
             target_state="unlocked",
-            message="You unlock the chest with the key."
+            message="You unlock the chest with the key.",
         )
 
         self.assertIn("unlock", item.interactions)
@@ -116,7 +111,7 @@ class StatefulItemTest(unittest.TestCase):
             "state_descriptions": {"closed": "A closed door", "open": "An open door"},
             "interactions": {"open": [{"target_state": "open"}]},
             "room_id": "room_1",
-            "linked_items": ["door_2"]
+            "linked_items": ["door_2"],
         }
 
         item = StatefulItem.from_dict(data)

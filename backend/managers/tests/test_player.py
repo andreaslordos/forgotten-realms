@@ -13,7 +13,7 @@ Tests cover:
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 import tempfile
 import os
 import json
@@ -29,7 +29,7 @@ class PlayerManagerInitializationTest(unittest.TestCase):
 
     def test___init___sets_default_save_file(self):
         """Test __init__ sets default save file path."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -41,7 +41,7 @@ class PlayerManagerInitializationTest(unittest.TestCase):
 
     def test___init___sets_default_spawn_room(self):
         """Test __init__ sets default spawn room."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -53,7 +53,7 @@ class PlayerManagerInitializationTest(unittest.TestCase):
 
     def test___init___accepts_custom_spawn_room(self):
         """Test __init__ accepts custom spawn room."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -65,7 +65,7 @@ class PlayerManagerInitializationTest(unittest.TestCase):
 
     def test___init___stores_auth_manager_reference(self):
         """Test __init__ stores auth_manager reference."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -78,7 +78,7 @@ class PlayerManagerInitializationTest(unittest.TestCase):
 
     def test___init___initializes_empty_players_dict(self):
         """Test __init__ initializes empty players dict."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             temp_file = f.name
 
         try:
@@ -91,7 +91,7 @@ class PlayerManagerInitializationTest(unittest.TestCase):
 
     def test___init___loads_existing_players(self):
         """Test __init__ loads existing players from file."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             # Create player data
             player_data = {
                 "testplayer": {
@@ -100,7 +100,7 @@ class PlayerManagerInitializationTest(unittest.TestCase):
                     "points": 500,
                     "inventory": [],
                     "level": "Novice",
-                    "current_room": "spawn"
+                    "current_room": "spawn",
                 }
             }
             json.dump(player_data, f)
@@ -119,7 +119,7 @@ class PlayerManagerRegisterTest(unittest.TestCase):
 
     def test_register_creates_new_player(self):
         """Test register creates new player."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -134,13 +134,13 @@ class PlayerManagerRegisterTest(unittest.TestCase):
 
     def test_register_converts_username_to_lowercase(self):
         """Test register converts username to lowercase for storage."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
         try:
             pm = PlayerManager(save_file=temp_file)
-            player = pm.register("TestPlayer")
+            pm.register("TestPlayer")
 
             self.assertIn("testplayer", pm.players)
             self.assertNotIn("TestPlayer", pm.players)
@@ -149,7 +149,7 @@ class PlayerManagerRegisterTest(unittest.TestCase):
 
     def test_register_capitalizes_display_name(self):
         """Test register capitalizes display name."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -163,21 +163,21 @@ class PlayerManagerRegisterTest(unittest.TestCase):
 
     def test_register_sets_sex(self):
         """Test register sets player sex."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
         try:
             pm = PlayerManager(save_file=temp_file)
-            player = pm.register("TestPlayer", sex='F')
+            player = pm.register("TestPlayer", sex="F")
 
-            self.assertEqual(player.sex, 'F')
+            self.assertEqual(player.sex, "F")
         finally:
             os.remove(temp_file)
 
     def test_register_sets_email(self):
         """Test register sets player email."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -191,7 +191,7 @@ class PlayerManagerRegisterTest(unittest.TestCase):
 
     def test_register_uses_spawn_room_from_manager(self):
         """Test register uses spawn room from manager."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -205,7 +205,7 @@ class PlayerManagerRegisterTest(unittest.TestCase):
 
     def test_register_returns_existing_player_if_already_registered(self):
         """Test register returns existing player if already registered."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -223,7 +223,7 @@ class PlayerManagerRegisterTest(unittest.TestCase):
 
     def test_register_saves_players_to_file(self):
         """Test register saves players to file."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -232,7 +232,7 @@ class PlayerManagerRegisterTest(unittest.TestCase):
             pm.register("TestPlayer")
 
             # Verify file was written
-            with open(temp_file, 'r') as f:
+            with open(temp_file, "r") as f:
                 data = json.load(f)
 
             self.assertIn("testplayer", data)
@@ -241,7 +241,7 @@ class PlayerManagerRegisterTest(unittest.TestCase):
 
     def test_register_adds_player_to_players_dict(self):
         """Test register adds player to players dict."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -260,7 +260,7 @@ class PlayerManagerLoginTest(unittest.TestCase):
 
     def test_login_returns_player_when_exists(self):
         """Test login returns player when exists."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -268,15 +268,15 @@ class PlayerManagerLoginTest(unittest.TestCase):
             pm = PlayerManager(save_file=temp_file)
             registered_player = pm.register("TestPlayer")
 
-            player = pm.login("TestPlayer")
+            logged_in_player = pm.login("TestPlayer")
 
-            self.assertEqual(player, registered_player)
+            self.assertEqual(logged_in_player, registered_player)
         finally:
             os.remove(temp_file)
 
     def test_login_returns_none_when_player_not_found(self):
         """Test login returns None when player doesn't exist."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -291,7 +291,7 @@ class PlayerManagerLoginTest(unittest.TestCase):
 
     def test_login_is_case_insensitive(self):
         """Test login is case insensitive."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -315,7 +315,7 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
 
     def test_save_players_writes_to_file(self):
         """Test save_players writes players to file."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -326,7 +326,7 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
 
             pm.save_players()
 
-            with open(temp_file, 'r') as f:
+            with open(temp_file, "r") as f:
                 data = json.load(f)
 
             self.assertEqual(len(data), 2)
@@ -337,7 +337,7 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
 
     def test_save_players_clears_inventory_before_saving(self):
         """Test save_players clears inventory before saving."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -351,7 +351,7 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
 
             pm.save_players()
 
-            with open(temp_file, 'r') as f:
+            with open(temp_file, "r") as f:
                 data = json.load(f)
 
             # Inventory should be empty in saved data
@@ -361,7 +361,7 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
 
     def test_save_players_uses_player_to_dict(self):
         """Test save_players uses player.to_dict method."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
@@ -372,7 +372,7 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
 
             pm.save_players()
 
-            with open(temp_file, 'r') as f:
+            with open(temp_file, "r") as f:
                 data = json.load(f)
 
             self.assertEqual(data["testplayer"]["points"], 500)
@@ -382,7 +382,7 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
 
     def test_load_players_loads_from_existing_file(self):
         """Test load_players loads players from existing file."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             player_data = {
                 "player1": {
                     "name": "Player1",
@@ -390,7 +390,7 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
                     "points": 100,
                     "inventory": [],
                     "level": "Neophyte",
-                    "current_room": "spawn"
+                    "current_room": "spawn",
                 },
                 "player2": {
                     "name": "Player2",
@@ -398,8 +398,8 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
                     "points": 500,
                     "inventory": [],
                     "level": "Novice",
-                    "current_room": "spawn"
-                }
+                    "current_room": "spawn",
+                },
             }
             json.dump(player_data, f)
             temp_file = f.name
@@ -415,7 +415,7 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
 
     def test_load_players_creates_player_objects_from_dict(self):
         """Test load_players creates Player objects from dict."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             player_data = {
                 "testplayer": {
                     "name": "TestPlayer",
@@ -423,7 +423,7 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
                     "points": 800,
                     "inventory": [],
                     "level": "Acolyte",
-                    "current_room": "spawn"
+                    "current_room": "spawn",
                 }
             }
             json.dump(player_data, f)
@@ -441,25 +441,27 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
 
     def test_load_players_ensures_empty_inventory(self):
         """Test load_players ensures all loaded players have empty inventory."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             # Save player with items in inventory (shouldn't happen, but test it)
             player_data = {
                 "testplayer": {
                     "name": "TestPlayer",
                     "sex": "M",
                     "points": 100,
-                    "inventory": [{
-                        "id": "sword_1",
-                        "name": "iron sword",
-                        "description": "A basic sword",
-                        "keywords": ["sword", "iron"],
-                        "room_id": None,
-                        "takeable": True,
-                        "weight": 5,
-                        "interactions": {}
-                    }],  # Has items
+                    "inventory": [
+                        {
+                            "id": "sword_1",
+                            "name": "iron sword",
+                            "description": "A basic sword",
+                            "keywords": ["sword", "iron"],
+                            "room_id": None,
+                            "takeable": True,
+                            "weight": 5,
+                            "interactions": {},
+                        }
+                    ],  # Has items
                     "level": "Neophyte",
-                    "current_room": "spawn"
+                    "current_room": "spawn",
                 }
             }
             json.dump(player_data, f)
@@ -492,14 +494,14 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
 
     def test_players_persist_across_instances(self):
         """Test players persist across PlayerManager instances."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             json.dump({}, f)
             temp_file = f.name
 
         try:
             # First instance - register player
             pm1 = PlayerManager(save_file=temp_file)
-            pm1.register("TestPlayer", sex='F')
+            pm1.register("TestPlayer", sex="F")
             player1 = pm1.players["testplayer"]
             player1.points = 500
 
@@ -512,7 +514,7 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
 
             self.assertIsNotNone(player2)
             self.assertEqual(player2.name, "Testplayer")
-            self.assertEqual(player2.sex, 'F')
+            self.assertEqual(player2.sex, "F")
             self.assertEqual(player2.points, 500)
         finally:
             os.remove(temp_file)

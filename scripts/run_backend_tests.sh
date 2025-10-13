@@ -10,6 +10,9 @@ if ! python3 -c "import coverage" >/dev/null 2>&1; then
     exit 1
 fi
 
+# Add backend to PYTHONPATH so internal imports work
+export PYTHONPATH="$REPO_ROOT/backend:${PYTHONPATH:-}"
+
 python3 -m coverage erase
-python3 -m coverage run --source=backend -m unittest discover -s backend/tests
-python3 -m coverage report --fail-under=80
+python3 -m coverage run --source=backend --omit='*/tests/*' -m unittest discover -s backend -p 'test_*.py'
+python3 -m coverage report --fail-under=80 --sort=cover

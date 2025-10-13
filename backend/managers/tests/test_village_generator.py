@@ -23,10 +23,9 @@ from managers.village_generator import (
     spawn_initial_mobs,
     generate_rooms,
     connect_exits,
-    add_stateful_items,
     add_regular_items,
     add_container_items,
-    add_weapons
+    add_weapons,
 )
 from models.Room import Room
 from models.SpecializedRooms import SwampRoom
@@ -52,7 +51,7 @@ class VillageGeneratorStructureTest(unittest.TestCase):
         for room_id, room in village.items():
             self.assertTrue(
                 isinstance(room, (Room, SwampRoom)),
-                f"{room_id} is not a Room or SwampRoom instance"
+                f"{room_id} is not a Room or SwampRoom instance",
             )
 
 
@@ -164,13 +163,17 @@ class VillageGeneratorItemsTest(unittest.TestCase):
     def test_spawn_has_sword(self):
         """Test spawn has sword weapon."""
         spawn = self.village["spawn"]
-        sword = next((item for item in spawn.items if "sword" in item.name.lower()), None)
+        sword = next(
+            (item for item in spawn.items if "sword" in item.name.lower()), None
+        )
         self.assertIsNotNone(sword, "Spawn should have a sword")
 
     def test_marketplace_has_key(self):
         """Test marketplace has bronze key."""
         marketplace = self.village["marketplace"]
-        key = next((item for item in marketplace.items if "key" in item.name.lower()), None)
+        key = next(
+            (item for item in marketplace.items if "key" in item.name.lower()), None
+        )
         self.assertIsNotNone(key, "Marketplace should have a bronze key")
 
     def test_cottage_has_bag(self):
@@ -182,19 +185,26 @@ class VillageGeneratorItemsTest(unittest.TestCase):
     def test_old_well_has_rope(self):
         """Test old well has rope."""
         old_well = self.village["old_well"]
-        rope = next((item for item in old_well.items if "rope" in item.name.lower()), None)
+        rope = next(
+            (item for item in old_well.items if "rope" in item.name.lower()), None
+        )
         self.assertIsNotNone(rope, "Old well should have rope")
 
     def test_cottage_interior_has_rug(self):
         """Test cottage interior has rug."""
         cottage_interior = self.village["cottage_interior"]
-        rug = next((item for item in cottage_interior.items if "rug" in item.name.lower()), None)
+        rug = next(
+            (item for item in cottage_interior.items if "rug" in item.name.lower()),
+            None,
+        )
         self.assertIsNotNone(rug, "Cottage interior should have rug")
 
     def test_forest_edge_has_yew_tree(self):
         """Test forest edge has yew tree."""
         forest_edge = self.village["forest_edge"]
-        tree = next((item for item in forest_edge.items if "tree" in item.name.lower()), None)
+        tree = next(
+            (item for item in forest_edge.items if "tree" in item.name.lower()), None
+        )
         self.assertIsNotNone(tree, "Forest edge should have yew tree")
 
 
@@ -215,7 +225,7 @@ class VillageGeneratorMobSpawningTest(unittest.TestCase):
         mock_mob_manager.spawn_mob = Mock(side_effect=mock_spawn)
         mock_mob_manager.mobs = mock_mobs_dict
 
-        village = generate_village_of_chronos(mob_manager=mock_mob_manager)
+        generate_village_of_chronos(mob_manager=mock_mob_manager)
 
         # Should have spawned at least some mobs
         self.assertGreater(mock_mob_manager.spawn_mob.call_count, 0)
@@ -227,7 +237,7 @@ class VillageGeneratorMobSpawningTest(unittest.TestCase):
         # Just verify it doesn't crash - no mobs should be spawned
         self.assertIsInstance(village, dict)
 
-    @patch('managers.village_generator.spawn_initial_mobs')
+    @patch("managers.village_generator.spawn_initial_mobs")
     def test_generate_village_calls_spawn_initial_mobs(self, mock_spawn):
         """Test generate_village_of_chronos calls spawn_initial_mobs."""
         mock_mob_manager = Mock()
@@ -261,7 +271,7 @@ class SpawnInitialMobsTest(unittest.TestCase):
             "cottage_garden": Mock(),
             "forest_clearing": Mock(),
             "well_bottom": Mock(),
-            "swamp1": Mock()
+            "swamp1": Mock(),
         }
 
     def test_spawn_initial_mobs_spawns_village_merchant(self):
@@ -274,7 +284,9 @@ class SpawnInitialMobsTest(unittest.TestCase):
             call[0][0] == "village_merchant" and call[0][1] == "marketplace"
             for call in calls
         )
-        self.assertTrue(merchant_call, "village_merchant should be spawned in marketplace")
+        self.assertTrue(
+            merchant_call, "village_merchant should be spawned in marketplace"
+        )
 
     def test_spawn_initial_mobs_spawns_multiple_mob_types(self):
         """Test spawn_initial_mobs spawns multiple different mob types."""

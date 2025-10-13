@@ -21,12 +21,16 @@ from unittest.mock import AsyncMock, Mock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from commands.combat import (
-    handle_attack, handle_retaliate, handle_flee,
-    find_player_sid, find_player_by_name,
-    end_combat, is_in_combat, check_command_restrictions,
-    active_combats, RESTRICTED_COMMANDS
+    handle_attack,
+    handle_retaliate,
+    handle_flee,
+    find_player_sid,
+    find_player_by_name,
+    end_combat,
+    is_in_combat,
+    check_command_restrictions,
+    active_combats,
 )
-from models.Player import Player
 from models.Mobile import Mobile
 from models.Weapon import Weapon
 from models.Item import Item
@@ -69,9 +73,7 @@ class HelperFunctionsTest(unittest.TestCase):
         self.player = Mock()
         self.player.name = "TestPlayer"
 
-        self.online_sessions = {
-            "player_sid": {"player": self.player}
-        }
+        self.online_sessions = {"player_sid": {"player": self.player}}
 
     def test_find_player_sid_by_name(self):
         """Test find_player_sid finds player by name string."""
@@ -181,15 +183,17 @@ class HandleAttackTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_attack_with_no_target_returns_error(self):
         """Test attacking with no target returns error message."""
-        cmd = {
-            "verb": "attack",
-            "subject": None,
-            "subject_object": None
-        }
+        cmd = {"verb": "attack", "subject": None, "subject_object": None}
 
-        result = await handle_attack(cmd, self.player, self.game_state,
-                                     self.player_manager, self.online_sessions,
-                                     self.sio, self.utils)
+        result = await handle_attack(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("who", result.lower())
 
@@ -200,12 +204,18 @@ class HandleAttackTest(unittest.IsolatedAsyncioTestCase):
             "subject": "NonexistentTarget",
             "subject_object": None,
             "instrument": None,
-            "instrument_object": None
+            "instrument_object": None,
         }
 
-        result = await handle_attack(cmd, self.player, self.game_state,
-                                     self.player_manager, self.online_sessions,
-                                     self.sio, self.utils)
+        result = await handle_attack(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         # Should return error message
         self.assertIsInstance(result, str)
@@ -216,20 +226,19 @@ class HandleAttackTest(unittest.IsolatedAsyncioTestCase):
         existing_target = Mock()
         existing_target.name = "ExistingTarget"
 
-        active_combats["Attacker"] = {
-            "target": existing_target,
-            "weapon": None
-        }
+        active_combats["Attacker"] = {"target": existing_target, "weapon": None}
 
-        cmd = {
-            "verb": "attack",
-            "subject": "NewTarget",
-            "subject_object": None
-        }
+        cmd = {"verb": "attack", "subject": "NewTarget", "subject_object": None}
 
-        result = await handle_attack(cmd, self.player, self.game_state,
-                                     self.player_manager, self.online_sessions,
-                                     self.sio, self.utils)
+        result = await handle_attack(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("already", result.lower())
 
@@ -254,7 +263,7 @@ class HandleRetaliateTest(unittest.IsolatedAsyncioTestCase):
             damage=10,
             weight=5,
             min_strength=10,
-            min_dexterity=8
+            min_dexterity=8,
         )
         self.player.inventory.append(self.weapon)
 
@@ -275,31 +284,36 @@ class HandleRetaliateTest(unittest.IsolatedAsyncioTestCase):
         cmd = {
             "verb": "retaliate",
             "instrument": "sword",
-            "instrument_object": self.weapon
+            "instrument_object": self.weapon,
         }
 
-        result = await handle_retaliate(cmd, self.player, self.game_state,
-                                        self.player_manager, self.online_sessions,
-                                        self.sio, self.utils)
+        result = await handle_retaliate(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("not in combat", result.lower())
 
     async def test_retaliate_requires_weapon(self):
         """Test retaliate requires weapon to be specified."""
-        active_combats["TestPlayer"] = {
-            "target": Mock(),
-            "weapon": None
-        }
+        active_combats["TestPlayer"] = {"target": Mock(), "weapon": None}
 
-        cmd = {
-            "verb": "retaliate",
-            "instrument": None,
-            "instrument_object": None
-        }
+        cmd = {"verb": "retaliate", "instrument": None, "instrument_object": None}
 
-        result = await handle_retaliate(cmd, self.player, self.game_state,
-                                        self.player_manager, self.online_sessions,
-                                        self.sio, self.utils)
+        result = await handle_retaliate(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("weapon", result.lower())
 
@@ -311,18 +325,24 @@ class HandleRetaliateTest(unittest.IsolatedAsyncioTestCase):
         active_combats["TestPlayer"] = {
             "target": opponent,
             "target_sid": "opponent_sid",
-            "weapon": None
+            "weapon": None,
         }
 
         cmd = {
             "verb": "retaliate",
             "instrument": "sword",
-            "instrument_object": self.weapon
+            "instrument_object": self.weapon,
         }
 
-        result = await handle_retaliate(cmd, self.player, self.game_state,
-                                        self.player_manager, self.online_sessions,
-                                        self.sio, self.utils)
+        result = await handle_retaliate(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         # Weapon should be updated in combat state
         self.assertEqual(active_combats["TestPlayer"]["weapon"], self.weapon)
@@ -354,30 +374,30 @@ class HandleFleeTest(unittest.IsolatedAsyncioTestCase):
             room_id="room1",
             name="Test Room",
             description="A room",
-            exits={"north": "room2", "south": "room3"}
+            exits={"north": "room2", "south": "room3"},
         )
 
         self.new_room = Room(
-            room_id="room2",
-            name="New Room",
-            description="Another room"
+            room_id="room2", name="New Room", description="Another room"
         )
 
         active_combats["TestPlayer"] = {
             "target": self.opponent,
             "target_sid": "opponent_sid",
             "weapon": None,
-            "is_mob": False
+            "is_mob": False,
         }
         active_combats["Opponent"] = {
             "target": self.player,
             "target_sid": "player_sid",
             "weapon": None,
-            "is_mob": False
+            "is_mob": False,
         }
 
         self.game_state = Mock()
-        self.game_state.get_room = Mock(side_effect=lambda x: self.room if x == "room1" else self.new_room)
+        self.game_state.get_room = Mock(
+            side_effect=lambda x: self.room if x == "room1" else self.new_room
+        )
 
         self.player_manager = Mock()
         self.player_manager.save_players = Mock()
@@ -395,9 +415,15 @@ class HandleFleeTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "flee"}
 
-        result = await handle_flee(cmd, self.player, self.game_state,
-                                   self.player_manager, self.online_sessions,
-                                   self.sio, self.utils)
+        result = await handle_flee(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("not in combat", result.lower())
 
@@ -407,9 +433,15 @@ class HandleFleeTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "flee"}
 
-        result = await handle_flee(cmd, self.player, self.game_state,
-                                   self.player_manager, self.online_sessions,
-                                   self.sio, self.utils)
+        result = await handle_flee(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("nowhere", result.lower())
 
@@ -417,9 +449,15 @@ class HandleFleeTest(unittest.IsolatedAsyncioTestCase):
         """Test flee moves player and causes point loss."""
         cmd = {"verb": "flee"}
 
-        result = await handle_flee(cmd, self.player, self.game_state,
-                                   self.player_manager, self.online_sessions,
-                                   self.sio, self.utils)
+        await handle_flee(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         # Should move player
         self.player.set_current_room.assert_called()
@@ -433,9 +471,15 @@ class HandleFleeTest(unittest.IsolatedAsyncioTestCase):
         """Test flee ends combat for both players."""
         cmd = {"verb": "flee"}
 
-        await handle_flee(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        await handle_flee(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         # Combat should be ended
         self.assertNotIn("TestPlayer", active_combats)
@@ -454,7 +498,7 @@ class MobileTest(unittest.TestCase):
             strength=15,
             dexterity=10,
             max_stamina=50,
-            current_room="room1"
+            current_room="room1",
         )
 
         self.assertEqual(mob.name, "goblin")
@@ -470,7 +514,7 @@ class MobileTest(unittest.TestCase):
             id="goblin_1",
             description="A goblin",
             max_stamina=50,
-            current_room="room1"
+            current_room="room1",
         )
 
         is_dead, remaining = mob.take_damage(20)
@@ -486,7 +530,7 @@ class MobileTest(unittest.TestCase):
             id="goblin_1",
             description="A goblin",
             max_stamina=50,
-            current_room="room1"
+            current_room="room1",
         )
 
         is_dead, remaining = mob.take_damage(60)
@@ -515,7 +559,7 @@ class WeaponRequirementsTest(unittest.TestCase):
             description="A sword",
             damage=10,
             min_strength=15,
-            min_dexterity=10
+            min_dexterity=10,
         )
 
         can_use, reason = weapon.can_use(self.player)
@@ -533,7 +577,7 @@ class WeaponRequirementsTest(unittest.TestCase):
             description="A sword",
             damage=10,
             min_strength=15,
-            min_dexterity=10
+            min_dexterity=10,
         )
 
         can_use, reason = weapon.can_use(self.player)
@@ -551,7 +595,7 @@ class WeaponRequirementsTest(unittest.TestCase):
             description="A sword",
             damage=10,
             min_strength=15,
-            min_dexterity=10
+            min_dexterity=10,
         )
 
         can_use, reason = weapon.can_use(self.player)
@@ -575,7 +619,9 @@ class ProcessCombatTickTest(unittest.IsolatedAsyncioTestCase):
         mob_manager = Mock()
 
         # Should not raise any errors
-        await process_combat_tick(sio, online_sessions, player_manager, game_state, utils, mob_manager)
+        await process_combat_tick(
+            sio, online_sessions, player_manager, game_state, utils, mob_manager
+        )
 
         # No assertions needed - just checking it doesn't crash
 
@@ -604,7 +650,7 @@ class ProcessCombatTickTest(unittest.IsolatedAsyncioTestCase):
             "initiative": True,
             "last_turn": None,
             "is_mob": False,
-            "entity": player1
+            "entity": player1,
         }
 
         active_combats["Player2"] = {
@@ -614,13 +660,13 @@ class ProcessCombatTickTest(unittest.IsolatedAsyncioTestCase):
             "initiative": False,
             "last_turn": None,
             "is_mob": False,
-            "entity": player2
+            "entity": player2,
         }
 
         sio = AsyncMock()
         online_sessions = {
             "player1_sid": {"player": player1},
-            "player2_sid": {"player": player2}
+            "player2_sid": {"player": player2},
         }
         player_manager = Mock()
         game_state = Mock()
@@ -629,9 +675,11 @@ class ProcessCombatTickTest(unittest.IsolatedAsyncioTestCase):
         utils.send_stats_update = AsyncMock()
         mob_manager = Mock()
 
-        with patch('random.randint', return_value=50):
-            with patch('random.uniform', return_value=1.0):
-                await process_combat_tick(sio, online_sessions, player_manager, game_state, utils, mob_manager)
+        with patch("random.randint", return_value=50):
+            with patch("random.uniform", return_value=1.0):
+                await process_combat_tick(
+                    sio, online_sessions, player_manager, game_state, utils, mob_manager
+                )
 
         # Should have sent messages
         self.assertTrue(utils.send_message.called)
@@ -651,8 +699,16 @@ class HandleCombatDisconnectTest(unittest.IsolatedAsyncioTestCase):
         player2 = Mock()
         player2.name = "Player2"
 
-        active_combats["Player1"] = {"target": player2, "target_sid": "player2_sid", "is_mob": False}
-        active_combats["Player2"] = {"target": player1, "target_sid": "player1_sid", "is_mob": False}
+        active_combats["Player1"] = {
+            "target": player2,
+            "target_sid": "player2_sid",
+            "is_mob": False,
+        }
+        active_combats["Player2"] = {
+            "target": player1,
+            "target_sid": "player1_sid",
+            "is_mob": False,
+        }
 
         sio = AsyncMock()
         online_sessions = {}
@@ -661,7 +717,9 @@ class HandleCombatDisconnectTest(unittest.IsolatedAsyncioTestCase):
         utils = Mock()
         utils.send_message = AsyncMock()
 
-        await handle_combat_disconnect("Player1", online_sessions, player_manager, game_state, sio, utils)
+        await handle_combat_disconnect(
+            "Player1", online_sessions, player_manager, game_state, sio, utils
+        )
 
         # Combat should be ended
         self.assertNotIn("Player1", active_combats)
@@ -700,26 +758,27 @@ class HandleAttackAdvancedTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_attack_with_sleeping_target(self):
         """Test attacking a sleeping player."""
-        from commands.rest import wake_player
         from unittest.mock import patch
 
         target_sid = "target_sid"
         self.online_sessions = {
             "attacker_sid": {"player": self.player},
-            target_sid: {"player": self.target, "sleeping": True}
+            target_sid: {"player": self.target, "sleeping": True},
         }
 
-        cmd = {
-            "verb": "attack",
-            "subject": "Target",
-            "subject_object": self.target
-        }
+        cmd = {"verb": "attack", "subject": "Target", "subject_object": self.target}
 
-        with patch('commands.combat.wake_player', new_callable=AsyncMock) as mock_wake:
-            with patch('commands.combat.process_combat_attack', new_callable=AsyncMock):
-                result = await handle_attack(cmd, self.player, self.game_state,
-                                            self.player_manager, self.online_sessions,
-                                            self.sio, self.utils)
+        with patch("commands.combat.wake_player", new_callable=AsyncMock) as mock_wake:
+            with patch("commands.combat.process_combat_attack", new_callable=AsyncMock):
+                result = await handle_attack(
+                    cmd,
+                    self.player,
+                    self.game_state,
+                    self.player_manager,
+                    self.online_sessions,
+                    self.sio,
+                    self.utils,
+                )
 
                 mock_wake.assert_called_once()
                 self.assertIn("attack", result.lower())
@@ -736,12 +795,18 @@ class HandleAttackAdvancedTest(unittest.IsolatedAsyncioTestCase):
             "subject": "Target",
             "subject_object": self.target,
             "instrument": "sword",
-            "instrument_object": weapon
+            "instrument_object": weapon,
         }
 
-        result = await handle_attack(cmd, self.player, self.game_state,
-                                    self.player_manager, self.online_sessions,
-                                    self.sio, self.utils)
+        result = await handle_attack(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("not strong enough", result)
 
@@ -752,23 +817,29 @@ class HandleAttackAdvancedTest(unittest.IsolatedAsyncioTestCase):
         self.player.inventory = [weapon]
         self.online_sessions = {
             "attacker_sid": {"player": self.player},
-            "target_sid": {"player": self.target}
+            "target_sid": {"player": self.target},
         }
 
         cmd = {
             "verb": "attack",
             "subject": "Target",
             "subject_object": self.target,
-            "instrument": "sword"
+            "instrument": "sword",
         }
 
-        with patch('commands.combat.process_combat_attack', new_callable=AsyncMock):
-            result = await handle_attack(cmd, self.player, self.game_state,
-                                        self.player_manager, self.online_sessions,
-                                        self.sio, self.utils)
+        with patch("commands.combat.process_combat_attack", new_callable=AsyncMock):
+            result = await handle_attack(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
 
             self.assertIn("attack", result.lower())
-            self.assertEqual(active_combats[self.player.name]['weapon'], weapon)
+            self.assertEqual(active_combats[self.player.name]["weapon"], weapon)
 
     async def test_attack_with_non_weapon_item(self):
         """Test attacking with non-weapon item."""
@@ -779,12 +850,18 @@ class HandleAttackAdvancedTest(unittest.IsolatedAsyncioTestCase):
             "verb": "attack",
             "subject": "Target",
             "subject_object": self.target,
-            "instrument": "scroll"
+            "instrument": "scroll",
         }
 
-        result = await handle_attack(cmd, self.player, self.game_state,
-                                    self.player_manager, self.online_sessions,
-                                    self.sio, self.utils)
+        result = await handle_attack(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("not a weapon", result)
 
@@ -818,18 +895,24 @@ class HandleRetaliateAdvancedTest(unittest.IsolatedAsyncioTestCase):
         active_combats[self.player.name] = {
             "target": self.target,
             "target_sid": "target_sid",
-            "weapon": None
+            "weapon": None,
         }
 
         cmd = {
             "verb": "retaliate",
             "instrument": "scroll",
-            "instrument_object": non_weapon
+            "instrument_object": non_weapon,
         }
 
-        result = await handle_retaliate(cmd, self.player, self.game_state,
-                                       self.player_manager, self.online_sessions,
-                                       self.sio, self.utils)
+        result = await handle_retaliate(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("not a weapon", result)
 
@@ -838,17 +921,20 @@ class HandleRetaliateAdvancedTest(unittest.IsolatedAsyncioTestCase):
         active_combats[self.player.name] = {
             "target": self.target,
             "target_sid": "target_sid",
-            "weapon": None
+            "weapon": None,
         }
 
-        cmd = {
-            "verb": "retaliate",
-            "instrument": "sword"
-        }
+        cmd = {"verb": "retaliate", "instrument": "sword"}
 
-        result = await handle_retaliate(cmd, self.player, self.game_state,
-                                       self.player_manager, self.online_sessions,
-                                       self.sio, self.utils)
+        result = await handle_retaliate(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("don't have", result.lower())
 
@@ -862,18 +948,20 @@ class HandleRetaliateAdvancedTest(unittest.IsolatedAsyncioTestCase):
         active_combats[self.player.name] = {
             "target": self.target,
             "target_sid": "target_sid",
-            "weapon": None
+            "weapon": None,
         }
 
-        cmd = {
-            "verb": "retaliate",
-            "instrument": "axe",
-            "instrument_object": weapon
-        }
+        cmd = {"verb": "retaliate", "instrument": "axe", "instrument_object": weapon}
 
-        result = await handle_retaliate(cmd, self.player, self.game_state,
-                                       self.player_manager, self.online_sessions,
-                                       self.sio, self.utils)
+        result = await handle_retaliate(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("heavy", result.lower())
 
@@ -907,7 +995,11 @@ class HandleFleeAdvancedTest(unittest.IsolatedAsyncioTestCase):
         self.new_room.description = "A northern room"
 
         self.game_state = Mock()
-        self.game_state.get_room = Mock(side_effect=lambda rid: self.current_room if rid == "room1" else self.new_room)
+        self.game_state.get_room = Mock(
+            side_effect=lambda rid: (
+                self.current_room if rid == "room1" else self.new_room
+            )
+        )
         self.player_manager = Mock()
         self.player_manager.save_players = Mock()
         self.online_sessions = {}
@@ -923,39 +1015,47 @@ class HandleFleeAdvancedTest(unittest.IsolatedAsyncioTestCase):
         active_combats[self.player.name] = {
             "target": self.opponent,
             "target_sid": "opponent_sid",
-            "is_mob": False
+            "is_mob": False,
         }
 
-        cmd = {
-            "verb": "flee",
-            "subject": "north"
-        }
+        cmd = {"verb": "flee", "subject": "north"}
 
-        result = await handle_flee(cmd, self.player, self.game_state,
-                                  self.player_manager, self.online_sessions,
-                                  self.sio, self.utils)
+        result = await handle_flee(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("flee", result.lower())
         self.assertIn("north", result.lower())
 
     async def test_flee_when_new_room_not_found(self):
         """Test flee when new room doesn't exist."""
-        self.game_state.get_room = Mock(side_effect=lambda rid: self.current_room if rid == "room1" else None)
+        self.game_state.get_room = Mock(
+            side_effect=lambda rid: self.current_room if rid == "room1" else None
+        )
 
         active_combats[self.player.name] = {
             "target": self.opponent,
             "target_sid": "opponent_sid",
-            "is_mob": False
+            "is_mob": False,
         }
 
-        cmd = {
-            "verb": "flee",
-            "subject": "north"
-        }
+        cmd = {"verb": "flee", "subject": "north"}
 
-        result = await handle_flee(cmd, self.player, self.game_state,
-                                  self.player_manager, self.online_sessions,
-                                  self.sio, self.utils)
+        result = await handle_flee(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("went wrong", result)
 
@@ -964,7 +1064,7 @@ class HandleFleeAdvancedTest(unittest.IsolatedAsyncioTestCase):
         active_combats[self.player.name] = {
             "target": self.opponent,
             "target_sid": "opponent_sid",
-            "is_mob": False
+            "is_mob": False,
         }
 
         other_player = Mock()
@@ -974,47 +1074,59 @@ class HandleFleeAdvancedTest(unittest.IsolatedAsyncioTestCase):
         self.online_sessions = {
             "player_sid": {"player": self.player},
             "opponent_sid": {"player": self.opponent},
-            "observer_sid": {"player": other_player}
+            "observer_sid": {"player": other_player},
         }
 
-        cmd = {
-            "verb": "flee",
-            "subject": "north"
-        }
+        cmd = {"verb": "flee", "subject": "north"}
 
-        result = await handle_flee(cmd, self.player, self.game_state,
-                                  self.player_manager, self.online_sessions,
-                                  self.sio, self.utils)
+        await handle_flee(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         # Should notify observer
-        self.utils.send_message.assert_any_call(self.sio, "observer_sid", unittest.mock.ANY)
+        self.utils.send_message.assert_any_call(
+            self.sio, "observer_sid", unittest.mock.ANY
+        )
 
     async def test_flee_notifies_others_in_new_room(self):
         """Test flee notifies players in the new room."""
         active_combats[self.player.name] = {
             "target": self.opponent,
             "target_sid": "opponent_sid",
-            "is_mob": False
+            "is_mob": False,
         }
 
         new_room_player = Mock()
         new_room_player.name = "NewRoomPlayer"
         new_room_player.current_room = "room2"
 
-        self.online_sessions = {
-            "new_room_sid": {"player": new_room_player}
-        }
+        self.online_sessions = {"new_room_sid": {"player": new_room_player}}
 
-        cmd = {
-            "verb": "flee"
-        }
+        cmd = {"verb": "flee"}
 
-        result = await handle_flee(cmd, self.player, self.game_state,
-                                  self.player_manager, self.online_sessions,
-                                  self.sio, self.utils)
+        await handle_flee(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         # Should notify new room player
-        self.assertTrue(any("runs in" in str(call) for call in self.utils.send_message.call_args_list))
+        self.assertTrue(
+            any(
+                "runs in" in str(call)
+                for call in self.utils.send_message.call_args_list
+            )
+        )
 
 
 class ProcessCombatAttackTest(unittest.IsolatedAsyncioTestCase):
@@ -1022,7 +1134,6 @@ class ProcessCombatAttackTest(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        from commands.combat import process_combat_attack
 
         self.player = Mock()
         self.player.name = "Attacker"
@@ -1043,7 +1154,7 @@ class ProcessCombatAttackTest(unittest.IsolatedAsyncioTestCase):
         self.player_manager.save_players = Mock()
         self.online_sessions = {
             "attacker_sid": {"player": self.player},
-            "defender_sid": {"player": self.target}
+            "defender_sid": {"player": self.target},
         }
         self.sio = AsyncMock()
         self.utils = Mock()
@@ -1058,13 +1169,19 @@ class ProcessCombatAttackTest(unittest.IsolatedAsyncioTestCase):
 
         self.player.inventory = [self.weapon]
 
-        with patch('random.randint', return_value=50):
-            with patch('random.uniform', return_value=1.0):
+        with patch("random.randint", return_value=50):
+            with patch("random.uniform", return_value=1.0):
                 await process_combat_attack(
-                    self.player, self.target, self.weapon,
-                    "attacker_sid", "defender_sid",
-                    self.player_manager, self.game_state,
-                    self.online_sessions, self.sio, self.utils
+                    self.player,
+                    self.target,
+                    self.weapon,
+                    "attacker_sid",
+                    "defender_sid",
+                    self.player_manager,
+                    self.game_state,
+                    self.online_sessions,
+                    self.sio,
+                    self.utils,
                 )
 
         # Should send messages
@@ -1077,13 +1194,19 @@ class ProcessCombatAttackTest(unittest.IsolatedAsyncioTestCase):
         # Weapon not in inventory
         self.player.inventory = []
 
-        with patch('random.randint', return_value=50):
-            with patch('random.uniform', return_value=1.0):
+        with patch("random.randint", return_value=50):
+            with patch("random.uniform", return_value=1.0):
                 await process_combat_attack(
-                    self.player, self.target, self.weapon,
-                    "attacker_sid", "defender_sid",
-                    self.player_manager, self.game_state,
-                    self.online_sessions, self.sio, self.utils
+                    self.player,
+                    self.target,
+                    self.weapon,
+                    "attacker_sid",
+                    "defender_sid",
+                    self.player_manager,
+                    self.game_state,
+                    self.online_sessions,
+                    self.sio,
+                    self.utils,
                 )
 
         # Should still complete
@@ -1094,13 +1217,19 @@ class ProcessCombatAttackTest(unittest.IsolatedAsyncioTestCase):
         from commands.combat import process_combat_attack
 
         # Force miss with low roll
-        with patch('random.randint', return_value=1):
-            with patch('random.uniform', return_value=1.0):
+        with patch("random.randint", return_value=1):
+            with patch("random.uniform", return_value=1.0):
                 await process_combat_attack(
-                    self.player, self.target, None,
-                    "attacker_sid", "defender_sid",
-                    self.player_manager, self.game_state,
-                    self.online_sessions, self.sio, self.utils
+                    self.player,
+                    self.target,
+                    None,
+                    "attacker_sid",
+                    "defender_sid",
+                    self.player_manager,
+                    self.game_state,
+                    self.online_sessions,
+                    self.sio,
+                    self.utils,
                 )
 
         # Should send messages
@@ -1112,7 +1241,6 @@ class HandlePlayerDefeatTest(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        from commands.combat import handle_player_defeat
 
         self.attacker = Mock()
         self.attacker.name = "Winner"
@@ -1137,8 +1265,11 @@ class HandlePlayerDefeatTest(unittest.IsolatedAsyncioTestCase):
         self.spawn_room.description = "The village center"
 
         self.game_state = Mock()
-        self.game_state.get_room = Mock(side_effect=lambda rid:
-            self.current_room if rid == "room1" else self.spawn_room)
+        self.game_state.get_room = Mock(
+            side_effect=lambda rid: (
+                self.current_room if rid == "room1" else self.spawn_room
+            )
+        )
 
         self.player_manager = Mock()
         self.player_manager.spawn_room = "spawn_room"
@@ -1146,7 +1277,7 @@ class HandlePlayerDefeatTest(unittest.IsolatedAsyncioTestCase):
 
         self.online_sessions = {
             "attacker_sid": {"player": self.attacker},
-            "defender_sid": {"player": self.defender}
+            "defender_sid": {"player": self.defender},
         }
         self.sio = AsyncMock()
         self.utils = Mock()
@@ -1166,13 +1297,18 @@ class HandlePlayerDefeatTest(unittest.IsolatedAsyncioTestCase):
         active_combats["Winner"] = {
             "target": self.defender,
             "target_sid": "defender_sid",
-            "weapon": None
+            "weapon": None,
         }
 
         await handle_player_defeat(
-            self.attacker, self.defender, "defender_sid",
-            self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            self.attacker,
+            self.defender,
+            "defender_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should call remove_item for each item
@@ -1187,13 +1323,18 @@ class HandlePlayerDefeatTest(unittest.IsolatedAsyncioTestCase):
         active_combats["Winner"] = {
             "target": self.defender,
             "target_sid": "defender_sid",
-            "weapon": None
+            "weapon": None,
         }
 
         await handle_player_defeat(
-            self.attacker, self.defender, "defender_sid",
-            self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            self.attacker,
+            self.defender,
+            "defender_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Attacker should gain points
@@ -1229,9 +1370,7 @@ class HandleMobAttackTest(unittest.IsolatedAsyncioTestCase):
 
         self.player_manager = Mock()
         self.mob_manager = Mock()
-        self.online_sessions = {
-            "player_sid": {"player": self.player}
-        }
+        self.online_sessions = {"player_sid": {"player": self.player}}
         self.sio = AsyncMock()
         self.utils = Mock()
         self.utils.send_message = AsyncMock()
@@ -1243,11 +1382,20 @@ class HandleMobAttackTest(unittest.IsolatedAsyncioTestCase):
         """Test attacking mob starts combat."""
         from commands.combat import handle_mob_attack
 
-        with patch('commands.combat.process_mob_combat_attack', new_callable=AsyncMock) as mock_attack:
-            result = await handle_mob_attack(
-                self.player, self.mob, self.weapon, "player_sid",
-                self.player_manager, self.game_state, self.online_sessions,
-                self.mob_manager, self.sio, self.utils
+        with patch(
+            "commands.combat.process_mob_combat_attack", new_callable=AsyncMock
+        ) as mock_attack:
+            await handle_mob_attack(
+                self.player,
+                self.mob,
+                self.weapon,
+                "player_sid",
+                self.player_manager,
+                self.game_state,
+                self.online_sessions,
+                self.mob_manager,
+                self.sio,
+                self.utils,
             )
 
             # Should start combat
@@ -1286,16 +1434,17 @@ class HandlePlayerDefeatByMobTest(unittest.IsolatedAsyncioTestCase):
         self.spawn_room.description = "The spawn room"
 
         self.game_state = Mock()
-        self.game_state.get_room = Mock(side_effect=lambda rid:
-            self.current_room if rid == "room1" else self.spawn_room)
+        self.game_state.get_room = Mock(
+            side_effect=lambda rid: (
+                self.current_room if rid == "room1" else self.spawn_room
+            )
+        )
 
         self.player_manager = Mock()
         self.player_manager.spawn_room = "spawn_room"
         self.player_manager.save_players = Mock()
 
-        self.online_sessions = {
-            "player_sid": {"player": self.player}
-        }
+        self.online_sessions = {"player_sid": {"player": self.player}}
         self.sio = AsyncMock()
         self.utils = Mock()
         self.utils.send_message = AsyncMock()
@@ -1311,9 +1460,13 @@ class HandlePlayerDefeatByMobTest(unittest.IsolatedAsyncioTestCase):
         active_combats[self.player.name] = {"target": self.mob}
 
         await handle_player_defeat_by_mob(
-            self.mob, self.player, self.game_state,
-            self.player_manager, self.online_sessions,
-            self.sio, self.utils
+            self.mob,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Combat should be ended
@@ -1326,9 +1479,13 @@ class HandlePlayerDefeatByMobTest(unittest.IsolatedAsyncioTestCase):
         from commands.combat import handle_player_defeat_by_mob
 
         await handle_player_defeat_by_mob(
-            self.mob, self.player, self.game_state,
-            self.player_manager, self.online_sessions,
-            self.sio, self.utils
+            self.mob,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should NOT immediately respawn (awaits player choice)
@@ -1366,9 +1523,7 @@ class HandleMobDefeatTest(unittest.IsolatedAsyncioTestCase):
         self.mob_manager = Mock()
         self.mob_manager.remove_mob = Mock()
 
-        self.online_sessions = {
-            "player_sid": {"player": self.player}
-        }
+        self.online_sessions = {"player_sid": {"player": self.player}}
         self.sio = AsyncMock()
         self.utils = Mock()
         self.utils.send_message = AsyncMock()
@@ -1384,14 +1539,21 @@ class HandleMobDefeatTest(unittest.IsolatedAsyncioTestCase):
         active_combats[self.mob.id] = {"target": self.player}
 
         await handle_mob_defeat(
-            self.player, self.mob, "player_sid",
-            self.game_state, self.player_manager,
-            self.online_sessions, self.mob_manager,
-            self.sio, self.utils
+            self.player,
+            self.mob,
+            "player_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.mob_manager,
+            self.sio,
+            self.utils,
         )
 
         # Should award points
-        self.player.add_points.assert_called_with(50, self.sio, self.online_sessions, send_notification=True)
+        self.player.add_points.assert_called_with(
+            50, self.sio, self.online_sessions, send_notification=True
+        )
 
     async def test_handle_mob_defeat_drops_loot(self):
         """Test mob defeat drops loot."""
@@ -1404,10 +1566,15 @@ class HandleMobDefeatTest(unittest.IsolatedAsyncioTestCase):
         active_combats[self.mob.id] = {"target": self.player}
 
         await handle_mob_defeat(
-            self.player, self.mob, "player_sid",
-            self.game_state, self.player_manager,
-            self.online_sessions, self.mob_manager,
-            self.sio, self.utils
+            self.player,
+            self.mob,
+            "player_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.mob_manager,
+            self.sio,
+            self.utils,
         )
 
         # Should add loot to room
@@ -1421,10 +1588,15 @@ class HandleMobDefeatTest(unittest.IsolatedAsyncioTestCase):
         active_combats[self.mob.id] = {"target": self.player}
 
         await handle_mob_defeat(
-            self.player, self.mob, "player_sid",
-            self.game_state, self.player_manager,
-            self.online_sessions, self.mob_manager,
-            self.sio, self.utils
+            self.player,
+            self.mob,
+            "player_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.mob_manager,
+            self.sio,
+            self.utils,
         )
 
         # Should remove mob
@@ -1456,9 +1628,7 @@ class ProcessMobCombatAttackTest(unittest.IsolatedAsyncioTestCase):
         self.game_state = Mock()
         self.player_manager = Mock()
         self.mob_manager = Mock()
-        self.online_sessions = {
-            "player_sid": {"player": self.player}
-        }
+        self.online_sessions = {"player_sid": {"player": self.player}}
         self.sio = AsyncMock()
         self.utils = Mock()
         self.utils.send_message = AsyncMock()
@@ -1472,13 +1642,19 @@ class ProcessMobCombatAttackTest(unittest.IsolatedAsyncioTestCase):
 
         self.player.inventory = [self.weapon]
 
-        with patch('random.randint', return_value=50):
-            with patch('random.uniform', return_value=1.0):
+        with patch("random.randint", return_value=50):
+            with patch("random.uniform", return_value=1.0):
                 await process_mob_combat_attack(
-                    self.player, self.mob, self.weapon, "player_sid",
-                    self.player_manager, self.game_state,
-                    self.online_sessions, self.mob_manager,
-                    self.sio, self.utils
+                    self.player,
+                    self.mob,
+                    self.weapon,
+                    "player_sid",
+                    self.player_manager,
+                    self.game_state,
+                    self.online_sessions,
+                    self.mob_manager,
+                    self.sio,
+                    self.utils,
                 )
 
         # Should deal damage
@@ -1489,15 +1665,19 @@ class ProcessMobCombatAttackTest(unittest.IsolatedAsyncioTestCase):
         """Test mob hitting player."""
         from commands.combat import process_mob_combat_attack
 
-        initial_stamina = self.player.stamina
-
-        with patch('random.randint', return_value=50):
-            with patch('random.uniform', return_value=1.0):
+        with patch("random.randint", return_value=50):
+            with patch("random.uniform", return_value=1.0):
                 await process_mob_combat_attack(
-                    self.mob, self.player, None, "player_sid",
-                    self.player_manager, self.game_state,
-                    self.online_sessions, self.mob_manager,
-                    self.sio, self.utils
+                    self.mob,
+                    self.player,
+                    None,
+                    "player_sid",
+                    self.player_manager,
+                    self.game_state,
+                    self.online_sessions,
+                    self.mob_manager,
+                    self.sio,
+                    self.utils,
                 )
 
         # Should send hit message
@@ -1508,13 +1688,19 @@ class ProcessMobCombatAttackTest(unittest.IsolatedAsyncioTestCase):
         from commands.combat import process_mob_combat_attack
 
         # Force miss
-        with patch('random.randint', return_value=1):
-            with patch('random.uniform', return_value=1.0):
+        with patch("random.randint", return_value=1):
+            with patch("random.uniform", return_value=1.0):
                 await process_mob_combat_attack(
-                    self.player, self.mob, None, "player_sid",
-                    self.player_manager, self.game_state,
-                    self.online_sessions, self.mob_manager,
-                    self.sio, self.utils
+                    self.player,
+                    self.mob,
+                    None,
+                    "player_sid",
+                    self.player_manager,
+                    self.game_state,
+                    self.online_sessions,
+                    self.mob_manager,
+                    self.sio,
+                    self.utils,
                 )
 
         # Should send message
@@ -1528,17 +1714,23 @@ class ProcessMobCombatAttackTest(unittest.IsolatedAsyncioTestCase):
         self.player.inventory = []
         active_combats[self.player.name] = {"weapon": self.weapon}
 
-        with patch('random.randint', return_value=50):
-            with patch('random.uniform', return_value=1.0):
+        with patch("random.randint", return_value=50):
+            with patch("random.uniform", return_value=1.0):
                 await process_mob_combat_attack(
-                    self.player, self.mob, self.weapon, "player_sid",
-                    self.player_manager, self.game_state,
-                    self.online_sessions, self.mob_manager,
-                    self.sio, self.utils
+                    self.player,
+                    self.mob,
+                    self.weapon,
+                    "player_sid",
+                    self.player_manager,
+                    self.game_state,
+                    self.online_sessions,
+                    self.mob_manager,
+                    self.sio,
+                    self.utils,
                 )
 
         # Weapon should be set to None in combat
-        self.assertIsNone(active_combats[self.player.name]['weapon'])
+        self.assertIsNone(active_combats[self.player.name]["weapon"])
 
 
 class MobInitiateAttackTest(unittest.IsolatedAsyncioTestCase):
@@ -1556,9 +1748,7 @@ class MobInitiateAttackTest(unittest.IsolatedAsyncioTestCase):
 
         self.game_state = Mock()
         self.player_manager = Mock()
-        self.online_sessions = {
-            "player_sid": {"player": self.player}
-        }
+        self.online_sessions = {"player_sid": {"player": self.player}}
         self.sio = AsyncMock()
         self.utils = Mock()
         self.utils.send_message = AsyncMock()
@@ -1569,11 +1759,16 @@ class MobInitiateAttackTest(unittest.IsolatedAsyncioTestCase):
         """Test mob initiating attack starts combat."""
         from commands.combat import mob_initiate_attack
 
-        with patch('commands.combat.process_mob_combat_attack', new_callable=AsyncMock):
+        with patch("commands.combat.process_mob_combat_attack", new_callable=AsyncMock):
             await mob_initiate_attack(
-                self.mob, self.player, "player_sid",
-                self.player_manager, self.game_state,
-                self.online_sessions, self.sio, self.utils
+                self.mob,
+                self.player,
+                "player_sid",
+                self.player_manager,
+                self.game_state,
+                self.online_sessions,
+                self.sio,
+                self.utils,
             )
 
         # Should start combat
@@ -1588,11 +1783,18 @@ class MobInitiateAttackTest(unittest.IsolatedAsyncioTestCase):
         # Already in combat
         active_combats[self.mob.id] = {"target": self.player}
 
-        with patch('commands.combat.process_mob_combat_attack', new_callable=AsyncMock) as mock_attack:
+        with patch(
+            "commands.combat.process_mob_combat_attack", new_callable=AsyncMock
+        ) as mock_attack:
             await mob_initiate_attack(
-                self.mob, self.player, "player_sid",
-                self.player_manager, self.game_state,
-                self.online_sessions, self.sio, self.utils
+                self.mob,
+                self.player,
+                "player_sid",
+                self.player_manager,
+                self.game_state,
+                self.online_sessions,
+                self.sio,
+                self.utils,
             )
 
         # Should not process attack
@@ -1627,7 +1829,7 @@ class AdvancedCombatDisconnectTest(unittest.IsolatedAsyncioTestCase):
 
         self.online_sessions = {
             "player_sid": {"player": self.player},
-            "opponent_sid": {"player": self.opponent}
+            "opponent_sid": {"player": self.opponent},
         }
         self.sio = AsyncMock()
         self.utils = Mock()
@@ -1642,20 +1844,23 @@ class AdvancedCombatDisconnectTest(unittest.IsolatedAsyncioTestCase):
 
         active_combats[self.player.name] = {
             "target": self.opponent,
-            "target_sid": "opponent_sid"
+            "target_sid": "opponent_sid",
         }
         active_combats[self.opponent.name] = {
             "target": self.player,
-            "target_sid": "player_sid"
+            "target_sid": "player_sid",
         }
 
         item = Item(name="sword", id="sword_1", description="A sword")
         self.player.inventory = [item]
 
         await handle_combat_disconnect(
-            self.player.name, self.online_sessions,
-            self.player_manager, self.game_state,
-            self.sio, self.utils
+            self.player.name,
+            self.online_sessions,
+            self.player_manager,
+            self.game_state,
+            self.sio,
+            self.utils,
         )
 
         # Should drop items
@@ -1691,7 +1896,7 @@ class AttackFindingPlayerByNameTest(unittest.IsolatedAsyncioTestCase):
 
         self.online_sessions = {
             "attacker_sid": {"player": self.player},
-            "target_sid": {"player": self.target}
+            "target_sid": {"player": self.target},
         }
 
         active_combats.clear()
@@ -1703,14 +1908,18 @@ class AttackFindingPlayerByNameTest(unittest.IsolatedAsyncioTestCase):
             "subject": "Target",
             "subject_object": None,
             "instrument": None,
-            "instrument_object": None
+            "instrument_object": None,
         }
 
-        with patch('commands.combat.process_combat_attack', new_callable=AsyncMock):
+        with patch("commands.combat.process_combat_attack", new_callable=AsyncMock):
             result = await handle_attack(
-                cmd, self.player, self.game_state,
-                self.player_manager, self.online_sessions,
-                self.sio, self.utils
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
             )
 
         # Should start combat
@@ -1744,9 +1953,7 @@ class AttackMobByNameTest(unittest.IsolatedAsyncioTestCase):
         self.utils.send_message = AsyncMock()
         self.utils.mob_manager = self.mob_manager
 
-        self.online_sessions = {
-            "player_sid": {"player": self.player}
-        }
+        self.online_sessions = {"player_sid": {"player": self.player}}
 
         active_combats.clear()
 
@@ -1757,16 +1964,22 @@ class AttackMobByNameTest(unittest.IsolatedAsyncioTestCase):
             "subject": "goblin",
             "subject_object": None,
             "instrument": None,
-            "instrument_object": None
+            "instrument_object": None,
         }
 
-        with patch('commands.combat.handle_mob_attack', new_callable=AsyncMock) as mock_mob_attack:
+        with patch(
+            "commands.combat.handle_mob_attack", new_callable=AsyncMock
+        ) as mock_mob_attack:
             mock_mob_attack.return_value = "You attack goblin!"
 
-            result = await handle_attack(
-                cmd, self.player, self.game_state,
-                self.player_manager, self.online_sessions,
-                self.sio, self.utils
+            await handle_attack(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
             )
 
         # Should call handle_mob_attack
@@ -1777,7 +1990,7 @@ class AttackMobByNameTest(unittest.IsolatedAsyncioTestCase):
         active_combats[self.player.name] = {
             "target": Mock(),
             "target_sid": None,
-            "is_mob": False
+            "is_mob": False,
         }
 
         cmd = {
@@ -1785,14 +1998,18 @@ class AttackMobByNameTest(unittest.IsolatedAsyncioTestCase):
             "subject": "goblin",
             "subject_object": None,
             "instrument": None,
-            "instrument_object": None
+            "instrument_object": None,
         }
 
-        with patch('commands.combat.handle_mob_attack', new_callable=AsyncMock) as mock_mob_attack:
+        with patch("commands.combat.handle_mob_attack", new_callable=AsyncMock):
             result = await handle_attack(
-                cmd, self.player, self.game_state,
-                self.player_manager, self.online_sessions,
-                self.sio, self.utils
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
             )
 
         # Should not attack, already in combat
@@ -1830,23 +2047,23 @@ class RetaliateByWeaponNameTest(unittest.IsolatedAsyncioTestCase):
         active_combats[self.player.name] = {
             "target": self.target,
             "target_sid": "target_sid",
-            "weapon": None
+            "weapon": None,
         }
 
-        cmd = {
-            "verb": "retaliate",
-            "instrument": "sword",
-            "instrument_object": None
-        }
+        cmd = {"verb": "retaliate", "instrument": "sword", "instrument_object": None}
 
         result = await handle_retaliate(
-            cmd, self.player, self.game_state,
-            self.player_manager, self.online_sessions,
-            self.sio, self.utils
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should equip weapon
-        self.assertEqual(active_combats[self.player.name]['weapon'], self.weapon)
+        self.assertEqual(active_combats[self.player.name]["weapon"], self.weapon)
         self.assertIn("ready", result.lower())
 
 
@@ -1911,9 +2128,15 @@ class HandleRespawnChoiceTest(unittest.IsolatedAsyncioTestCase):
         self.online_sessions["player_sid"]["awaiting_respawn"] = True
 
         result = await handle_respawn_choice(
-            self.player, "yes", "player_sid", self.game_state,
-            self.player_manager, self.online_sessions, self.sio, self.utils,
-            combat_death=True
+            self.player,
+            "yes",
+            "player_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+            combat_death=True,
         )
 
         # Should reset persona and respawn
@@ -1921,7 +2144,7 @@ class HandleRespawnChoiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.player.level, "Neophyte")
         self.player.set_current_room.assert_called_with("village_center")
         self.assertEqual(self.player.stamina, 45)  # Neophyte level stamina
-        self.assertFalse(self.online_sessions["player_sid"]['awaiting_respawn'])
+        self.assertFalse(self.online_sessions["player_sid"]["awaiting_respawn"])
         self.player_manager.save_players.assert_called_once()
         self.utils.send_message.assert_called()
         self.assertIsNotNone(result)
@@ -1933,9 +2156,15 @@ class HandleRespawnChoiceTest(unittest.IsolatedAsyncioTestCase):
         self.online_sessions["player_sid"]["awaiting_respawn"] = True
 
         result = await handle_respawn_choice(
-            self.player, "y", "player_sid", self.game_state,
-            self.player_manager, self.online_sessions, self.sio, self.utils,
-            combat_death=True
+            self.player,
+            "y",
+            "player_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+            combat_death=True,
         )
 
         # Should reset persona
@@ -1950,9 +2179,15 @@ class HandleRespawnChoiceTest(unittest.IsolatedAsyncioTestCase):
         initial_level = self.player.level
 
         result = await handle_respawn_choice(
-            self.player, "yes", "player_sid", self.game_state,
-            self.player_manager, self.online_sessions, self.sio, self.utils,
-            combat_death=False
+            self.player,
+            "yes",
+            "player_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+            combat_death=False,
         )
 
         # Should NOT reset persona
@@ -1969,16 +2204,24 @@ class HandleRespawnChoiceTest(unittest.IsolatedAsyncioTestCase):
         self.online_sessions["player_sid"]["awaiting_respawn"] = True
 
         result = await handle_respawn_choice(
-            self.player, "no", "player_sid", self.game_state,
-            self.player_manager, self.online_sessions, self.sio, self.utils,
-            combat_death=True
+            self.player,
+            "no",
+            "player_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+            combat_death=True,
         )
 
         # Should disconnect
         self.assertIsNone(result)
-        self.assertFalse(self.online_sessions["player_sid"]['awaiting_respawn'])
+        self.assertFalse(self.online_sessions["player_sid"]["awaiting_respawn"])
         # Should send farewell message
-        self.utils.send_message.assert_called_with(self.sio, "player_sid", "Farewell! Thank you for playing.")
+        self.utils.send_message.assert_called_with(
+            self.sio, "player_sid", "Farewell! Thank you for playing."
+        )
 
 
 class HandleNonCombatDeathTest(unittest.IsolatedAsyncioTestCase):
@@ -1999,9 +2242,7 @@ class HandleNonCombatDeathTest(unittest.IsolatedAsyncioTestCase):
         self.game_state.get_room = Mock(return_value=self.current_room)
 
         self.player_manager = Mock()
-        self.online_sessions = {
-            "player_sid": {"player": self.player}
-        }
+        self.online_sessions = {"player_sid": {"player": self.player}}
         self.sio = AsyncMock()
         self.utils = Mock()
         self.utils.send_message = AsyncMock()
@@ -2011,14 +2252,19 @@ class HandleNonCombatDeathTest(unittest.IsolatedAsyncioTestCase):
         from commands.combat import handle_non_combat_death
 
         await handle_non_combat_death(
-            self.player, "player_sid", self.game_state,
-            self.player_manager, self.online_sessions, self.sio, self.utils
+            self.player,
+            "player_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should set awaiting_respawn flag and put player in limbo
-        self.assertTrue(self.online_sessions["player_sid"]['awaiting_respawn'])
+        self.assertTrue(self.online_sessions["player_sid"]["awaiting_respawn"])
         # Should set combat_death to False
-        self.assertFalse(self.online_sessions["player_sid"]['combat_death'])
+        self.assertFalse(self.online_sessions["player_sid"]["combat_death"])
         self.assertIsNone(self.player.current_room)  # Player in limbo
 
     async def test_handle_non_combat_death_correct_message(self):
@@ -2026,8 +2272,13 @@ class HandleNonCombatDeathTest(unittest.IsolatedAsyncioTestCase):
         from commands.combat import handle_non_combat_death
 
         await handle_non_combat_death(
-            self.player, "player_sid", self.game_state,
-            self.player_manager, self.online_sessions, self.sio, self.utils
+            self.player,
+            "player_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should send "Persona updated" message
@@ -2044,8 +2295,13 @@ class HandleNonCombatDeathTest(unittest.IsolatedAsyncioTestCase):
         self.player.inventory = [item1, item2]
 
         await handle_non_combat_death(
-            self.player, "player_sid", self.game_state,
-            self.player_manager, self.online_sessions, self.sio, self.utils
+            self.player,
+            "player_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should drop all items
@@ -2081,7 +2337,7 @@ class UpdatedPlayerDefeatTest(unittest.IsolatedAsyncioTestCase):
 
         self.online_sessions = {
             "attacker_sid": {"player": self.attacker},
-            "defender_sid": {"player": self.defender}
+            "defender_sid": {"player": self.defender},
         }
         self.sio = AsyncMock()
         self.utils = Mock()
@@ -2095,14 +2351,19 @@ class UpdatedPlayerDefeatTest(unittest.IsolatedAsyncioTestCase):
         from commands.combat import handle_player_defeat
 
         await handle_player_defeat(
-            self.attacker, self.defender, "defender_sid",
-            self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            self.attacker,
+            self.defender,
+            "defender_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should set awaiting_respawn and put player in limbo
-        self.assertTrue(self.online_sessions["defender_sid"]['awaiting_respawn'])
-        self.assertTrue(self.online_sessions["defender_sid"]['combat_death'])
+        self.assertTrue(self.online_sessions["defender_sid"]["awaiting_respawn"])
+        self.assertTrue(self.online_sessions["defender_sid"]["combat_death"])
         self.assertIsNone(self.defender.current_room)  # Player in limbo
 
     async def test_player_defeat_sends_persona_reset_message(self):
@@ -2110,9 +2371,14 @@ class UpdatedPlayerDefeatTest(unittest.IsolatedAsyncioTestCase):
         from commands.combat import handle_player_defeat
 
         await handle_player_defeat(
-            self.attacker, self.defender, "defender_sid",
-            self.game_state, self.player_manager,
-            self.online_sessions, self.sio, self.utils
+            self.attacker,
+            self.defender,
+            "defender_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should send message with "Persona reset"
@@ -2144,9 +2410,7 @@ class UpdatedMobDefeatPlayerTest(unittest.IsolatedAsyncioTestCase):
         self.game_state.get_room = Mock(return_value=self.current_room)
 
         self.player_manager = Mock()
-        self.online_sessions = {
-            "player_sid": {"player": self.player}
-        }
+        self.online_sessions = {"player_sid": {"player": self.player}}
         self.sio = AsyncMock()
         self.utils = Mock()
         self.utils.send_message = AsyncMock()
@@ -2158,14 +2422,18 @@ class UpdatedMobDefeatPlayerTest(unittest.IsolatedAsyncioTestCase):
         from commands.combat import handle_player_defeat_by_mob
 
         await handle_player_defeat_by_mob(
-            self.mob, self.player, self.game_state,
-            self.player_manager, self.online_sessions,
-            self.sio, self.utils
+            self.mob,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should set awaiting_respawn and put player in limbo
-        self.assertTrue(self.online_sessions["player_sid"]['awaiting_respawn'])
-        self.assertTrue(self.online_sessions["player_sid"]['combat_death'])
+        self.assertTrue(self.online_sessions["player_sid"]["awaiting_respawn"])
+        self.assertTrue(self.online_sessions["player_sid"]["combat_death"])
         self.assertIsNone(self.player.current_room)  # Player in limbo
 
     async def test_mob_defeat_player_sends_persona_reset_message(self):
@@ -2173,9 +2441,13 @@ class UpdatedMobDefeatPlayerTest(unittest.IsolatedAsyncioTestCase):
         from commands.combat import handle_player_defeat_by_mob
 
         await handle_player_defeat_by_mob(
-            self.mob, self.player, self.game_state,
-            self.player_manager, self.online_sessions,
-            self.sio, self.utils
+            self.mob,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # Should send message with "Persona reset"
@@ -2195,9 +2467,11 @@ class RespawnIssuesTest(unittest.IsolatedAsyncioTestCase):
         self.player.max_stamina = 100
         self.player.stamina = 50
         self.player.current_room = None
+
         # Make set_current_room actually update the attribute
         def set_room(room_id):
             self.player.current_room = room_id
+
         self.player.set_current_room = Mock(side_effect=set_room)
         self.player.visited = set()
 
@@ -2223,7 +2497,7 @@ class RespawnIssuesTest(unittest.IsolatedAsyncioTestCase):
 
         self.online_sessions = {
             "player_sid": {"player": self.player},
-            "other_sid": {"player": self.other_player}
+            "other_sid": {"player": self.other_player},
         }
         self.sio = AsyncMock()
         self.utils = Mock()
@@ -2238,9 +2512,15 @@ class RespawnIssuesTest(unittest.IsolatedAsyncioTestCase):
         self.online_sessions["player_sid"]["awaiting_respawn"] = True
 
         result = await handle_respawn_choice(
-            self.player, "yes", "player_sid", self.game_state,
-            self.player_manager, self.online_sessions, self.sio, self.utils,
-            combat_death=True
+            self.player,
+            "yes",
+            "player_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+            combat_death=True,
         )
 
         # Should NOT return "Respawned successfully"
@@ -2254,18 +2534,28 @@ class RespawnIssuesTest(unittest.IsolatedAsyncioTestCase):
         self.online_sessions["player_sid"]["awaiting_respawn"] = True
 
         await handle_respawn_choice(
-            self.player, "yes", "player_sid", self.game_state,
-            self.player_manager, self.online_sessions, self.sio, self.utils,
-            combat_death=True
+            self.player,
+            "yes",
+            "player_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+            combat_death=True,
         )
 
         # Check the welcome message sent to player
         calls = [str(call) for call in self.utils.send_message.call_args_list]
-        welcome_messages = [c for c in calls if "player_sid" in c and "awaken" in c.lower()]
+        welcome_messages = [
+            c for c in calls if "player_sid" in c and "awaken" in c.lower()
+        ]
 
         # Should show other player in description
         has_other_player = any("OtherPlayer" in msg for msg in welcome_messages)
-        self.assertTrue(has_other_player, "Room description should include other players at spawn")
+        self.assertTrue(
+            has_other_player, "Room description should include other players at spawn"
+        )
 
     async def test_awaiting_respawn_player_not_in_who_list(self):
         """Test player awaiting respawn is not shown in 'who' command."""
@@ -2278,9 +2568,13 @@ class RespawnIssuesTest(unittest.IsolatedAsyncioTestCase):
         cmd = {"verb": "users"}
 
         result = await handle_users(
-            cmd, self.other_player, self.game_state,
-            self.player_manager, self.online_sessions,
-            self.sio, self.utils
+            cmd,
+            self.other_player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
 
         # TestPlayer should NOT be in the list (they're dead/awaiting respawn)
@@ -2302,9 +2596,15 @@ class RespawnIssuesTest(unittest.IsolatedAsyncioTestCase):
         self.online_sessions["player_sid"]["awaiting_respawn"] = True
 
         await handle_respawn_choice(
-            self.player, "yes", "player_sid", self.game_state,
-            self.player_manager, self.online_sessions, self.sio, self.utils,
-            combat_death=True
+            self.player,
+            "yes",
+            "player_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+            combat_death=True,
         )
 
         # Check messages sent to OTHER players
@@ -2320,9 +2620,14 @@ class RespawnIssuesTest(unittest.IsolatedAsyncioTestCase):
                     other_player_received_messages.append(message)
 
         # Other player should receive arrival notification
-        has_arrival = any("TestPlayer" in msg and "arrived" in msg.lower()
-                         for msg in other_player_received_messages)
-        self.assertTrue(has_arrival, f"Other players at spawn should see arrival message. Messages: {other_player_received_messages}")
+        has_arrival = any(
+            "TestPlayer" in msg and "arrived" in msg.lower()
+            for msg in other_player_received_messages
+        )
+        self.assertTrue(
+            has_arrival,
+            f"Other players at spawn should see arrival message. Messages: {other_player_received_messages}",
+        )
 
 
 if __name__ == "__main__":

@@ -32,7 +32,7 @@ class ContainerItemTest(unittest.TestCase):
             "A leather bag",
             weight=1,
             capacity_limit=5,
-            capacity_weight=10
+            capacity_weight=10,
         )
         self.item1 = Item("Coin", "coin_1", "A gold coin", weight=0.1, value=5)
         self.item2 = Item("Gem", "gem_1", "A ruby gem", weight=0.2, value=50)
@@ -54,7 +54,6 @@ class ContainerItemTest(unittest.TestCase):
 
     def test_weight_property_includes_contents(self):
         """Test that container weight includes contents."""
-        initial_weight = self.container.weight
         self.container.add_item(self.item1)  # 0.1kg
         self.container.add_item(self.item2)  # 0.2kg
 
@@ -85,7 +84,7 @@ class ContainerItemTest(unittest.TestCase):
             "bag_small",
             "A tiny bag",
             capacity_limit=2,
-            capacity_weight=100
+            capacity_weight=100,
         )
 
         container.add_item(Item("A", "a", "Item A"))
@@ -98,11 +97,7 @@ class ContainerItemTest(unittest.TestCase):
     def test_add_item_enforces_weight_limit(self):
         """Test that weight limit is enforced."""
         container = ContainerItem(
-            "Bag",
-            "bag_1",
-            "A bag",
-            capacity_limit=10,
-            capacity_weight=5
+            "Bag", "bag_1", "A bag", capacity_limit=10, capacity_weight=5
         )
 
         heavy_item = Item("Rock", "rock_1", "A heavy rock", weight=6)
@@ -114,10 +109,7 @@ class ContainerItemTest(unittest.TestCase):
     def test_add_item_rejects_nested_containers(self):
         """Test that containers cannot be put inside other containers."""
         inner_container = ContainerItem(
-            "Box",
-            "box_1",
-            "A wooden box",
-            capacity_limit=3
+            "Box", "box_1", "A wooden box", capacity_limit=3
         )
 
         success = self.container.add_item(inner_container)
@@ -128,10 +120,7 @@ class ContainerItemTest(unittest.TestCase):
     def test_set_state_changes_container_state(self):
         """Test opening and closing containers."""
         container = ContainerItem(
-            "Chest",
-            "chest_1",
-            "A treasure chest",
-            state="closed"
+            "Chest", "chest_1", "A treasure chest", state="closed"
         )
 
         success = container.set_state("open")
@@ -148,12 +137,7 @@ class ContainerItemTest(unittest.TestCase):
 
     def test_get_contained_hides_contents_when_closed(self):
         """Test that closed containers don't reveal contents."""
-        container = ContainerItem(
-            "Chest",
-            "chest_1",
-            "A chest",
-            state="closed"
-        )
+        container = ContainerItem("Chest", "chest_1", "A chest", state="closed")
         container.add_item(Item("Secret", "secret_1", "A secret item"))
 
         description = container.get_contained()
@@ -194,9 +178,9 @@ class ContainerSerializationTest(unittest.TestCase):
                     "description": "A key",
                     "weight": 0.5,
                     "value": 10,
-                    "takeable": True
+                    "takeable": True,
                 }
-            ]
+            ],
         }
         container = ContainerItem.from_dict(data)
 
@@ -256,7 +240,7 @@ class InventoryValueTest(unittest.TestCase):
         items = [
             Item("Gold Coin", "coin_1", "A coin", value=10),
             Item("Ruby", "ruby_1", "A ruby", value=100),
-            Item("Diamond", "diamond_1", "A diamond", value=500)
+            Item("Diamond", "diamond_1", "A diamond", value=500),
         ]
 
         total_value = sum(item.value for item in items)

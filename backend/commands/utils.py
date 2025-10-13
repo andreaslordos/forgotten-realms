@@ -1,5 +1,6 @@
 from models.ContainerItem import ContainerItem
 
+
 def get_player_inventory(player):
     return_str = " ".join([item.name for item in player.inventory])
 

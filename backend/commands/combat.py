@@ -2,7 +2,6 @@
 
 import random
 import logging
-import inspect
 from commands.registry import command_registry
 from models.Weapon import Weapon
 from models.CombatDialogue import CombatDialogue
@@ -18,12 +17,38 @@ active_combats = {}
 
 # List of commands that are blocked during combat
 RESTRICTED_COMMANDS = [
-    "north", "south", "east", "west", "northeast", "northwest", "southeast", "southwest",
-    "up", "down", "in", "out", "n", "s", "e", "w", "ne", "nw", "se", "sw", "u", "d",
-    "quit", "password", "set", "reset"
+    "north",
+    "south",
+    "east",
+    "west",
+    "northeast",
+    "northwest",
+    "southeast",
+    "southwest",
+    "up",
+    "down",
+    "in",
+    "out",
+    "n",
+    "s",
+    "e",
+    "w",
+    "ne",
+    "nw",
+    "se",
+    "sw",
+    "u",
+    "d",
+    "quit",
+    "password",
+    "set",
+    "reset",
 ]
 
-async def handle_attack(cmd, player, game_state, player_manager, online_sessions, sio, utils):
+
+async def handle_attack(
+    cmd, player, game_state, player_manager, online_sessions, sio, utils
+):
     """
     Handle attacking a target, initiating continuous combat.
     """
@@ -42,7 +67,7 @@ async def handle_attack(cmd, player, game_state, player_manager, online_sessions
 
     # Check if player is already in combat
     if player.name in active_combats:
-        existing_target = active_combats[player.name]['target']
+        existing_target = active_combats[player.name]["target"]
         return f"You're already fighting {existing_target.name}!"
 
     # Find a player target in the room
@@ -50,47 +75,70 @@ async def handle_attack(cmd, player, game_state, player_manager, online_sessions
     target_sid = None
 
     # If we have a bound subject object that's a player (NOT a mob)
-    if (subject_obj and
-        not isinstance(subject_obj, Mobile) and
-        hasattr(subject_obj, 'name') and
-        hasattr(subject_obj, 'current_room')):
+    if (
+        subject_obj
+        and not isinstance(subject_obj, Mobile)
+        and hasattr(subject_obj, "name")
+        and hasattr(subject_obj, "current_room")
+    ):
         if subject_obj.current_room == player.current_room and subject_obj != player:
             target_player = subject_obj
-            
+
             # Find their session ID
             for sid, session_data in online_sessions.items():
-                if session_data.get('player') == target_player:
+                if session_data.get("player") == target_player:
                     target_sid = sid
-                    
+
                     # Check if target is sleeping and wake them up
-                    if session_data.get('sleeping'):
-                        await wake_player(target_player, sid, online_sessions, sio, utils, woken_by=player)
+                    if session_data.get("sleeping"):
+                        await wake_player(
+                            target_player,
+                            sid,
+                            online_sessions,
+                            sio,
+                            utils,
+                            woken_by=player,
+                        )
                     break
     else:
         # Find a player by name
         if online_sessions:
             for sid, session_data in online_sessions.items():
-                other_player = session_data.get('player')
-                if (other_player and 
-                    other_player.current_room == player.current_room and 
-                    other_player != player and
-                    subject and subject.lower() in other_player.name.lower()):
+                other_player = session_data.get("player")
+                if (
+                    other_player
+                    and other_player.current_room == player.current_room
+                    and other_player != player
+                    and subject
+                    and subject.lower() in other_player.name.lower()
+                ):
                     target_player = other_player
                     target_sid = sid
-                    
+
                     # Check if target is sleeping and wake them up
-                    if session_data.get('sleeping'):
-                        await wake_player(other_player, sid, online_sessions, sio, utils, woken_by=player)
+                    if session_data.get("sleeping"):
+                        await wake_player(
+                            other_player,
+                            sid,
+                            online_sessions,
+                            sio,
+                            utils,
+                            woken_by=player,
+                        )
                     break
-    
+
     # If a player target was found
     if target_player:
         # Use the bound weapon if available, otherwise try to find it by name
         weapon_item = None
-        
-        if instrument_obj and isinstance(instrument_obj, (Weapon, Item)) and instrument_obj in player.inventory:
+
+        if (
+            instrument_obj
+            and isinstance(instrument_obj, (Weapon, Item))
+            and instrument_obj in player.inventory
+        ):
             weapon_item = instrument_obj
-            
+
             # Check if it's a Weapon class with requirements
             if isinstance(weapon_item, Weapon):
                 can_use, reason = weapon_item.can_use(player)
@@ -101,9 +149,9 @@ async def handle_attack(cmd, player, game_state, player_manager, online_sessions
             for item in player.inventory:
                 if instrument.lower() in item.name.lower():
                     # Check if it's a weapon
-                    if isinstance(item, Weapon) or hasattr(item, 'damage'):
+                    if isinstance(item, Weapon) or hasattr(item, "damage"):
                         weapon_item = item
-                        
+
                         # If it's a Weapon, check requirements
                         if isinstance(item, Weapon):
                             can_use, reason = item.can_use(player)
@@ -112,67 +160,75 @@ async def handle_attack(cmd, player, game_state, player_manager, online_sessions
                     else:
                         return f"{item.name} is not a weapon."
                     break
-        
+
         # Get session IDs
         player_sid = find_player_sid(player, online_sessions)
-        
+
         # Start combat tracking for attacker
         active_combats[player.name] = {
-            'target': target_player,
-            'target_sid': target_sid,
-            'weapon': weapon_item,
-            'initiative': True,  # Attacker starts with initiative
-            'last_turn': None,   # No turn has happened yet
-            'is_mob': False,
-            'entity': player,
+            "target": target_player,
+            "target_sid": target_sid,
+            "weapon": weapon_item,
+            "initiative": True,  # Attacker starts with initiative
+            "last_turn": None,  # No turn has happened yet
+            "is_mob": False,
+            "entity": player,
         }
-        
+
         # Start combat tracking for target
         active_combats[target_player.name] = {
-            'target': player,
-            'target_sid': player_sid,
-            'weapon': None,  # Target starts barehanded
-            'initiative': False,  # Defender doesn't have initiative
-            'last_turn': None,    # No turn has happened yet
-            'is_mob': False,
-            'entity': target_player,
+            "target": player,
+            "target_sid": player_sid,
+            "weapon": None,  # Target starts barehanded
+            "initiative": False,  # Defender doesn't have initiative
+            "last_turn": None,  # No turn has happened yet
+            "is_mob": False,
+            "entity": target_player,
         }
-        
+
         # Notify the target they are being attacked
         attack_msg = f"{player.name} attacks you"
         if weapon_item:
             attack_msg += f" with {weapon_item.name}"
         attack_msg += "! Combat has begun. Type 'ret with <weapon>' to use a weapon or 'flee <direction>' to escape."
-        
+
         await utils.send_message(sio, target_sid, attack_msg)
-        
+
         # Immediate first attack from the attacker
         await process_combat_attack(
-            player, target_player, 
+            player,
+            target_player,
             weapon_item,
-            player_sid, target_sid,
-            player_manager, game_state, online_sessions, sio, utils
+            player_sid,
+            target_sid,
+            player_manager,
+            game_state,
+            online_sessions,
+            sio,
+            utils,
         )
-        
+
         # Return initial attack message
         result = f"You attack {target_player.name}"
         if weapon_item:
             result += f" with {weapon_item.name}"
         result += "! Combat has begun."
-        
+
         return result
     else:
         # Look for a mob target in the room
         # Import mob_manager from the command context (passed via utils or global)
         # For now, we'll check if mob_manager is available
-        mob_manager = getattr(utils, 'mob_manager', None) if hasattr(utils, '__dict__') else None
+        mob_manager = (
+            getattr(utils, "mob_manager", None) if hasattr(utils, "__dict__") else None
+        )
 
         if mob_manager:
             mobs_in_room = mob_manager.get_mobs_in_room(player.current_room)
             target_mob = None
 
             # Try to find mob by bound object first
-            if subject_obj and hasattr(subject_obj, 'is_mob'):
+            if subject_obj and hasattr(subject_obj, "is_mob"):
                 target_mob = subject_obj
             else:
                 # Find mob by name
@@ -184,13 +240,17 @@ async def handle_attack(cmd, player, game_state, player_manager, online_sessions
             if target_mob:
                 # Check if player is already in combat
                 if player.name in active_combats:
-                    existing_target = active_combats[player.name]['target']
+                    existing_target = active_combats[player.name]["target"]
                     return f"You're already fighting {existing_target.name}!"
 
                 # Parse weapon (same logic as for player targets)
                 weapon_item = None
 
-                if instrument_obj and isinstance(instrument_obj, (Weapon, Item)) and instrument_obj in player.inventory:
+                if (
+                    instrument_obj
+                    and isinstance(instrument_obj, (Weapon, Item))
+                    and instrument_obj in player.inventory
+                ):
                     weapon_item = instrument_obj
 
                     # Check if it's a Weapon class with requirements
@@ -203,7 +263,7 @@ async def handle_attack(cmd, player, game_state, player_manager, online_sessions
                     for item in player.inventory:
                         if instrument.lower() in item.name.lower():
                             # Check if it's a weapon
-                            if isinstance(item, Weapon) or hasattr(item, 'damage'):
+                            if isinstance(item, Weapon) or hasattr(item, "damage"):
                                 weapon_item = item
 
                                 # If it's a Weapon, check requirements
@@ -219,47 +279,60 @@ async def handle_attack(cmd, player, game_state, player_manager, online_sessions
                 player_sid = find_player_sid(player, online_sessions)
 
                 # Attack the mob
-                return await handle_mob_attack(player, target_mob, weapon_item, player_sid,
-                                              player_manager, game_state, online_sessions, mob_manager, sio, utils)
+                return await handle_mob_attack(
+                    player,
+                    target_mob,
+                    weapon_item,
+                    player_sid,
+                    player_manager,
+                    game_state,
+                    online_sessions,
+                    mob_manager,
+                    sio,
+                    utils,
+                )
 
         return f"You don't see '{subject}' here."
 
-async def handle_retaliate(cmd, player, game_state, player_manager, online_sessions, sio, utils):
+
+async def handle_retaliate(
+    cmd, player, game_state, player_manager, online_sessions, sio, utils
+):
     """
     Handle retaliating with a weapon when already in combat.
     """
     # Get the instrument (weapon) from the parsed command
     instrument = cmd.get("instrument")
     instrument_obj = cmd.get("instrument_object")
-    
+
     # Check if player is in combat
     if player.name not in active_combats:
         return "You're not in combat with anyone."
-    
+
     # If no weapon specified
     if not instrument and not instrument_obj:
         return "Retaliate with what? Specify a weapon."
-    
+
     # Use the bound weapon object if available
     weapon_item = None
     if instrument_obj and instrument_obj in player.inventory:
         weapon_item = instrument_obj
-        
+
         # If it's a Weapon, check requirements
         if isinstance(weapon_item, Weapon):
             can_use, reason = weapon_item.can_use(player)
             if not can_use:
                 return reason
-        elif not hasattr(weapon_item, 'damage'):
+        elif not hasattr(weapon_item, "damage"):
             return f"{weapon_item.name} is not a weapon."
     else:
         # Find the weapon in inventory by name
         for item in player.inventory:
             if instrument.lower() in item.name.lower():
                 # Check if it's a weapon
-                if isinstance(item, Weapon) or hasattr(item, 'damage'):
+                if isinstance(item, Weapon) or hasattr(item, "damage"):
                     weapon_item = item
-                    
+
                     # If it's a Weapon, check requirements
                     if isinstance(item, Weapon):
                         can_use, reason = item.can_use(player)
@@ -268,42 +341,44 @@ async def handle_retaliate(cmd, player, game_state, player_manager, online_sessi
                 else:
                     return f"{item.name} is not a weapon."
                 break
-    
+
     if not weapon_item:
         return f"You don't have '{instrument}' in your inventory."
-    
+
     # Update player's combat info with the weapon
     combat_info = active_combats[player.name]
-    old_weapon = combat_info['weapon']
-    combat_info['weapon'] = weapon_item
-    
+    old_weapon = combat_info["weapon"]
+    combat_info["weapon"] = weapon_item
+
     # Notify opponent
-    opponent = combat_info['target']
-    opponent_sid = combat_info['target_sid']
-    
+    opponent_sid = combat_info["target_sid"]
+
     if opponent_sid and utils and sio:
         weapon_msg = f"{player.name} is now using {weapon_item.name} against you!"
         await utils.send_message(sio, opponent_sid, weapon_msg)
-    
+
     # Return confirmation message
     if old_weapon:
         return f"You put away your {old_weapon.name} and ready your {weapon_item.name} for combat!"
     else:
         return f"You ready your {weapon_item.name} for combat!"
 
-async def handle_flee(cmd, player, game_state, player_manager, online_sessions, sio, utils):
+
+async def handle_flee(
+    cmd, player, game_state, player_manager, online_sessions, sio, utils
+):
     """
     Handle fleeing from combat.
     """
     # Get the subject (direction) from the parsed command
     subject = cmd.get("subject")
-    
+
     # Check if player is in combat
     if player.name not in active_combats:
         return "You're not in combat with anyone."
-    
+
     current_room = game_state.get_room(player.current_room)
-    
+
     # If a direction is specified, try to flee in that direction
     if subject and subject in current_room.exits:
         direction = subject
@@ -313,22 +388,22 @@ async def handle_flee(cmd, player, game_state, player_manager, online_sessions, 
         if not exits:
             return "There's nowhere to flee to!"
         direction = random.choice(exits)
-    
+
     # Get the destination room
     new_room_id = current_room.exits[direction]
     new_room = game_state.get_room(new_room_id)
-    
+
     if not new_room:
         return f"You tried to flee {direction}, but something went wrong!"
-    
+
     # Get opponent information before ending combat
     combat_info = active_combats[player.name]
-    opponent = combat_info['target']
-    opponent_sid = combat_info['target_sid']
-    is_mob = combat_info.get('is_mob', False)
+    opponent = combat_info["target"]
+    opponent_sid = combat_info["target_sid"]
 
     # Check if opponent is a mob
     from models.Mobile import Mobile
+
     opponent_is_mob = isinstance(opponent, Mobile)
 
     # Drop all items in the current room
@@ -344,7 +419,9 @@ async def handle_flee(cmd, player, game_state, player_manager, online_sessions, 
     points_lost = player.points // 5  # 20% of points
 
     # Use add_points to properly update levels
-    leveled_up, _ = player.add_points(-points_lost, sio, online_sessions, send_notification=False)
+    leveled_up, _ = player.add_points(
+        -points_lost, sio, online_sessions, send_notification=False
+    )
 
     # Only give points to opponent if they're a player (mobs don't have add_points)
     if not opponent_is_mob:
@@ -355,40 +432,51 @@ async def handle_flee(cmd, player, game_state, player_manager, online_sessions, 
         flee_msg = f"{player.name} has fled {direction}! You gain {points_lost} points from their cowardice."
         await utils.send_message(sio, opponent_sid, flee_msg)
         await utils.send_stats_update(sio, opponent_sid, opponent)
-    
+
     # Notify others in the old room
     if online_sessions and sio and utils:
         for sid, session_data in online_sessions.items():
-            other_player = session_data.get('player')
-            if (other_player and 
-                other_player.current_room == player.current_room and 
-                other_player != player and
-                other_player != opponent):
-                await utils.send_message(sio, sid, 
-                                       f"{player.name} has fled {direction}!")
-    
+            other_player = session_data.get("player")
+            if (
+                other_player
+                and other_player.current_room == player.current_room
+                and other_player != player
+                and other_player != opponent
+            ):
+                await utils.send_message(
+                    sio, sid, f"{player.name} has fled {direction}!"
+                )
+
     # Move the player
     player.set_current_room(new_room_id)
-    
+
     # Save changes
     player_manager.save_players()
-    
+
     # Notify others in the new room
     if online_sessions and sio and utils:
         for sid, session_data in online_sessions.items():
-            other_player = session_data.get('player')
-            if (other_player and 
-                other_player.current_room == new_room_id and 
-                other_player != player):
-                await utils.send_message(sio, sid, 
-                                       f"{player.name} runs in, panting heavily!")
-    
+            other_player = session_data.get("player")
+            if (
+                other_player
+                and other_player.current_room == new_room_id
+                and other_player != player
+            ):
+                await utils.send_message(
+                    sio, sid, f"{player.name} runs in, panting heavily!"
+                )
+
     # Return result message including the room description
-    return (f"You flee {direction}, dropping all your items and losing {points_lost} points to {opponent.name}!\n\n"
-           f"{new_room.name}\n{new_room.description}")
+    return (
+        f"You flee {direction}, dropping all your items and losing {points_lost} points to {opponent.name}!\n\n"
+        f"{new_room.name}\n{new_room.description}"
+    )
+
 
 # ===== COMBAT TICK PROCESSING =====
-async def process_combat_tick(sio, online_sessions, player_manager, game_state, utils, mob_manager=None):
+async def process_combat_tick(
+    sio, online_sessions, player_manager, game_state, utils, mob_manager=None
+):
     """
     Process one tick of combat for all active combats (including mobs).
     This should be called regularly by the game's tick service.
@@ -406,7 +494,7 @@ async def process_combat_tick(sio, online_sessions, player_manager, game_state, 
     def _cleanup_entry(identifier):
         entry = active_combats.pop(identifier, None)
         if entry:
-            entity = entry.get('entity')
+            entity = entry.get("entity")
             if isinstance(entity, Mobile):
                 entity.target_player = None
 
@@ -421,8 +509,8 @@ async def process_combat_tick(sio, online_sessions, player_manager, game_state, 
         if not combat_entry:
             continue
 
-        attacker_entity = combat_entry.get('entity')
-        defender_entity = combat_entry.get('target')
+        attacker_entity = combat_entry.get("entity")
+        defender_entity = combat_entry.get("target")
 
         if not attacker_entity or not defender_entity:
             logger.debug("Skipping %s due to missing entity or target", combat_key)
@@ -438,12 +526,18 @@ async def process_combat_tick(sio, online_sessions, player_manager, game_state, 
 
         if defender_is_mob and defender_entity.state != "alive":
             logger.info("Cleaning up combat for dead mob %s", defender_entity.id)
-            _cleanup_entry(attacker_entity.id if attacker_is_mob else attacker_entity.name)
+            _cleanup_entry(
+                attacker_entity.id if attacker_is_mob else attacker_entity.name
+            )
             _cleanup_entry(defender_entity.id)
             continue
 
-        attacker_identifier = attacker_entity.id if attacker_is_mob else attacker_entity.name
-        defender_identifier = defender_entity.id if defender_is_mob else defender_entity.name
+        attacker_identifier = (
+            attacker_entity.id if attacker_is_mob else attacker_entity.name
+        )
+        defender_identifier = (
+            defender_entity.id if defender_is_mob else defender_entity.name
+        )
 
         combat_pair = tuple(sorted([attacker_identifier, defender_identifier]))
         if combat_pair in processed_pairs:
@@ -455,7 +549,6 @@ async def process_combat_tick(sio, online_sessions, player_manager, game_state, 
         defender_entry = active_combats.get(defender_identifier)
 
         attacker_entry_ref = combat_entry
-        defender_entry_ref = defender_entry
         initiative_holder = None
 
         if not defender_entry:
@@ -466,40 +559,44 @@ async def process_combat_tick(sio, online_sessions, player_manager, game_state, 
             _cleanup_entry(attacker_identifier)
             continue
 
-        if combat_entry.get('initiative'):
-            initiative_holder = 'attacker'
-        elif defender_entry and defender_entry.get('initiative'):
-            initiative_holder = 'defender'
+        if combat_entry.get("initiative"):
+            initiative_holder = "attacker"
+        elif defender_entry and defender_entry.get("initiative"):
+            initiative_holder = "defender"
         else:
-            combat_entry['initiative'] = True
-            initiative_holder = 'attacker'
+            combat_entry["initiative"] = True
+            initiative_holder = "attacker"
 
-        if initiative_holder == 'attacker':
+        if initiative_holder == "attacker":
             attacker = attacker_entity
             defender = defender_entity
             attacker_key = attacker_identifier
             defender_key = defender_identifier
         else:
             if not defender_entry:
-                logger.debug("Defender entry missing for %s; defaulting to attacker initiative", combat_pair)
+                logger.debug(
+                    "Defender entry missing for %s; defaulting to attacker initiative",
+                    combat_pair,
+                )
                 attacker = attacker_entity
                 defender = defender_entity
                 attacker_key = attacker_identifier
                 defender_key = defender_identifier
                 attacker_entry_ref = combat_entry
-                defender_entry_ref = defender_entry
             else:
-                attacker = defender_entry.get('entity')
-                defender = defender_entry.get('target')
+                attacker = defender_entry.get("entity")
+                defender = defender_entry.get("target")
                 attacker_key = defender_identifier
                 defender_key = attacker_identifier
                 attacker_entry_ref = defender_entry
-                defender_entry_ref = combat_entry
 
         if not attacker or not defender:
             logger.error(
                 "SKIPPING - attacker=%s, defender=%s, attacker_key=%s, defender_key=%s",
-                attacker, defender, attacker_key, defender_key,
+                attacker,
+                defender,
+                attacker_key,
+                defender_key,
             )
             _cleanup_entry(attacker_key)
             _cleanup_entry(defender_key)
@@ -508,8 +605,12 @@ async def process_combat_tick(sio, online_sessions, player_manager, game_state, 
         attacker_is_mob = isinstance(attacker, Mobile)
         defender_is_mob = isinstance(defender, Mobile)
 
-        attacker_sid = None if attacker_is_mob else find_player_sid(attacker, online_sessions)
-        defender_sid = None if defender_is_mob else find_player_sid(defender, online_sessions)
+        attacker_sid = (
+            None if attacker_is_mob else find_player_sid(attacker, online_sessions)
+        )
+        defender_sid = (
+            None if defender_is_mob else find_player_sid(defender, online_sessions)
+        )
 
         logger.info(
             "SID check - attacker_is_mob: %s, attacker_sid: %s, defender_is_mob: %s, defender_sid: %s",
@@ -535,7 +636,9 @@ async def process_combat_tick(sio, online_sessions, player_manager, game_state, 
             _cleanup_entry(defender_identifier)
             continue
 
-        attacker_weapon = attacker_entry_ref.get('weapon') if attacker_entry_ref else None
+        attacker_weapon = (
+            attacker_entry_ref.get("weapon") if attacker_entry_ref else None
+        )
 
         if attacker_is_mob or defender_is_mob:
             if mob_manager:
@@ -578,17 +681,28 @@ async def process_combat_tick(sio, online_sessions, player_manager, game_state, 
             )
 
         if attacker_key in active_combats:
-            active_combats[attacker_key]['initiative'] = False
+            active_combats[attacker_key]["initiative"] = False
             logger.info(f"Toggled {attacker_key} initiative to False")
         if defender_key in active_combats:
-            active_combats[defender_key]['initiative'] = True
+            active_combats[defender_key]["initiative"] = True
             logger.info(f"Toggled {defender_key} initiative to True")
 
-async def process_combat_attack(attacker, defender, weapon, attacker_sid, defender_sid, 
-                               player_manager, game_state, online_sessions, sio, utils):
+
+async def process_combat_attack(
+    attacker,
+    defender,
+    weapon,
+    attacker_sid,
+    defender_sid,
+    player_manager,
+    game_state,
+    online_sessions,
+    sio,
+    utils,
+):
     """
     Process a single attack in combat.
-    
+
     Args:
         attacker (Player): The attacking player
         defender (Player): The defending player
@@ -608,61 +722,79 @@ async def process_combat_attack(attacker, defender, weapon, attacker_sid, defend
             if item == weapon:  # Check if the same object is still in inventory
                 weapon_in_inventory = True
                 break
-        
+
         # If weapon is no longer in inventory, update combat info to unarmed
         if not weapon_in_inventory:
             weapon = None
             # Update the attacker's combat info
             if attacker.name in active_combats:
-                active_combats[attacker.name]['weapon'] = None
-    
+                active_combats[attacker.name]["weapon"] = None
+
     # Calculate base damage based on attacker's strength and weapon
-    weapon_bonus = getattr(weapon, 'damage', 5) if weapon else 0
+    weapon_bonus = getattr(weapon, "damage", 5) if weapon else 0
     base_damage = (attacker.strength // 15) + weapon_bonus
-    
+
     # Add random variation (±30%)
     variation = random.uniform(0.7, 1.3)
     damage = max(1, int(base_damage * variation))
-    
+
     # Calculate hit chance based on attacker's dexterity versus defender's
     hit_chance = min(90, 50 + (attacker.dexterity - defender.dexterity) // 2)
-    
+
     # Determine if the attack hits
     roll = random.randint(1, 100)
-    
+
     if roll <= hit_chance:
         # Attack hits - apply damage to defender
         defender.stamina = max(0, defender.stamina - damage)
-        
+
         # Send messages about the hit
         if damage > base_damage:  # Critical hit (high roll)
-            attack_msg_attacker = CombatDialogue.get_player_hit_message(defender.name, weapon)
-            attack_msg_defender = CombatDialogue.get_opponent_hit_message(attacker.name, weapon)
+            attack_msg_attacker = CombatDialogue.get_player_hit_message(
+                defender.name, weapon
+            )
+            attack_msg_defender = CombatDialogue.get_opponent_hit_message(
+                attacker.name, weapon
+            )
         else:  # Normal hit
-            attack_msg_attacker = CombatDialogue.get_player_hit_message(defender.name, weapon)
-            attack_msg_defender = CombatDialogue.get_opponent_hit_message(attacker.name, weapon)
-        
+            attack_msg_attacker = CombatDialogue.get_player_hit_message(
+                defender.name, weapon
+            )
+            attack_msg_defender = CombatDialogue.get_opponent_hit_message(
+                attacker.name, weapon
+            )
+
         # For heavier hits, add a recovery message for the defender
         if damage > base_damage * 0.8:
             attack_msg_defender += "\n" + CombatDialogue.get_heavy_damage_recovery()
-        
+
         # Send messages
         await utils.send_message(sio, attacker_sid, attack_msg_attacker)
         await utils.send_message(sio, defender_sid, attack_msg_defender)
-        
+
         # Update defender's stats display
         await utils.send_stats_update(sio, defender_sid, defender)
-        
+
         # Check if defender is defeated
         if defender.stamina <= 0:
-            await handle_player_defeat(attacker, defender, defender_sid, game_state, player_manager, online_sessions, sio, utils)
+            await handle_player_defeat(
+                attacker,
+                defender,
+                defender_sid,
+                game_state,
+                player_manager,
+                online_sessions,
+                sio,
+                utils,
+            )
     else:
         # Attack misses
         miss_msg_attacker = CombatDialogue.get_player_miss_message(defender.name)
         miss_msg_defender = CombatDialogue.get_opponent_miss_message(attacker.name)
-        
+
         await utils.send_message(sio, attacker_sid, miss_msg_attacker)
         await utils.send_message(sio, defender_sid, miss_msg_defender)
+
 
 def reset_player_persona(player):
     """
@@ -676,18 +808,28 @@ def reset_player_persona(player):
     # Reset to level 0 (neophyte)
     level_data = levels[0]
     player.points = 0
-    player.level = level_data['name']
-    player.stamina = level_data['stamina']
-    player.max_stamina = level_data['stamina']
-    player.strength = level_data['strength']
-    player.dexterity = level_data['dexterity']
-    player.magic = level_data['magic']
-    player.carrying_capacity_num = level_data['carrying_capacity_num']
+    player.level = level_data["name"]
+    player.stamina = level_data["stamina"]
+    player.max_stamina = level_data["stamina"]
+    player.strength = level_data["strength"]
+    player.dexterity = level_data["dexterity"]
+    player.magic = level_data["magic"]
+    player.carrying_capacity_num = level_data["carrying_capacity_num"]
     player.current_level_at = 0
     player.next_level_at = 400
 
 
-async def handle_respawn_choice(player, choice, player_sid, game_state, player_manager, online_sessions, sio, utils, combat_death=True):
+async def handle_respawn_choice(
+    player,
+    choice,
+    player_sid,
+    game_state,
+    player_manager,
+    online_sessions,
+    sio,
+    utils,
+    combat_death=True,
+):
     """
     Handle a player's choice to respawn or disconnect after death.
 
@@ -707,7 +849,7 @@ async def handle_respawn_choice(player, choice, player_sid, game_state, player_m
     """
     choice_lower = choice.lower().strip()
 
-    if choice_lower in ['yes', 'y']:
+    if choice_lower in ["yes", "y"]:
         # Player wants to respawn
         if combat_death:
             # Combat death: reset persona
@@ -719,7 +861,7 @@ async def handle_respawn_choice(player, choice, player_sid, game_state, player_m
 
         # Clear the awaiting_respawn flag
         if player_sid in online_sessions:
-            online_sessions[player_sid]['awaiting_respawn'] = False
+            online_sessions[player_sid]["awaiting_respawn"] = False
 
         # Save changes
         player_manager.save_players()
@@ -727,10 +869,15 @@ async def handle_respawn_choice(player, choice, player_sid, game_state, player_m
         # Send welcome back message and room description (with other players)
         from commands.executor import build_look_description
         from services.notifications import broadcast_arrival
-        mob_manager = getattr(utils, 'mob_manager', None) if hasattr(utils, '__dict__') else None
+
+        mob_manager = (
+            getattr(utils, "mob_manager", None) if hasattr(utils, "__dict__") else None
+        )
 
         welcome_msg = "You awaken in the village center.\n\n"
-        room_desc = build_look_description(player, game_state, online_sessions, look=True, mob_manager=mob_manager)
+        room_desc = build_look_description(
+            player, game_state, online_sessions, look=True, mob_manager=mob_manager
+        )
         welcome_msg += room_desc
 
         await utils.send_message(sio, player_sid, welcome_msg)
@@ -743,7 +890,7 @@ async def handle_respawn_choice(player, choice, player_sid, game_state, player_m
     else:
         # Player chooses not to continue - disconnect them
         if player_sid in online_sessions:
-            online_sessions[player_sid]['awaiting_respawn'] = False
+            online_sessions[player_sid]["awaiting_respawn"] = False
 
         # Disconnect the player
         await utils.send_message(sio, player_sid, "Farewell! Thank you for playing.")
@@ -751,7 +898,16 @@ async def handle_respawn_choice(player, choice, player_sid, game_state, player_m
         return None
 
 
-async def handle_player_defeat(attacker, defender, defender_sid, game_state, player_manager, online_sessions, sio, utils):
+async def handle_player_defeat(
+    attacker,
+    defender,
+    defender_sid,
+    game_state,
+    player_manager,
+    online_sessions,
+    sio,
+    utils,
+):
     """
     Handle when a player defeats another player.
 
@@ -778,7 +934,9 @@ async def handle_player_defeat(attacker, defender, defender_sid, game_state, pla
 
     # Transfer points to attacker
     points_lost = defender.points
-    points_gained = max(100, points_lost // 2)  # Victor gets half or at least 100 points
+    points_gained = max(
+        100, points_lost // 2
+    )  # Victor gets half or at least 100 points
     attacker.add_points(points_gained, sio, online_sessions, send_notification=False)
 
     # Save attacker's changes
@@ -790,10 +948,12 @@ async def handle_player_defeat(attacker, defender, defender_sid, game_state, pla
     # Get attacker's weapon
     attacker_weapon = None
     if attacker.name in active_combats:
-        attacker_weapon = active_combats[attacker.name]['weapon']
+        attacker_weapon = active_combats[attacker.name]["weapon"]
 
     # Get killing blow message
-    killing_blow_msg = CombatDialogue.get_killing_blow_message(defender.name, attacker_weapon)
+    killing_blow_msg = CombatDialogue.get_killing_blow_message(
+        defender.name, attacker_weapon
+    )
 
     # Notify the attacker of their victory
     if attacker_sid and sio and utils:
@@ -805,13 +965,16 @@ async def handle_player_defeat(attacker, defender, defender_sid, game_state, pla
     # Notify others in the old room
     if online_sessions and sio and utils:
         for sid, session_data in online_sessions.items():
-            other_player = session_data.get('player')
-            if (other_player and
-                other_player.current_room == old_room and
-                other_player != defender and
-                other_player != attacker):
-                await utils.send_message(sio, sid,
-                                       f"{attacker.name} has defeated {defender.name}!")
+            other_player = session_data.get("player")
+            if (
+                other_player
+                and other_player.current_room == old_room
+                and other_player != defender
+                and other_player != attacker
+            ):
+                await utils.send_message(
+                    sio, sid, f"{attacker.name} has defeated {defender.name}!"
+                )
 
     # Notify the defender and prompt for respawn choice
     if defender_sid and sio and utils:
@@ -824,17 +987,18 @@ async def handle_player_defeat(attacker, defender, defender_sid, game_state, pla
         # Set flag indicating player is awaiting respawn choice
         # Also remove player from game world (limbo state)
         if defender_sid in online_sessions:
-            online_sessions[defender_sid]['awaiting_respawn'] = True
-            online_sessions[defender_sid]['combat_death'] = True
+            online_sessions[defender_sid]["awaiting_respawn"] = True
+            online_sessions[defender_sid]["combat_death"] = True
 
         # Put player in limbo (remove from game world)
         defender.current_room = None
+
 
 # ===== HELPER FUNCTIONS =====
 def find_player_sid(player_name_or_obj, online_sessions):
     """Find a player's session ID from their name or object."""
     for sid, session in online_sessions.items():
-        player = session.get('player')
+        player = session.get("player")
         if player:
             if isinstance(player_name_or_obj, str):
                 if player.name.lower() == player_name_or_obj.lower():
@@ -844,13 +1008,15 @@ def find_player_sid(player_name_or_obj, online_sessions):
                     return sid
     return None
 
+
 def find_player_by_name(player_name, online_sessions):
     """Find a player object from their name."""
     for session in online_sessions.values():
-        player = session.get('player')
+        player = session.get("player")
         if player and player.name.lower() == player_name.lower():
             return player
     return None
+
 
 def end_combat(player1_name, player2_name):
     """End combat between two players."""
@@ -859,45 +1025,74 @@ def end_combat(player1_name, player2_name):
     if player2_name in active_combats:
         del active_combats[player2_name]
 
+
 def is_in_combat(player_name):
     """Check if a player is in combat."""
     return player_name in active_combats
+
 
 # Add restriction checking function to command executor
 def check_command_restrictions(cmd, player, sio=None, sid=None, utils=None):
     """
     Check if a command is allowed to be executed based on player state.
-    
+
     Args:
         cmd (dict): The parsed command
         player (Player): The player executing the command
         sio (SocketIO, optional): Socket.IO instance for sending messages
         sid (str, optional): Session ID for sending messages
         utils (module, optional): Utilities module for sending messages
-        
+
     Returns:
         tuple: (allowed, message) - Whether the command is allowed and an error message if not
     """
     verb = cmd.get("verb", "").lower()
-    
+
     # Check if player is in combat and trying to use a restricted command
     if player.name in active_combats and verb in RESTRICTED_COMMANDS:
-        if verb in ["north", "south", "east", "west", "northeast", "northwest", 
-                   "southeast", "southwest", "up", "down", "in", "out", 
-                   "n", "s", "e", "w", "ne", "nw", "se", "sw", "u", "d"]:
-            return False, "You can't move while in combat! Use 'flee <direction>' instead."
+        if verb in [
+            "north",
+            "south",
+            "east",
+            "west",
+            "northeast",
+            "northwest",
+            "southeast",
+            "southwest",
+            "up",
+            "down",
+            "in",
+            "out",
+            "n",
+            "s",
+            "e",
+            "w",
+            "ne",
+            "nw",
+            "se",
+            "sw",
+            "u",
+            "d",
+        ]:
+            return (
+                False,
+                "You can't move while in combat! Use 'flee <direction>' instead.",
+            )
         elif verb == "quit":
             return False, "You can't quit while in combat! That would be cowardice."
         else:
             return False, f"You can't use '{verb}' while in combat!"
-    
+
     return True, ""
 
+
 # Function to handle player disconnection during combat
-async def handle_combat_disconnect(player_name, online_sessions, player_manager, game_state, sio, utils):
+async def handle_combat_disconnect(
+    player_name, online_sessions, player_manager, game_state, sio, utils
+):
     """
     Handle when a player disconnects during combat.
-    
+
     Args:
         player_name (str): The name of the disconnected player
         online_sessions (dict): Online sessions dictionary
@@ -909,61 +1104,79 @@ async def handle_combat_disconnect(player_name, online_sessions, player_manager,
     if player_name in active_combats:
         # Get opponent info
         combat_info = active_combats[player_name]
-        opponent = combat_info['target']
-        opponent_sid = combat_info['target_sid']
-        
+        opponent = combat_info["target"]
+        opponent_sid = combat_info["target_sid"]
+
         # Get player object if available
         player = None
         for session in online_sessions.values():
-            if session.get('player') and session['player'].name == player_name:
-                player = session['player']
+            if session.get("player") and session["player"].name == player_name:
+                player = session["player"]
                 break
-        
+
         if not player:
             # Player is fully disconnected
             # Just notify opponent and end combat
             end_combat(player_name, opponent.name)
-            
+
             if opponent_sid and sio and utils:
-                disconnect_msg = f"{player_name} has disconnected during combat. You win by default!"
+                disconnect_msg = (
+                    f"{player_name} has disconnected during combat. You win by default!"
+                )
                 await utils.send_message(sio, opponent_sid, disconnect_msg)
             return
-        
+
         # If player object exists, treat it similar to a defeat
         current_room = game_state.get_room(player.current_room)
-        
+
         # Drop all player's items
         for item in list(player.inventory):
             player.remove_item(item)
             current_room.add_item(item)
-        
+
         # Zero out points and give half to opponent
         points_lost = player.points
         points_gained = max(100, points_lost // 2)
-        
+
         # Use add_points to properly update levels
-        player.add_points(-points_lost, sio, online_sessions, send_notification=False)  # Zero out points
-        opponent.add_points(points_gained, sio, online_sessions, send_notification=False)  # Award points to opponent
-        
+        player.add_points(
+            -points_lost, sio, online_sessions, send_notification=False
+        )  # Zero out points
+        opponent.add_points(
+            points_gained, sio, online_sessions, send_notification=False
+        )  # Award points to opponent
+
         # End combat
         end_combat(player_name, opponent.name)
-        
+
         # Notify opponent with points in brackets first, then a victory message
         if opponent_sid and sio and utils:
             # Display points in brackets MUD1-style
             points_msg = f"[{opponent.points}]"
             await utils.send_message(sio, opponent_sid, points_msg)
-            
+
             # Then show the disconnect victory message
             disconnect_msg = f"{player_name} has disconnected during combat!"
             await utils.send_message(sio, opponent_sid, disconnect_msg)
             await utils.send_stats_update(sio, opponent_sid, opponent)
-        
+
         # Save changes
         player_manager.save_players()
 
+
 # ===== MOB COMBAT FUNCTIONS =====
-async def handle_mob_attack(player, mob, weapon, player_sid, player_manager, game_state, online_sessions, mob_manager, sio, utils):
+async def handle_mob_attack(
+    player,
+    mob,
+    weapon,
+    player_sid,
+    player_manager,
+    game_state,
+    online_sessions,
+    mob_manager,
+    sio,
+    utils,
+):
     """
     Handle a player attacking a mob.
 
@@ -984,24 +1197,24 @@ async def handle_mob_attack(player, mob, weapon, player_sid, player_manager, gam
     """
     # Start combat tracking for player
     active_combats[player.name] = {
-        'target': mob,
-        'target_sid': None,  # Mobs don't have session IDs
-        'weapon': weapon,
-        'initiative': True,  # Attacker starts with initiative
-        'last_turn': None,
-        'is_mob': False,  # Player is not a mob
-        'entity': player,
+        "target": mob,
+        "target_sid": None,  # Mobs don't have session IDs
+        "weapon": weapon,
+        "initiative": True,  # Attacker starts with initiative
+        "last_turn": None,
+        "is_mob": False,  # Player is not a mob
+        "entity": player,
     }
 
     # Start combat tracking for mob
     active_combats[mob.id] = {
-        'target': player,
-        'target_sid': player_sid,
-        'weapon': None,  # Mobs use their base damage
-        'initiative': False,  # Defender doesn't have initiative
-        'last_turn': None,
-        'is_mob': True,  # This is a mob
-        'entity': mob,
+        "target": player,
+        "target_sid": player_sid,
+        "weapon": None,  # Mobs use their base damage
+        "initiative": False,  # Defender doesn't have initiative
+        "last_turn": None,
+        "is_mob": True,  # This is a mob
+        "entity": mob,
     }
 
     # Set mob's target
@@ -1011,20 +1224,32 @@ async def handle_mob_attack(player, mob, weapon, player_sid, player_manager, gam
     current_room = game_state.get_room(player.current_room)
     if current_room and online_sessions and sio and utils:
         for sid, session_data in online_sessions.items():
-            other_player = session_data.get('player')
-            if (other_player and
-                other_player.current_room == player.current_room and
-                other_player != player):
+            other_player = session_data.get("player")
+            if (
+                other_player
+                and other_player.current_room == player.current_room
+                and other_player != player
+            ):
                 await utils.send_message(sio, sid, f"{player.name} attacks {mob.name}!")
 
     # Immediate first attack
-    await process_mob_combat_attack(player, mob, weapon, player_sid,
-                                    player_manager, game_state, online_sessions, mob_manager, sio, utils)
+    await process_mob_combat_attack(
+        player,
+        mob,
+        weapon,
+        player_sid,
+        player_manager,
+        game_state,
+        online_sessions,
+        mob_manager,
+        sio,
+        utils,
+    )
 
     # Toggle initiative after immediate attack so combat alternates properly
     if player.name in active_combats and mob.id in active_combats:
-        active_combats[player.name]['initiative'] = False
-        active_combats[mob.id]['initiative'] = True
+        active_combats[player.name]["initiative"] = False
+        active_combats[mob.id]["initiative"] = True
 
     result = f"You attack {mob.name}"
     if weapon:
@@ -1034,7 +1259,9 @@ async def handle_mob_attack(player, mob, weapon, player_sid, player_manager, gam
     return result
 
 
-async def mob_initiate_attack(mob, player, player_sid, player_manager, game_state, online_sessions, sio, utils):
+async def mob_initiate_attack(
+    mob, player, player_sid, player_manager, game_state, online_sessions, sio, utils
+):
     """
     Handle a mob initiating an attack on a player.
 
@@ -1054,24 +1281,24 @@ async def mob_initiate_attack(mob, player, player_sid, player_manager, game_stat
 
     # Start combat tracking for mob
     active_combats[mob.id] = {
-        'target': player,
-        'target_sid': player_sid,
-        'weapon': None,
-        'initiative': True,  # Mob gets initiative
-        'last_turn': None,
-        'is_mob': True,
-        'entity': mob,
+        "target": player,
+        "target_sid": player_sid,
+        "weapon": None,
+        "initiative": True,  # Mob gets initiative
+        "last_turn": None,
+        "is_mob": True,
+        "entity": mob,
     }
 
     # Start combat tracking for player
     active_combats[player.name] = {
-        'target': mob,
-        'target_sid': None,
-        'weapon': None,  # Player starts barehanded
-        'initiative': False,
-        'last_turn': None,
-        'is_mob': False,
-        'entity': player,
+        "target": mob,
+        "target_sid": None,
+        "weapon": None,  # Player starts barehanded
+        "initiative": False,
+        "last_turn": None,
+        "is_mob": False,
+        "entity": player,
     }
 
     # Set mob's target
@@ -1082,12 +1309,32 @@ async def mob_initiate_attack(mob, player, player_sid, player_manager, game_stat
     await utils.send_message(sio, player_sid, attack_msg)
 
     # Immediate first attack from the mob
-    await process_mob_combat_attack(mob, player, None, None,
-                                    player_manager, game_state, online_sessions, None, sio, utils)
+    await process_mob_combat_attack(
+        mob,
+        player,
+        None,
+        None,
+        player_manager,
+        game_state,
+        online_sessions,
+        None,
+        sio,
+        utils,
+    )
 
 
-async def process_mob_combat_attack(attacker, defender, weapon, attacker_sid,
-                                   player_manager, game_state, online_sessions, mob_manager, sio, utils):
+async def process_mob_combat_attack(
+    attacker,
+    defender,
+    weapon,
+    attacker_sid,
+    player_manager,
+    game_state,
+    online_sessions,
+    mob_manager,
+    sio,
+    utils,
+):
     """
     Process a combat attack involving a mob (either attacking or being attacked).
 
@@ -1115,13 +1362,13 @@ async def process_mob_combat_attack(attacker, defender, weapon, attacker_sid,
         if not weapon_in_inventory:
             weapon = None
             if attacker.name in active_combats:
-                active_combats[attacker.name]['weapon'] = None
+                active_combats[attacker.name]["weapon"] = None
 
     # Calculate damage
     if attacker_is_mob:
         base_damage = attacker.damage
     else:
-        weapon_bonus = getattr(weapon, 'damage', 5) if weapon else 0
+        weapon_bonus = getattr(weapon, "damage", 5) if weapon else 0
         base_damage = (attacker.strength // 15) + weapon_bonus
 
     # Add random variation (±30%)
@@ -1161,10 +1408,28 @@ async def process_mob_combat_attack(attacker, defender, weapon, attacker_sid,
         # Check for death
         if is_dead:
             if defender_is_mob:
-                await handle_mob_defeat(attacker, defender, attacker_sid, game_state, player_manager, online_sessions, mob_manager, sio, utils)
+                await handle_mob_defeat(
+                    attacker,
+                    defender,
+                    attacker_sid,
+                    game_state,
+                    player_manager,
+                    online_sessions,
+                    mob_manager,
+                    sio,
+                    utils,
+                )
             else:
                 # Player was defeated by mob
-                await handle_player_defeat_by_mob(attacker, defender, game_state, player_manager, online_sessions, sio, utils)
+                await handle_player_defeat_by_mob(
+                    attacker,
+                    defender,
+                    game_state,
+                    player_manager,
+                    online_sessions,
+                    sio,
+                    utils,
+                )
     else:
         # Attack misses
         if attacker_is_mob:
@@ -1178,7 +1443,17 @@ async def process_mob_combat_attack(attacker, defender, weapon, attacker_sid,
                 await utils.send_message(sio, attacker_sid, miss_msg)
 
 
-async def handle_mob_defeat(player, mob, player_sid, game_state, player_manager, online_sessions, mob_manager, sio, utils):
+async def handle_mob_defeat(
+    player,
+    mob,
+    player_sid,
+    game_state,
+    player_manager,
+    online_sessions,
+    mob_manager,
+    sio,
+    utils,
+):
     """
     Handle when a player defeats a mob.
 
@@ -1229,11 +1504,15 @@ async def handle_mob_defeat(player, mob, player_sid, game_state, player_manager,
     # Notify others in room
     if online_sessions and sio and utils:
         for sid, session_data in online_sessions.items():
-            other_player = session_data.get('player')
-            if (other_player and
-                other_player.current_room == mob.current_room and
-                other_player != player):
-                await utils.send_message(sio, sid, f"{player.name} has slain {mob.name}!")
+            other_player = session_data.get("player")
+            if (
+                other_player
+                and other_player.current_room == mob.current_room
+                and other_player != player
+            ):
+                await utils.send_message(
+                    sio, sid, f"{player.name} has slain {mob.name}!"
+                )
 
     # Remove mob from game
     if mob_manager:
@@ -1243,7 +1522,9 @@ async def handle_mob_defeat(player, mob, player_sid, game_state, player_manager,
     player_manager.save_players()
 
 
-async def handle_player_defeat_by_mob(mob, player, game_state, player_manager, online_sessions, sio, utils):
+async def handle_player_defeat_by_mob(
+    mob, player, game_state, player_manager, online_sessions, sio, utils
+):
     """
     Handle when a mob defeats a player.
 
@@ -1275,11 +1556,15 @@ async def handle_player_defeat_by_mob(mob, player, game_state, player_manager, o
     # Notify others in old room
     if online_sessions and sio and utils:
         for sid, session_data in online_sessions.items():
-            other_player = session_data.get('player')
-            if (other_player and
-                other_player.current_room == old_room and
-                other_player != player):
-                await utils.send_message(sio, sid, f"{mob.name.capitalize()} has defeated {player.name}!")
+            other_player = session_data.get("player")
+            if (
+                other_player
+                and other_player.current_room == old_room
+                and other_player != player
+            ):
+                await utils.send_message(
+                    sio, sid, f"{mob.name.capitalize()} has defeated {player.name}!"
+                )
 
     # Notify player and prompt for respawn choice
     player_sid = find_player_sid(player, online_sessions)
@@ -1293,14 +1578,16 @@ async def handle_player_defeat_by_mob(mob, player, game_state, player_manager, o
         # Set flag indicating player is awaiting respawn choice
         # Also remove player from game world (limbo state)
         if player_sid in online_sessions:
-            online_sessions[player_sid]['awaiting_respawn'] = True
-            online_sessions[player_sid]['combat_death'] = True
+            online_sessions[player_sid]["awaiting_respawn"] = True
+            online_sessions[player_sid]["combat_death"] = True
 
         # Put player in limbo (remove from game world)
         player.current_room = None
 
 
-async def handle_non_combat_death(player, player_sid, game_state, player_manager, online_sessions, sio, utils):
+async def handle_non_combat_death(
+    player, player_sid, game_state, player_manager, online_sessions, sio, utils
+):
     """
     Handle when a player dies from non-combat sources (traps, etc.).
 
@@ -1324,10 +1611,12 @@ async def handle_non_combat_death(player, player_sid, game_state, player_manager
     # Notify others in the room
     if online_sessions and sio and utils:
         for sid, session_data in online_sessions.items():
-            other_player = session_data.get('player')
-            if (other_player and
-                other_player.current_room == old_room and
-                other_player != player):
+            other_player = session_data.get("player")
+            if (
+                other_player
+                and other_player.current_room == old_room
+                and other_player != player
+            ):
                 await utils.send_message(sio, sid, f"{player.name} has died!")
 
     # Notify player and prompt for respawn choice
@@ -1341,16 +1630,25 @@ async def handle_non_combat_death(player, player_sid, game_state, player_manager
         # Set flag indicating player is awaiting respawn choice
         # Also remove player from game world (limbo state)
         if player_sid in online_sessions:
-            online_sessions[player_sid]['awaiting_respawn'] = True
-            online_sessions[player_sid]['combat_death'] = False  # Non-combat death
+            online_sessions[player_sid]["awaiting_respawn"] = True
+            online_sessions[player_sid]["combat_death"] = False  # Non-combat death
 
         # Put player in limbo (remove from game world)
         player.current_room = None
 
+
 # Register combat commands
 command_registry.register("attack", handle_attack, "Attack a target (player or NPC).")
-command_registry.register("retaliate", handle_retaliate, "Use a weapon in combat. Usage: retaliate with <weapon>")
-command_registry.register("flee", handle_flee, "Escape from combat, dropping all items and losing some points.")
+command_registry.register(
+    "retaliate",
+    handle_retaliate,
+    "Use a weapon in combat. Usage: retaliate with <weapon>",
+)
+command_registry.register(
+    "flee",
+    handle_flee,
+    "Escape from combat, dropping all items and losing some points.",
+)
 
 # Register aliases
 command_registry.register_alias("kill", "attack")

@@ -7,7 +7,7 @@ This test verifies that the same user cannot log in twice simultaneously.
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -25,21 +25,24 @@ class DuplicateLoginPreventionTest(unittest.IsolatedAsyncioTestCase):
 
         # Simulate online_sessions with one logged-in user
         online_sessions = {
-            'sid-1': {
-                'player': logged_in_player,
+            "sid-1": {
+                "player": logged_in_player,
             }
         }
 
         # Simulate a new login attempt for the same user
         username_to_check = "TestUser"
-        current_sid = 'sid-2'
+        current_sid = "sid-2"
 
         # Perform the duplicate check (same logic as event_handlers.py)
         duplicate_found = False
         for other_sid, other_session in online_sessions.items():
             if other_sid != current_sid:
-                other_player = other_session.get('player')
-                if other_player and other_player.name.lower() == username_to_check.lower():
+                other_player = other_session.get("player")
+                if (
+                    other_player
+                    and other_player.name.lower() == username_to_check.lower()
+                ):
                     duplicate_found = True
                     break
 
@@ -54,21 +57,24 @@ class DuplicateLoginPreventionTest(unittest.IsolatedAsyncioTestCase):
 
         # Simulate online_sessions with one logged-in user
         online_sessions = {
-            'sid-1': {
-                'player': logged_in_player,
+            "sid-1": {
+                "player": logged_in_player,
             }
         }
 
         # Simulate a login attempt for a different user
         username_to_check = "User2"
-        current_sid = 'sid-2'
+        current_sid = "sid-2"
 
         # Perform the duplicate check
         duplicate_found = False
         for other_sid, other_session in online_sessions.items():
             if other_sid != current_sid:
-                other_player = other_session.get('player')
-                if other_player and other_player.name.lower() == username_to_check.lower():
+                other_player = other_session.get("player")
+                if (
+                    other_player
+                    and other_player.name.lower() == username_to_check.lower()
+                ):
                     duplicate_found = True
                     break
 
@@ -83,21 +89,24 @@ class DuplicateLoginPreventionTest(unittest.IsolatedAsyncioTestCase):
 
         # Simulate online_sessions
         online_sessions = {
-            'sid-1': {
-                'player': logged_in_player,
+            "sid-1": {
+                "player": logged_in_player,
             }
         }
 
         # Try to log in with different case
         username_to_check = "testuser"
-        current_sid = 'sid-2'
+        current_sid = "sid-2"
 
         # Perform the duplicate check
         duplicate_found = False
         for other_sid, other_session in online_sessions.items():
             if other_sid != current_sid:
-                other_player = other_session.get('player')
-                if other_player and other_player.name.lower() == username_to_check.lower():
+                other_player = other_session.get("player")
+                if (
+                    other_player
+                    and other_player.name.lower() == username_to_check.lower()
+                ):
                     duplicate_found = True
                     break
 
@@ -112,27 +121,32 @@ class DuplicateLoginPreventionTest(unittest.IsolatedAsyncioTestCase):
 
         # Simulate online_sessions with one user
         online_sessions = {
-            'sid-1': {
-                'player': player,
+            "sid-1": {
+                "player": player,
             }
         }
 
         # Check the same sid
         username_to_check = "TestUser"
-        current_sid = 'sid-1'
+        current_sid = "sid-1"
 
         # Perform the duplicate check
         duplicate_found = False
         for other_sid, other_session in online_sessions.items():
             if other_sid != current_sid:
-                other_player = other_session.get('player')
-                if other_player and other_player.name.lower() == username_to_check.lower():
+                other_player = other_session.get("player")
+                if (
+                    other_player
+                    and other_player.name.lower() == username_to_check.lower()
+                ):
                     duplicate_found = True
                     break
 
         # Assert duplicate was NOT detected (same sid excluded)
-        self.assertFalse(duplicate_found, "Same session should not be flagged as duplicate")
+        self.assertFalse(
+            duplicate_found, "Same session should not be flagged as duplicate"
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

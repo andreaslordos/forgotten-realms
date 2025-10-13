@@ -16,13 +16,21 @@ from unittest.mock import AsyncMock, Mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from commands.standard import (
-    handle_look, handle_inventory, handle_exits, handle_get, handle_drop,
-    handle_score, handle_help, handle_info, handle_levels, handle_users, handle_quit,
-    handle_diagnostic
+    handle_look,
+    handle_inventory,
+    handle_exits,
+    handle_get,
+    handle_drop,
+    handle_score,
+    handle_help,
+    handle_info,
+    handle_levels,
+    handle_users,
+    handle_quit,
+    handle_diagnostic,
 )
 from models.Item import Item
 from models.Room import Room
-from models.SpecializedRooms import SwampRoom
 
 
 class HandleLookTest(unittest.IsolatedAsyncioTestCase):
@@ -48,7 +56,7 @@ class HandleLookTest(unittest.IsolatedAsyncioTestCase):
             room_id="test_room",
             name="Test Room",
             description="A test room for testing.",
-            exits={"north": "north_room", "south": "south_room"}
+            exits={"north": "north_room", "south": "south_room"},
         )
         self.game_state.get_room.return_value = self.current_room
 
@@ -56,9 +64,15 @@ class HandleLookTest(unittest.IsolatedAsyncioTestCase):
         """Test look command returns a string description."""
         cmd = {"verb": "look"}
 
-        result = await handle_look(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_look(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         # Just verify it returns a string (full integration test would be complex)
         self.assertIsInstance(result, str)
@@ -71,9 +85,15 @@ class HandleLookTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "look", "subject": "key", "subject_object": item}
 
-        result = await handle_look(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_look(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("shiny key", result)
 
@@ -85,9 +105,15 @@ class HandleLookTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "look", "subject": "torch", "subject_object": item}
 
-        result = await handle_look(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_look(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("torch", result.lower())
 
@@ -100,9 +126,15 @@ class HandleLookTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "look", "subject": "other", "subject_object": other_player}
 
-        result = await handle_look(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_look(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("OtherPlayer", result)
         self.assertIn("Warrior", result)
@@ -114,9 +146,15 @@ class HandleLookTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "look", "subject": "sword"}
 
-        result = await handle_look(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_look(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("gleaming blade", result)
 
@@ -128,9 +166,15 @@ class HandleLookTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "look", "subject": "barrel"}
 
-        result = await handle_look(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_look(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("barrel", result.lower())
 
@@ -145,9 +189,15 @@ class HandleLookTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "look", "subject": "bob"}
 
-        result = await handle_look(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_look(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("Bob", result)
         self.assertIn("Mage", result)
@@ -156,9 +206,15 @@ class HandleLookTest(unittest.IsolatedAsyncioTestCase):
         """Test looking at non-existent item."""
         cmd = {"verb": "look", "subject": "nonexistent"}
 
-        result = await handle_look(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_look(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("don't see", result.lower())
 
@@ -181,9 +237,15 @@ class HandleInventoryTest(unittest.IsolatedAsyncioTestCase):
         """Test inventory command with no items."""
         cmd = {"verb": "inventory"}
 
-        result = await handle_inventory(cmd, self.player, self.game_state,
-                              self.player_manager, self.online_sessions,
-                              self.sio, self.utils)
+        result = await handle_inventory(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("aren't carrying anything", result.lower())
 
@@ -195,9 +257,15 @@ class HandleInventoryTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "inventory"}
 
-        result = await handle_inventory(cmd, self.player, self.game_state,
-                              self.player_manager, self.online_sessions,
-                              self.sio, self.utils)
+        result = await handle_inventory(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("bronze key", result)
         self.assertIn("torch", result)
@@ -221,7 +289,7 @@ class HandleExitsTest(unittest.IsolatedAsyncioTestCase):
             room_id="test_room",
             name="Test Room",
             description="A test room",
-            exits={"north": "north_room", "east": "east_room"}
+            exits={"north": "north_room", "east": "east_room"},
         )
         self.game_state.get_room.return_value = self.current_room
 
@@ -229,9 +297,15 @@ class HandleExitsTest(unittest.IsolatedAsyncioTestCase):
         """Test exits command lists all available exits."""
         cmd = {"verb": "exits"}
 
-        result = await handle_exits(cmd, self.player, self.game_state,
-                          self.player_manager, self.online_sessions,
-                          self.sio, self.utils)
+        result = await handle_exits(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("north", result)
         self.assertIn("east", result)
@@ -242,9 +316,15 @@ class HandleExitsTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "exits"}
 
-        result = await handle_exits(cmd, self.player, self.game_state,
-                          self.player_manager, self.online_sessions,
-                          self.sio, self.utils)
+        result = await handle_exits(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("No exits", result)
 
@@ -266,7 +346,9 @@ class HandleGetTest(unittest.IsolatedAsyncioTestCase):
         self.sio = AsyncMock()
         self.utils = Mock()
 
-        self.current_room = Room(room_id="test_room", name="Test Room", description="A test room")
+        self.current_room = Room(
+            room_id="test_room", name="Test Room", description="A test room"
+        )
         self.current_room.get_items = Mock(return_value=[])
         self.game_state.get_room.return_value = self.current_room
 
@@ -276,15 +358,17 @@ class HandleGetTest(unittest.IsolatedAsyncioTestCase):
         self.current_room.add_item(item)
         self.current_room.get_items.return_value = [item]
 
-        cmd = {
-            "verb": "get",
-            "subject": "key",
-            "subject_object": item
-        }
+        cmd = {"verb": "get", "subject": "key", "subject_object": item}
 
-        result = await handle_get(cmd, self.player, self.game_state,
-                        self.player_manager, self.online_sessions,
-                        self.sio, self.utils)
+        await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.player.add_item.assert_called_once_with(item)
 
@@ -298,14 +382,17 @@ class HandleGetTest(unittest.IsolatedAsyncioTestCase):
         self.current_room.add_item(item3)
         self.current_room.get_items.return_value = [item1, item2, item3]
 
-        cmd = {
-            "verb": "get",
-            "subject": "all"
-        }
+        cmd = {"verb": "get", "subject": "all"}
 
-        result = await handle_get(cmd, self.player, self.game_state,
-                        self.player_manager, self.online_sessions,
-                        self.sio, self.utils)
+        await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         # Should pick up item1 and item2, but not item3
         self.assertEqual(self.player.add_item.call_count, 2)
@@ -314,9 +401,15 @@ class HandleGetTest(unittest.IsolatedAsyncioTestCase):
         """Test get command without specifying an item."""
         cmd = {"verb": "get"}
 
-        result = await handle_get(cmd, self.player, self.game_state,
-                        self.player_manager, self.online_sessions,
-                        self.sio, self.utils)
+        result = await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("Specify", result)
 
@@ -329,33 +422,50 @@ class HandleGetTest(unittest.IsolatedAsyncioTestCase):
             "subject": "key",
             "instrument": "chest",
             "preposition": "from",
-            "from_container": True
+            "from_container": True,
         }
 
-        with patch('commands.container.handle_get_from', new_callable=AsyncMock) as mock_get_from:
+        with patch(
+            "commands.container.handle_get_from", new_callable=AsyncMock
+        ) as mock_get_from:
             mock_get_from.return_value = "Got item from chest"
 
-            result = await handle_get(cmd, self.player, self.game_state,
-                            self.player_manager, self.online_sessions,
-                            self.sio, self.utils)
+            await handle_get(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
 
             mock_get_from.assert_called_once()
 
     async def test_handle_get_treasure(self):
         """Test 'get treasure' picks up only valuable items."""
-        item1 = Item(name="gold coin", id="coin_1", description="A coin", takeable=True, value=10)
-        item2 = Item(name="torch", id="torch_1", description="A torch", takeable=True, value=0)
-        item3 = Item(name="gem", id="gem_1", description="A gem", takeable=True, value=50)
+        item1 = Item(
+            name="gold coin", id="coin_1", description="A coin", takeable=True, value=10
+        )
+        item2 = Item(
+            name="torch", id="torch_1", description="A torch", takeable=True, value=0
+        )
+        item3 = Item(
+            name="gem", id="gem_1", description="A gem", takeable=True, value=50
+        )
         self.current_room.get_items.return_value = [item1, item2, item3]
 
-        cmd = {
-            "verb": "get",
-            "subject": "treasure"
-        }
+        cmd = {"verb": "get", "subject": "treasure"}
 
-        result = await handle_get(cmd, self.player, self.game_state,
-                        self.player_manager, self.online_sessions,
-                        self.sio, self.utils)
+        await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         # Should pick up item1 and item3, but not item2
         self.assertEqual(self.player.add_item.call_count, 2)
@@ -367,14 +477,17 @@ class HandleGetTest(unittest.IsolatedAsyncioTestCase):
         self.current_room.remove_hidden_item = Mock()
         self.current_room.get_items.return_value = [item]
 
-        cmd = {
-            "verb": "get",
-            "subject": "all"
-        }
+        cmd = {"verb": "get", "subject": "all"}
 
-        result = await handle_get(cmd, self.player, self.game_state,
-                        self.player_manager, self.online_sessions,
-                        self.sio, self.utils)
+        await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.current_room.remove_hidden_item.assert_called_once_with("hidden_key_1")
 
@@ -383,15 +496,17 @@ class HandleGetTest(unittest.IsolatedAsyncioTestCase):
         item = Item(name="tree", id="tree_1", description="A tree", takeable=False)
         self.current_room.get_items.return_value = [item]
 
-        cmd = {
-            "verb": "get",
-            "subject": "tree",
-            "subject_object": item
-        }
+        cmd = {"verb": "get", "subject": "tree", "subject_object": item}
 
-        result = await handle_get(cmd, self.player, self.game_state,
-                        self.player_manager, self.online_sessions,
-                        self.sio, self.utils)
+        result = await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("can't take", result.lower())
 
@@ -404,15 +519,17 @@ class HandleGetTest(unittest.IsolatedAsyncioTestCase):
         room_item = Item(name="key", id="key_2", description="A key", takeable=True)
         self.current_room.get_items.return_value = [room_item]
 
-        cmd = {
-            "verb": "get",
-            "subject": "key",
-            "subject_object": item
-        }
+        cmd = {"verb": "get", "subject": "key", "subject_object": item}
 
-        result = await handle_get(cmd, self.player, self.game_state,
-                        self.player_manager, self.online_sessions,
-                        self.sio, self.utils)
+        await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         # Should pick up room_item since inventory item is ignored
         self.player.add_item.assert_called_once()
@@ -422,14 +539,17 @@ class HandleGetTest(unittest.IsolatedAsyncioTestCase):
         item = Item(name="key", id="key_1", description="A key", takeable=True)
         self.current_room.get_items.return_value = [item]
 
-        cmd = {
-            "verb": "get",
-            "subject": "key"
-        }
+        cmd = {"verb": "get", "subject": "key"}
 
-        result = await handle_get(cmd, self.player, self.game_state,
-                        self.player_manager, self.online_sessions,
-                        self.sio, self.utils)
+        await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.player.add_item.assert_called_once_with(item)
 
@@ -437,14 +557,17 @@ class HandleGetTest(unittest.IsolatedAsyncioTestCase):
         """Test getting non-existent item."""
         self.current_room.get_items.return_value = []
 
-        cmd = {
-            "verb": "get",
-            "subject": "nonexistent"
-        }
+        cmd = {"verb": "get", "subject": "nonexistent"}
 
-        result = await handle_get(cmd, self.player, self.game_state,
-                        self.player_manager, self.online_sessions,
-                        self.sio, self.utils)
+        result = await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("don't see", result.lower())
 
@@ -455,15 +578,17 @@ class HandleGetTest(unittest.IsolatedAsyncioTestCase):
         self.current_room.remove_hidden_item = Mock()
         self.current_room.get_items.return_value = [item]
 
-        cmd = {
-            "verb": "get",
-            "subject": "secret",
-            "subject_object": item
-        }
+        cmd = {"verb": "get", "subject": "secret", "subject_object": item}
 
-        result = await handle_get(cmd, self.player, self.game_state,
-                        self.player_manager, self.online_sessions,
-                        self.sio, self.utils)
+        await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.current_room.remove_hidden_item.assert_called_once_with("secret_1")
 
@@ -485,7 +610,9 @@ class HandleDropTest(unittest.IsolatedAsyncioTestCase):
         self.sio = AsyncMock()
         self.utils = Mock()
 
-        self.current_room = Room(room_id="test_room", name="Test Room", description="A test room")
+        self.current_room = Room(
+            room_id="test_room", name="Test Room", description="A test room"
+        )
         self.game_state.get_room.return_value = self.current_room
 
     async def test_handle_drop_drops_single_item(self):
@@ -493,15 +620,17 @@ class HandleDropTest(unittest.IsolatedAsyncioTestCase):
         item = Item(name="bronze key", id="key_1", description="A key")
         self.player.inventory = [item]
 
-        cmd = {
-            "verb": "drop",
-            "subject": "key",
-            "subject_object": item
-        }
+        cmd = {"verb": "drop", "subject": "key", "subject_object": item}
 
-        result = await handle_drop(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        await handle_drop(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.player.remove_item.assert_called_once_with(item)
         self.assertIn(item, self.current_room.items)
@@ -512,14 +641,17 @@ class HandleDropTest(unittest.IsolatedAsyncioTestCase):
         item2 = Item(name="torch", id="torch_1", description="A torch")
         self.player.inventory = [item1, item2]
 
-        cmd = {
-            "verb": "drop",
-            "subject": "all"
-        }
+        cmd = {"verb": "drop", "subject": "all"}
 
-        result = await handle_drop(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        await handle_drop(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertEqual(self.player.remove_item.call_count, 2)
 
@@ -527,9 +659,15 @@ class HandleDropTest(unittest.IsolatedAsyncioTestCase):
         """Test drop command without specifying an item."""
         cmd = {"verb": "drop"}
 
-        result = await handle_drop(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_drop(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("Specify", result)
 
@@ -540,14 +678,17 @@ class HandleDropTest(unittest.IsolatedAsyncioTestCase):
         item3 = Item(name="gem", id="gem_1", description="A gem", value=50)
         self.player.inventory = [item1, item2, item3]
 
-        cmd = {
-            "verb": "drop",
-            "subject": "treasure"
-        }
+        cmd = {"verb": "drop", "subject": "treasure"}
 
-        result = await handle_drop(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        await handle_drop(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         # Should drop item1 and item3, but not item2
         self.assertEqual(self.player.remove_item.call_count, 2)
@@ -557,14 +698,17 @@ class HandleDropTest(unittest.IsolatedAsyncioTestCase):
         item = Item(name="torch", id="torch_1", description="A torch", value=0)
         self.player.inventory = [item]
 
-        cmd = {
-            "verb": "drop",
-            "subject": "treasure"
-        }
+        cmd = {"verb": "drop", "subject": "treasure"}
 
-        result = await handle_drop(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_drop(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("no treasure", result.lower())
 
@@ -572,14 +716,17 @@ class HandleDropTest(unittest.IsolatedAsyncioTestCase):
         """Test 'drop all' when inventory is empty."""
         self.player.inventory = []
 
-        cmd = {
-            "verb": "drop",
-            "subject": "all"
-        }
+        cmd = {"verb": "drop", "subject": "all"}
 
-        result = await handle_drop(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_drop(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("aren't carrying", result.lower())
 
@@ -588,14 +735,17 @@ class HandleDropTest(unittest.IsolatedAsyncioTestCase):
         item = Item(name="key", id="key_1", description="A key")
         self.player.inventory = [item]
 
-        cmd = {
-            "verb": "drop",
-            "subject": "sword"
-        }
+        cmd = {"verb": "drop", "subject": "sword"}
 
-        result = await handle_drop(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_drop(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("don't have", result.lower())
 
@@ -603,14 +753,17 @@ class HandleDropTest(unittest.IsolatedAsyncioTestCase):
         """Test drop without subject_object when inventory is empty."""
         self.player.inventory = []
 
-        cmd = {
-            "verb": "drop",
-            "subject": "key"
-        }
+        cmd = {"verb": "drop", "subject": "key"}
 
-        result = await handle_drop(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_drop(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("aren't carrying", result.lower())
 
@@ -619,15 +772,17 @@ class HandleDropTest(unittest.IsolatedAsyncioTestCase):
         item = Item(name="key", id="key_1", description="A key")
         # Item not in inventory
 
-        cmd = {
-            "verb": "drop",
-            "subject": "key",
-            "subject_object": item
-        }
+        cmd = {"verb": "drop", "subject": "key", "subject_object": item}
 
-        result = await handle_drop(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_drop(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("don't have", result.lower())
 
@@ -657,9 +812,15 @@ class HandleScoreTest(unittest.IsolatedAsyncioTestCase):
         """Test score command shows player statistics."""
         cmd = {"verb": "score"}
 
-        result = await handle_score(cmd, self.player, self.game_state,
-                          self.player_manager, self.online_sessions,
-                          self.sio, self.utils)
+        result = await handle_score(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("500", result)
         self.assertIn("Novice", result)
@@ -681,9 +842,15 @@ class HandleHelpTest(unittest.IsolatedAsyncioTestCase):
         """Test help command shows help text."""
         cmd = {"verb": "help"}
 
-        result = await handle_help(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_help(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("command", result.lower())
 
@@ -694,10 +861,18 @@ class HandleHelpTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "help", "subject": "look"}
 
-        with patch.object(command_registry, 'get_help', return_value="Help for look command"):
-            result = await handle_help(cmd, self.player, self.game_state,
-                             self.player_manager, self.online_sessions,
-                             self.sio, self.utils)
+        with patch.object(
+            command_registry, "get_help", return_value="Help for look command"
+        ):
+            await handle_help(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
 
             command_registry.get_help.assert_called_once_with("look")
 
@@ -718,9 +893,15 @@ class HandleInfoTest(unittest.IsolatedAsyncioTestCase):
         """Test info command shows game information."""
         cmd = {"verb": "info"}
 
-        result = await handle_info(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_info(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIsInstance(result, str)
         self.assertGreater(len(result), 0)
@@ -742,13 +923,17 @@ class HandleLevelsTest(unittest.IsolatedAsyncioTestCase):
         """Test levels command shows level requirements."""
         cmd = {"verb": "levels"}
 
-        result = await handle_levels(cmd, self.player, self.game_state,
-                           self.player_manager, self.online_sessions,
-                           self.sio, self.utils)
-
-        self.assertTrue(
-            any(word in result.lower() for word in ["level", "point"])
+        result = await handle_levels(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
         )
+
+        self.assertTrue(any(word in result.lower() for word in ["level", "point"]))
 
 
 class HandleUsersTest(unittest.IsolatedAsyncioTestCase):
@@ -775,14 +960,20 @@ class HandleUsersTest(unittest.IsolatedAsyncioTestCase):
 
         online_sessions = {
             "session1": {"player": player1},
-            "session2": {"player": player2}
+            "session2": {"player": player2},
         }
 
         cmd = {"verb": "users"}
 
-        result = await handle_users(cmd, self.player, self.game_state,
-                          self.player_manager, online_sessions,
-                          self.sio, self.utils)
+        result = await handle_users(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("Player1", result)
         self.assertIn("Player2", result)
@@ -793,9 +984,15 @@ class HandleUsersTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "users"}
 
-        result = await handle_users(cmd, self.player, self.game_state,
-                          self.player_manager, online_sessions,
-                          self.sio, self.utils)
+        result = await handle_users(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("How is this possible", result)
 
@@ -816,9 +1013,15 @@ class HandleQuitTest(unittest.IsolatedAsyncioTestCase):
         """Test quit command returns 'quit' string."""
         cmd = {"verb": "quit"}
 
-        result = await handle_quit(cmd, self.player, self.game_state,
-                         self.player_manager, self.online_sessions,
-                         self.sio, self.utils)
+        result = await handle_quit(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertEqual(result, "quit")
 
@@ -853,9 +1056,15 @@ class HandleDiagnosticTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "diagnostic"}
 
-        result = await handle_diagnostic(cmd, self.player, self.game_state,
-                              self.player_manager, self.online_sessions,
-                              self.sio, self.utils)
+        result = await handle_diagnostic(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIsInstance(result, str)
         self.assertGreater(len(result), 0)
@@ -865,16 +1074,24 @@ class HandleDiagnosticTest(unittest.IsolatedAsyncioTestCase):
         from models.StatefulItem import StatefulItem
 
         room = Room(room_id="test_room", name="Test", description="Test")
-        stateful_item = StatefulItem(name="Door", id="door_1", description="A door", state="closed")
+        stateful_item = StatefulItem(
+            name="Door", id="door_1", description="A door", state="closed"
+        )
         stateful_item.add_interaction("open", target_state="open")
         room.add_item(stateful_item)
         self.game_state.get_room.return_value = room
 
         cmd = {"verb": "diagnostic"}
 
-        result = await handle_diagnostic(cmd, self.player, self.game_state,
-                              self.player_manager, self.online_sessions,
-                              self.sio, self.utils)
+        result = await handle_diagnostic(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("State:", result)
         self.assertIn("closed", result)
@@ -884,7 +1101,9 @@ class HandleDiagnosticTest(unittest.IsolatedAsyncioTestCase):
         """Test diagnostic with container items in inventory."""
         from models.ContainerItem import ContainerItem
 
-        container = ContainerItem(name="chest", id="chest_1", description="A chest", state="closed")
+        container = ContainerItem(
+            name="chest", id="chest_1", description="A chest", state="closed"
+        )
         container.add_interaction("open", target_state="open")
         container.add_interaction("close", target_state="closed")
         self.player.inventory = [container]
@@ -894,9 +1113,15 @@ class HandleDiagnosticTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "diagnostic"}
 
-        result = await handle_diagnostic(cmd, self.player, self.game_state,
-                              self.player_manager, self.online_sessions,
-                              self.sio, self.utils)
+        result = await handle_diagnostic(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("Is container:", result)
         self.assertIn("Has interactions:", result)
@@ -908,7 +1133,9 @@ class HandleDiagnosticTest(unittest.IsolatedAsyncioTestCase):
         from models.StatefulItem import StatefulItem
 
         room = Room(room_id="test_room", name="Test", description="Test")
-        item = StatefulItem(name="Item", id="item_1", description="An item", state="default")
+        item = StatefulItem(
+            name="Item", id="item_1", description="An item", state="default"
+        )
         # Manually set malformed interactions
         item.interactions = {"verb": "not_a_list"}
         room.add_item(item)
@@ -916,9 +1143,15 @@ class HandleDiagnosticTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "diagnostic"}
 
-        result = await handle_diagnostic(cmd, self.player, self.game_state,
-                              self.player_manager, self.online_sessions,
-                              self.sio, self.utils)
+        result = await handle_diagnostic(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("Is a list: NO", result)
 
@@ -927,7 +1160,9 @@ class HandleDiagnosticTest(unittest.IsolatedAsyncioTestCase):
         from models.StatefulItem import StatefulItem
 
         room = Room(room_id="test_room", name="Test", description="Test")
-        item = StatefulItem(name="Item", id="item_1", description="An item", state="default")
+        item = StatefulItem(
+            name="Item", id="item_1", description="An item", state="default"
+        )
         # Manually set malformed interaction within list
         item.interactions = {"verb": ["not_a_dict"]}
         room.add_item(item)
@@ -935,9 +1170,15 @@ class HandleDiagnosticTest(unittest.IsolatedAsyncioTestCase):
 
         cmd = {"verb": "diagnostic"}
 
-        result = await handle_diagnostic(cmd, self.player, self.game_state,
-                              self.player_manager, self.online_sessions,
-                              self.sio, self.utils)
+        result = await handle_diagnostic(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
 
         self.assertIn("Is a dictionary: NO", result)
 

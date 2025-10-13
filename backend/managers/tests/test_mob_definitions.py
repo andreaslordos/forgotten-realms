@@ -40,7 +40,7 @@ class MobDefinitionsStructureTest(unittest.TestCase):
             "dire_wolf",
             "brittle_skeleton",
             "elder_sage",
-            "guard_captain"
+            "guard_captain",
         ]
 
         for mob_id in expected_mobs:
@@ -53,10 +53,21 @@ class MobDefinitionsStructureTest(unittest.TestCase):
     def test_all_mob_definitions_have_required_fields(self):
         """Test all mob definitions have all required fields."""
         required_fields = [
-            "name", "description", "strength", "dexterity", "max_stamina",
-            "damage", "aggressive", "aggro_delay_min", "aggro_delay_max",
-            "patrol_rooms", "movement_interval", "loot_table", "instant_death",
-            "point_value", "pronouns"
+            "name",
+            "description",
+            "strength",
+            "dexterity",
+            "max_stamina",
+            "damage",
+            "aggressive",
+            "aggro_delay_min",
+            "aggro_delay_max",
+            "patrol_rooms",
+            "movement_interval",
+            "loot_table",
+            "instant_death",
+            "point_value",
+            "pronouns",
         ]
 
         for mob_id, mob_def in self.mob_defs.items():
@@ -74,45 +85,69 @@ class MobDefinitionsFieldTypesTest(unittest.TestCase):
     def test_mob_names_are_strings(self):
         """Test all mob names are strings."""
         for mob_id, mob_def in self.mob_defs.items():
-            self.assertIsInstance(mob_def["name"], str, f"{mob_id} name is not a string")
+            self.assertIsInstance(
+                mob_def["name"], str, f"{mob_id} name is not a string"
+            )
 
     def test_mob_descriptions_are_strings(self):
         """Test all mob descriptions are strings."""
         for mob_id, mob_def in self.mob_defs.items():
-            self.assertIsInstance(mob_def["description"], str, f"{mob_id} description is not a string")
+            self.assertIsInstance(
+                mob_def["description"], str, f"{mob_id} description is not a string"
+            )
 
     def test_mob_stats_are_numbers(self):
         """Test all mob combat stats are numbers."""
-        numeric_fields = ["strength", "dexterity", "max_stamina", "damage", "point_value"]
+        numeric_fields = [
+            "strength",
+            "dexterity",
+            "max_stamina",
+            "damage",
+            "point_value",
+        ]
 
         for mob_id, mob_def in self.mob_defs.items():
             for field in numeric_fields:
-                self.assertIsInstance(mob_def[field], (int, float), f"{mob_id} {field} is not a number")
+                self.assertIsInstance(
+                    mob_def[field], (int, float), f"{mob_id} {field} is not a number"
+                )
 
     def test_mob_aggressive_is_boolean(self):
         """Test aggressive field is boolean."""
         for mob_id, mob_def in self.mob_defs.items():
-            self.assertIsInstance(mob_def["aggressive"], bool, f"{mob_id} aggressive is not a boolean")
+            self.assertIsInstance(
+                mob_def["aggressive"], bool, f"{mob_id} aggressive is not a boolean"
+            )
 
     def test_mob_instant_death_is_boolean(self):
         """Test instant_death field is boolean."""
         for mob_id, mob_def in self.mob_defs.items():
-            self.assertIsInstance(mob_def["instant_death"], bool, f"{mob_id} instant_death is not a boolean")
+            self.assertIsInstance(
+                mob_def["instant_death"],
+                bool,
+                f"{mob_id} instant_death is not a boolean",
+            )
 
     def test_mob_patrol_rooms_is_list(self):
         """Test patrol_rooms field is a list."""
         for mob_id, mob_def in self.mob_defs.items():
-            self.assertIsInstance(mob_def["patrol_rooms"], list, f"{mob_id} patrol_rooms is not a list")
+            self.assertIsInstance(
+                mob_def["patrol_rooms"], list, f"{mob_id} patrol_rooms is not a list"
+            )
 
     def test_mob_loot_table_is_list(self):
         """Test loot_table field is a list."""
         for mob_id, mob_def in self.mob_defs.items():
-            self.assertIsInstance(mob_def["loot_table"], list, f"{mob_id} loot_table is not a list")
+            self.assertIsInstance(
+                mob_def["loot_table"], list, f"{mob_id} loot_table is not a list"
+            )
 
     def test_mob_pronouns_are_strings(self):
         """Test pronouns field is a string."""
         for mob_id, mob_def in self.mob_defs.items():
-            self.assertIsInstance(mob_def["pronouns"], str, f"{mob_id} pronouns is not a string")
+            self.assertIsInstance(
+                mob_def["pronouns"], str, f"{mob_id} pronouns is not a string"
+            )
 
 
 class MobDefinitionsLootTableTest(unittest.TestCase):
@@ -126,13 +161,21 @@ class MobDefinitionsLootTableTest(unittest.TestCase):
         """Test all loot table entries have 'item' field."""
         for mob_id, mob_def in self.mob_defs.items():
             for idx, loot_entry in enumerate(mob_def["loot_table"]):
-                self.assertIn("item", loot_entry, f"{mob_id} loot_table[{idx}] missing 'item' field")
+                self.assertIn(
+                    "item",
+                    loot_entry,
+                    f"{mob_id} loot_table[{idx}] missing 'item' field",
+                )
 
     def test_loot_table_entries_have_chance_field(self):
         """Test all loot table entries have 'chance' field."""
         for mob_id, mob_def in self.mob_defs.items():
             for idx, loot_entry in enumerate(mob_def["loot_table"]):
-                self.assertIn("chance", loot_entry, f"{mob_id} loot_table[{idx}] missing 'chance' field")
+                self.assertIn(
+                    "chance",
+                    loot_entry,
+                    f"{mob_id} loot_table[{idx}] missing 'chance' field",
+                )
 
     def test_loot_table_items_are_item_objects(self):
         """Test all loot table items are Item or Weapon objects."""
@@ -141,7 +184,7 @@ class MobDefinitionsLootTableTest(unittest.TestCase):
                 item = loot_entry["item"]
                 self.assertTrue(
                     isinstance(item, (Item, Weapon)),
-                    f"{mob_id} loot_table[{idx}] item is not an Item or Weapon"
+                    f"{mob_id} loot_table[{idx}] item is not an Item or Weapon",
                 )
 
     def test_loot_table_chances_are_numbers(self):
@@ -150,8 +193,9 @@ class MobDefinitionsLootTableTest(unittest.TestCase):
             for idx, loot_entry in enumerate(mob_def["loot_table"]):
                 chance = loot_entry["chance"]
                 self.assertIsInstance(
-                    chance, (int, float),
-                    f"{mob_id} loot_table[{idx}] chance is not a number"
+                    chance,
+                    (int, float),
+                    f"{mob_id} loot_table[{idx}] chance is not a number",
                 )
 
     def test_loot_table_chances_are_valid_probabilities(self):
@@ -159,8 +203,12 @@ class MobDefinitionsLootTableTest(unittest.TestCase):
         for mob_id, mob_def in self.mob_defs.items():
             for idx, loot_entry in enumerate(mob_def["loot_table"]):
                 chance = loot_entry["chance"]
-                self.assertGreaterEqual(chance, 0, f"{mob_id} loot_table[{idx}] chance < 0")
-                self.assertLessEqual(chance, 1, f"{mob_id} loot_table[{idx}] chance > 1")
+                self.assertGreaterEqual(
+                    chance, 0, f"{mob_id} loot_table[{idx}] chance < 0"
+                )
+                self.assertLessEqual(
+                    chance, 1, f"{mob_id} loot_table[{idx}] chance > 1"
+                )
 
 
 class VillageMerchantTest(unittest.TestCase):
@@ -185,7 +233,9 @@ class VillageMerchantTest(unittest.TestCase):
 
     def test_village_merchant_has_gold_coin_loot(self):
         """Test village_merchant has gold coins in loot table."""
-        has_gold = any(entry["item"].name == "gold coin" for entry in self.merchant["loot_table"])
+        has_gold = any(
+            entry["item"].name == "gold coin" for entry in self.merchant["loot_table"]
+        )
         self.assertTrue(has_gold)
 
     def test_village_merchant_does_not_have_instant_death(self):
@@ -249,7 +299,9 @@ class DireWolfTest(unittest.TestCase):
 
     def test_dire_wolf_drops_wolf_pelt(self):
         """Test dire_wolf has wolf pelt in loot table."""
-        has_pelt = any(entry["item"].name == "wolf pelt" for entry in self.wolf["loot_table"])
+        has_pelt = any(
+            entry["item"].name == "wolf pelt" for entry in self.wolf["loot_table"]
+        )
         self.assertTrue(has_pelt)
 
 
@@ -274,7 +326,9 @@ class BrittleSkeletonTest(unittest.TestCase):
 
     def test_brittle_skeleton_has_rare_ancient_key_drop(self):
         """Test brittle_skeleton has ancient key with low drop chance."""
-        key_entries = [e for e in self.skeleton["loot_table"] if e["item"].name == "ancient key"]
+        key_entries = [
+            e for e in self.skeleton["loot_table"] if e["item"].name == "ancient key"
+        ]
         self.assertEqual(len(key_entries), 1)
         self.assertLess(key_entries[0]["chance"], 0.2)
 
@@ -305,7 +359,9 @@ class ElderSageTest(unittest.TestCase):
 
     def test_elder_sage_always_drops_ancient_key(self):
         """Test elder_sage always drops ancient key."""
-        key_entries = [e for e in self.elder["loot_table"] if e["item"].name == "ancient key"]
+        key_entries = [
+            e for e in self.elder["loot_table"] if e["item"].name == "ancient key"
+        ]
         self.assertEqual(len(key_entries), 1)
         self.assertEqual(key_entries[0]["chance"], 1.0)
 
@@ -337,7 +393,9 @@ class GuardCaptainTest(unittest.TestCase):
 
     def test_guard_captain_drops_multiple_gold_coins(self):
         """Test guard_captain can drop multiple gold coins."""
-        gold_entries = [e for e in self.captain["loot_table"] if e["item"].name == "gold coin"]
+        gold_entries = [
+            e for e in self.captain["loot_table"] if e["item"].name == "gold coin"
+        ]
         self.assertGreaterEqual(len(gold_entries), 2)
 
     def test_guard_captain_gives_high_points(self):

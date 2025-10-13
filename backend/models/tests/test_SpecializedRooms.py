@@ -27,9 +27,7 @@ class SwampRoomInitializationTest(unittest.TestCase):
     def test_swamp_room_inherits_from_room(self):
         """Test SwampRoom is a subclass of Room."""
         swamp = SwampRoom(
-            room_id="swamp1",
-            name="The Swamp",
-            description="A murky swamp"
+            room_id="swamp1", name="The Swamp", description="A murky swamp"
         )
         self.assertIsInstance(swamp, Room)
 
@@ -39,16 +37,14 @@ class SwampRoomInitializationTest(unittest.TestCase):
             room_id="swamp1",
             name="The Swamp",
             description="A murky swamp",
-            treasure_destination="treasure_room"
+            treasure_destination="treasure_room",
         )
         self.assertEqual(swamp.treasure_destination, "treasure_room")
 
     def test_swamp_room_sets_awards_points_true_by_default(self):
         """Test SwampRoom sets awards_points to True by default."""
         swamp = SwampRoom(
-            room_id="swamp1",
-            name="The Swamp",
-            description="A murky swamp"
+            room_id="swamp1", name="The Swamp", description="A murky swamp"
         )
         self.assertTrue(swamp.awards_points)
 
@@ -63,13 +59,13 @@ class SwampRoomTreasureDropTest(unittest.TestCase):
             name="The Swamp",
             description="A murky swamp",
             treasure_destination="treasure_room",
-            awards_points=True
+            awards_points=True,
         )
 
         self.treasure_room = Room(
             room_id="treasure_room",
             name="Treasure Room",
-            description="A room full of treasure"
+            description="A room full of treasure",
         )
 
         self.game_state = Mock()
@@ -91,8 +87,12 @@ class SwampRoomTreasureDropTest(unittest.TestCase):
         treasure.value = 50
 
         success, message = self.swamp.handle_treasure_drop(
-            treasure, self.player, self.game_state,
-            self.player_manager, self.sio, self.online_sessions
+            treasure,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.sio,
+            self.online_sessions,
         )
 
         self.assertTrue(success)
@@ -104,8 +104,12 @@ class SwampRoomTreasureDropTest(unittest.TestCase):
         treasure.value = 50
 
         success, message = self.swamp.handle_treasure_drop(
-            treasure, self.player, self.game_state,
-            self.player_manager, self.sio, self.online_sessions
+            treasure,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.sio,
+            self.online_sessions,
         )
 
         self.player.add_points.assert_called_once_with(
@@ -120,8 +124,12 @@ class SwampRoomTreasureDropTest(unittest.TestCase):
         treasure.value = 50
 
         success, message = self.swamp.handle_treasure_drop(
-            treasure, self.player, self.game_state,
-            self.player_manager, self.sio, self.online_sessions
+            treasure,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.sio,
+            self.online_sessions,
         )
 
         self.player.add_points.assert_not_called()
@@ -132,8 +140,12 @@ class SwampRoomTreasureDropTest(unittest.TestCase):
         # No value attribute
 
         success, message = self.swamp.handle_treasure_drop(
-            item, self.player, self.game_state,
-            self.player_manager, self.sio, self.online_sessions
+            item,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.sio,
+            self.online_sessions,
         )
 
         self.assertTrue(success)
@@ -150,7 +162,7 @@ class SwampRoomSerializationTest(unittest.TestCase):
             name="The Swamp",
             description="A murky swamp",
             treasure_destination="treasure_room",
-            awards_points=True
+            awards_points=True,
         )
 
         data = swamp.to_dict()
@@ -164,7 +176,7 @@ class SwampRoomSerializationTest(unittest.TestCase):
             name="The Swamp",
             description="A murky swamp",
             treasure_destination="treasure_room",
-            awards_points=False
+            awards_points=False,
         )
 
         data = swamp.to_dict()
@@ -174,9 +186,7 @@ class SwampRoomSerializationTest(unittest.TestCase):
     def test_to_dict_includes_room_type_as_swamp(self):
         """Test to_dict includes room_type as 'swamp'."""
         swamp = SwampRoom(
-            room_id="swamp1",
-            name="The Swamp",
-            description="A murky swamp"
+            room_id="swamp1", name="The Swamp", description="A murky swamp"
         )
 
         data = swamp.to_dict()
@@ -191,7 +201,7 @@ class SwampRoomSerializationTest(unittest.TestCase):
             "description": "A murky swamp",
             "exits": {"north": "room1"},
             "treasure_destination": "treasure_room",
-            "awards_points": True
+            "awards_points": True,
         }
 
         swamp = SwampRoom.from_dict(data)
@@ -210,7 +220,7 @@ class SwampRoomSerializationTest(unittest.TestCase):
             description="A murky swamp",
             exits={"north": "room1", "south": "room2"},
             treasure_destination="treasure_room",
-            awards_points=False
+            awards_points=False,
         )
 
         data = original.to_dict()
@@ -230,9 +240,7 @@ class SwampRoomItemsTest(unittest.TestCase):
     def test_swamp_room_can_add_items(self):
         """Test SwampRoom can add items like regular Room."""
         swamp = SwampRoom(
-            room_id="swamp1",
-            name="The Swamp",
-            description="A murky swamp"
+            room_id="swamp1", name="The Swamp", description="A murky swamp"
         )
 
         item = Item(name="bronze key", id="key_1", description="A key")
@@ -244,9 +252,7 @@ class SwampRoomItemsTest(unittest.TestCase):
     def test_swamp_room_can_remove_items(self):
         """Test SwampRoom can remove items like regular Room."""
         swamp = SwampRoom(
-            room_id="swamp1",
-            name="The Swamp",
-            description="A murky swamp"
+            room_id="swamp1", name="The Swamp", description="A murky swamp"
         )
 
         item = Item(name="bronze key", id="key_1", description="A key")

@@ -13,7 +13,7 @@ Tests cover:
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
+from unittest.mock import AsyncMock, Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -68,9 +68,13 @@ class HandleSetPointsPermissionTest(AsyncTestCase):
 
         # Act
         result = await handle_set_points(
-            cmd, self.normal_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.normal_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -85,9 +89,13 @@ class HandleSetPointsPermissionTest(AsyncTestCase):
 
         # Act
         result = await handle_set_points(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -106,9 +114,13 @@ class HandleSetPointsOnlinePlayerTest(AsyncTestCase):
 
         # Act
         result = await handle_set_points(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -126,9 +138,13 @@ class HandleSetPointsOnlinePlayerTest(AsyncTestCase):
 
         # Act
         await handle_set_points(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -146,7 +162,6 @@ class HandleSetPointsOnlinePlayerTest(AsyncTestCase):
         # Arrange
         target_sid = "target_sid_123"
         self.target_player.level = "Novice"
-        original_level = self.target_player.level
 
         def mock_level_up():
             self.target_player.level = "Hero"
@@ -157,9 +172,13 @@ class HandleSetPointsOnlinePlayerTest(AsyncTestCase):
 
         # Act
         result = await handle_set_points(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -175,9 +194,13 @@ class HandleSetPointsOnlinePlayerTest(AsyncTestCase):
 
         # Act
         result = await handle_set_points(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -195,9 +218,13 @@ class HandleSetPointsOfflinePlayerTest(AsyncTestCase):
 
         # Act
         result = await handle_set_points(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -214,9 +241,13 @@ class HandleSetPointsOfflinePlayerTest(AsyncTestCase):
 
         # Act
         await handle_set_points(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -234,9 +265,13 @@ class HandleSetPointsErrorTest(AsyncTestCase):
 
         # Act
         result = await handle_set_points(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -250,9 +285,13 @@ class HandleSetPointsErrorTest(AsyncTestCase):
 
         # Act
         result = await handle_set_points(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -266,9 +305,13 @@ class HandleSetPointsErrorTest(AsyncTestCase):
 
         # Act
         result = await handle_set_points(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -282,9 +325,13 @@ class HandleSetPointsErrorTest(AsyncTestCase):
 
         # Act
         result = await handle_set_points(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -304,9 +351,13 @@ class HandleSetPointsErrorTest(AsyncTestCase):
 
         # Act
         result = await handle_set_points(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -324,9 +375,13 @@ class HandleResetPermissionTest(AsyncTestCase):
 
         # Act
         result = await handle_reset(
-            cmd, self.normal_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.normal_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -339,9 +394,13 @@ class HandleResetPermissionTest(AsyncTestCase):
 
         # Act
         result = await handle_reset(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -358,9 +417,13 @@ class HandleResetConfirmationTest(AsyncTestCase):
 
         # Act
         result = await handle_reset(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -368,9 +431,11 @@ class HandleResetConfirmationTest(AsyncTestCase):
         self.assertIn("reset confirm", result)
         self.mock_utils.send_message.assert_not_called()
 
-    @patch('commands.archmage.asyncio.sleep', new_callable=AsyncMock)
-    @patch('commands.archmage.os.execl')
-    async def test_handle_reset_executes_with_confirmation(self, mock_execl, mock_sleep):
+    @patch("commands.archmage.asyncio.sleep", new_callable=AsyncMock)
+    @patch("commands.archmage.os.execl")
+    async def test_handle_reset_executes_with_confirmation(
+        self, mock_execl, mock_sleep
+    ):
         """Test handle_reset executes reset when confirmed."""
         # Arrange
         cmd = {"subject": "confirm", "original": "reset confirm"}
@@ -381,10 +446,14 @@ class HandleResetConfirmationTest(AsyncTestCase):
         self.online_sessions[player2_sid] = {"player": self.target_player}
 
         # Act
-        result = await handle_reset(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+        await handle_reset(
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -397,9 +466,11 @@ class HandleResetConfirmationTest(AsyncTestCase):
         # Should restart the process
         mock_execl.assert_called_once()
 
-    @patch('commands.archmage.asyncio.sleep', new_callable=AsyncMock)
-    @patch('commands.archmage.os.execl')
-    async def test_handle_reset_broadcasts_warning_message(self, mock_execl, mock_sleep):
+    @patch("commands.archmage.asyncio.sleep", new_callable=AsyncMock)
+    @patch("commands.archmage.os.execl")
+    async def test_handle_reset_broadcasts_warning_message(
+        self, mock_execl, mock_sleep
+    ):
         """Test handle_reset broadcasts warning message to all players."""
         # Arrange
         cmd = {"subject": "confirm", "original": "reset confirm"}
@@ -409,9 +480,13 @@ class HandleResetConfirmationTest(AsyncTestCase):
 
         # Act
         await handle_reset(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
@@ -420,8 +495,8 @@ class HandleResetConfirmationTest(AsyncTestCase):
         self.assertIn("WORLD RESET INITIATED", message)
         self.assertIn("disconnected", message)
 
-    @patch('commands.archmage.asyncio.sleep', new_callable=AsyncMock)
-    @patch('commands.archmage.os.execl')
+    @patch("commands.archmage.asyncio.sleep", new_callable=AsyncMock)
+    @patch("commands.archmage.os.execl")
     async def test_handle_reset_delays_before_restart(self, mock_execl, mock_sleep):
         """Test handle_reset delays 2 seconds before restarting."""
         # Arrange
@@ -429,18 +504,24 @@ class HandleResetConfirmationTest(AsyncTestCase):
 
         # Act
         await handle_reset(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert
         mock_sleep.assert_called_once_with(2)
 
-    @patch('commands.archmage.asyncio.sleep', new_callable=AsyncMock)
-    @patch('commands.archmage.os.execl')
-    @patch('commands.archmage.logger')
-    async def test_handle_reset_handles_disconnect_errors(self, mock_logger, mock_execl, mock_sleep):
+    @patch("commands.archmage.asyncio.sleep", new_callable=AsyncMock)
+    @patch("commands.archmage.os.execl")
+    @patch("commands.archmage.logger")
+    async def test_handle_reset_handles_disconnect_errors(
+        self, mock_logger, mock_execl, mock_sleep
+    ):
         """Test handle_reset handles errors during player disconnection."""
         # Arrange
         cmd = {"subject": "confirm", "original": "reset confirm"}
@@ -453,9 +534,13 @@ class HandleResetConfirmationTest(AsyncTestCase):
 
         # Act
         await handle_reset(
-            cmd, self.archmage_player, self.mock_game_state,
-            self.mock_player_manager, self.online_sessions,
-            self.mock_sio, self.mock_utils
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
         )
 
         # Assert

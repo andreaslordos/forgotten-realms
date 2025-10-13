@@ -13,7 +13,6 @@ Tests realistic gameplay scenarios including:
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -24,7 +23,6 @@ from models.Room import Room
 from models.Mobile import Mobile
 from managers.game_state import GameState
 from managers.mob_manager import MobManager
-from commands.natural_language_parser import parse_command
 
 
 class PlayerExplorationTest(unittest.TestCase):
@@ -36,7 +34,9 @@ class PlayerExplorationTest(unittest.TestCase):
         self.player = Player("Explorer")
 
         # Create connected rooms
-        self.room1 = Room("r1", "Village", "A peaceful village", exits={"north": "r2", "east": "r3"})
+        self.room1 = Room(
+            "r1", "Village", "A peaceful village", exits={"north": "r2", "east": "r3"}
+        )
         self.room2 = Room("r2", "Forest", "A dark forest", exits={"south": "r1"})
         self.room3 = Room("r3", "Cave", "A mysterious cave", exits={"west": "r1"})
 
@@ -115,7 +115,9 @@ class LootAndLevelProgressionTest(unittest.TestCase):
         """Test collecting valuable items and gaining points."""
         # Add valuable items
         gem = Item("Ruby", "ruby_1", "A precious ruby", weight=0.5, value=100)
-        diamond = Item("Diamond", "diamond_1", "A sparkling diamond", weight=0.3, value=200)
+        diamond = Item(
+            "Diamond", "diamond_1", "A sparkling diamond", weight=0.3, value=200
+        )
 
         self.room.add_item(gem)
         self.room.add_item(diamond)
@@ -209,7 +211,7 @@ class CombatIntegrationTest(unittest.TestCase):
             "legendary_1",
             "An legendary weapon",
             damage=100,
-            min_strength=50
+            min_strength=50,
         )
 
         # Player doesn't meet requirements
@@ -238,7 +240,7 @@ class MobInteractionTest(unittest.TestCase):
             "goblin_1",
             "A nasty goblin",
             current_room="dungeon",
-            aggressive=True
+            aggressive=True,
         )
         self.mob_manager.mobs[self.goblin.id] = self.goblin
 
@@ -323,8 +325,12 @@ class CompleteGameplayScenarioTest(unittest.TestCase):
         self.mob_manager = MobManager()
 
         # Create a mini world
-        self.village = Room("village", "Village", "Safe village", exits={"north": "forest"})
-        self.forest = Room("forest", "Dark Forest", "Dangerous forest", exits={"south": "village"})
+        self.village = Room(
+            "village", "Village", "Safe village", exits={"north": "forest"}
+        )
+        self.forest = Room(
+            "forest", "Dark Forest", "Dangerous forest", exits={"south": "village"}
+        )
 
         self.game_state.add_room(self.village)
         self.game_state.add_room(self.forest)
@@ -391,7 +397,9 @@ class WeightAndCapacityTest(unittest.TestCase):
         initial_strength = self.player.strength
 
         # Create item heavier than capacity
-        heavy_item = Item("Boulder", "boulder_1", "Massive rock", weight=initial_strength + 10)
+        heavy_item = Item(
+            "Boulder", "boulder_1", "Massive rock", weight=initial_strength + 10
+        )
 
         # Try to pick up
         success, msg = self.player.add_item(heavy_item)

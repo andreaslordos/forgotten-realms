@@ -57,6 +57,12 @@ This document outlines the testing requirements and conventions for the Forgotte
 4. **Import Path Convention**
    - All test files should use: `sys.path.insert(0, str(Path(__file__).resolve().parents[2]))`
    - This ensures imports work regardless of how tests are run
+   - When running tests from repo root, set `PYTHONPATH` to include `backend/`
+
+5. **Test Discovery**
+   - Tests are discovered recursively across all `test_*.py` files in the `backend/` directory
+   - The test runner finds tests in `backend/tests/`, `backend/commands/tests/`, `backend/models/tests/`, etc.
+   - All test directories must have an `__init__.py` file to be discoverable
 
 ## Testing Best Practices
 
@@ -249,9 +255,11 @@ class TestMyCommand(BaseCommandTest):
 5. **Integration points** - How the module interacts with others
 
 **Test Coverage Goals:**
-- Aim for **80%+ line coverage** per module
-- Near **100% coverage** for critical business logic (combat, player stats, inventory)
+- Maintain **80%+ overall coverage** (enforced by pre-commit hooks)
+- Aim for **90%+ coverage** for critical business logic (combat, player stats, inventory)
 - Test both success and failure paths for every function
+- Focus on production code coverage - test files are automatically excluded
+- Current stats: **948 tests, ~84% coverage** across 4,265 statements
 
 ### Test Class Organization
 
@@ -279,14 +287,57 @@ class FunctionNameTest(unittest.TestCase):
 - Serialization tests → `{ClassName}SerializationTest`
 - Validation tests → `{ClassName}ValidationTest`
 
-### Run All Tests
+## Running Tests
+
+### Automated Testing (Recommended)
+
+**Pre-commit Hook:**
+The project uses pre-commit hooks that automatically run tests before every commit. Install with:
 ```bash
-# From backend directory
-python3 -m unittest discover -s . -p "test_*.py"
+pip install pre-commit
+pre-commit install
+```
+
+The hook will automatically:
+- Format code with Black
+- Lint with Ruff (no shortcuts like #noqa allowed)
+- Security scan with Bandit
+- Run all tests with coverage (must be ≥80%)
+
+**Manual Test Script:**
+Use the test script which handles all configuration automatically:
+```bash
+# From repo root
+bash scripts/run_backend_tests.sh
+```
+
+This script:
+- Runs all 900+ tests recursively
+- Measures coverage (excluding test files)
+- Requires ≥80% coverage to pass
+- Sorted output shows lowest coverage files first
+
+### Manual Test Commands
+
+**Run All Tests with Coverage (from repo root):**
+```bash
+export PYTHONPATH="$PWD/backend:${PYTHONPATH:-}"
+python3 -m coverage erase
+python3 -m coverage run --source=backend --omit='*/tests/*' -m unittest discover -s backend -p 'test_*.py'
+python3 -m coverage report --sort=cover
+```
+
+**Run All Tests (from backend directory):**
+```bash
+cd backend
+python3 -m unittest discover -s . -p 'test_*.py'
 ```
 
 ### Run Tests by Module
 ```bash
+# From backend directory
+cd backend
+
 # Commands tests
 python3 -m unittest discover -s commands/tests -v
 
@@ -298,17 +349,42 @@ python3 -m unittest discover -s managers/tests -v
 
 # Services tests
 python3 -m unittest discover -s services/tests -v
+
+# Integration tests
+python3 -m unittest discover -s tests -v
 ```
 
 ### Run Single Test File
 ```bash
+# From backend directory
+cd backend
+python3 -m unittest commands.tests.test_combat -v
+
+# Or directly
 python3 commands/tests/test_combat.py
 ```
 
-### Check Coverage
+### Coverage Analysis
+
+**Quick Coverage Report:**
 ```bash
-python -m unittest discover; python3 -m coverage report --omit="*/tests/*" --sort=cover
+bash scripts/run_backend_tests.sh | tail -50
 ```
+
+**Detailed Coverage Report:**
+```bash
+export PYTHONPATH="$PWD/backend:${PYTHONPATH:-}"
+python3 -m coverage erase
+python3 -m coverage run --source=backend --omit='*/tests/*' -m unittest discover -s backend -p 'test_*.py'
+python3 -m coverage report --sort=cover  # Sorted by coverage percentage
+python3 -m coverage html                  # Generate HTML report in htmlcov/
+```
+
+**Important Notes:**
+- Coverage must be ≥80% to pass pre-commit hooks
+- Test files are excluded from coverage measurement (`--omit='*/tests/*'`)
+- `.coverage` file is auto-generated and already in `.gitignore`
+- Coverage is measured across all production code in `backend/`
 
 ## Test Template
 
@@ -374,11 +450,65 @@ if __name__ == "__main__":
 5. **Collaboration** - Team members can navigate tests without confusion
 6. **CI/CD** - Automated systems can discover and run all tests reliably
 
+## Troubleshooting
+
+### Common Issues
+
+**1. Import Errors: `ModuleNotFoundError: No module named 'tests'`**
+- **Cause:** Running tests from repo root without PYTHONPATH set
+- **Solution:** Use the test script or set PYTHONPATH:
+  ```bash
+  export PYTHONPATH="$PWD/backend:${PYTHONPATH:-}"
+  ```
+
+**2. Coverage Lower Than Expected**
+- **Cause:** Not all tests are being discovered
+- **Solution:** Use recursive discovery with `-s backend -p 'test_*.py'` instead of `-s backend/tests`
+
+**3. Pre-commit Hook Failing**
+- **Cause:** Coverage below 80% or tests failing
+- **Solution:**
+  ```bash
+  # Run tests locally to debug
+  bash scripts/run_backend_tests.sh
+  # View which files have low coverage (sorted)
+  bash scripts/run_backend_tests.sh | grep -A 50 "Cover"
+  ```
+
+**4. Tests Run But Coverage Shows 0%**
+- **Cause:** Using `unittest discover` without `coverage run`
+- **Solution:** Always use `coverage run` before `coverage report`:
+  ```bash
+  python3 -m coverage run --source=backend -m unittest discover ...
+  python3 -m coverage report
+  ```
+
+**5. Test Files Appearing in Coverage Report**
+- **Cause:** Missing `--omit='*/tests/*'` flag
+- **Solution:** Add omit flag to `coverage run`:
+  ```bash
+  python3 -m coverage run --source=backend --omit='*/tests/*' ...
+  ```
+
+**6. Ruff/Black Errors Blocking Commits**
+- **Solution:** Run formatters manually:
+  ```bash
+  # Format with Black
+  black backend/
+
+  # Fix Ruff issues
+  ruff check backend/ --fix
+
+  # Check for remaining issues
+  ruff check backend/
+  ```
+
 ## Questions?
 
 If you're unsure how to test something:
 1. Look at existing tests in the same module for examples
 2. Check if similar functionality is tested elsewhere
-3. Ask for guidance on complex async operations or mocking scenarios
+3. Refer to shared fixtures in `tests/test_helpers.py` and `tests/test_base.py`
+4. Ask for guidance on complex async operations or mocking scenarios
 
 **Remember: Good tests are an investment in code quality and team productivity!**
