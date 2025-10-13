@@ -69,7 +69,7 @@ def spawn_initial_mobs(mob_manager, rooms):
     spawn_mob_in_room("brittle_skeleton", "well_bottom")
 
     # Swamp area - dire wolves (high danger)
-    spawn_mob_in_room("dire_wolf", "swamp1")
+    spawn_mob_in_room("dire_wolf", "golden_door")
 
 def generate_rooms(rooms):
     """Generate all the rooms for the village."""

@@ -403,7 +403,7 @@ class VocabularyManager:
 class CommandContext:
     """
     Stores command context for pronoun resolution.
-    
+
     Keeps track of:
     - Last verb
     - Last subject
@@ -412,9 +412,10 @@ class CommandContext:
     - Last referenced male (him)
     - Last referenced female (her)
     - Last referenced object (it)
+    - mob_manager for binding mobs
     """
-    
-    def __init__(self):
+
+    def __init__(self, mob_manager=None):
         self.last_verb = None
         self.last_subject = None
         self.last_instrument = None
@@ -422,12 +423,17 @@ class CommandContext:
         self.last_him = None
         self.last_her = None
         self.last_it = None
+        self.mob_manager = mob_manager
     
+    def get(self, key, default=None):
+        """Get an attribute like a dictionary for compatibility."""
+        return getattr(self, key, default)
+
     def update(self, verb=None, subject=None, instrument=None, gender=None):
         """Update the context with new references."""
         if verb:
             self.last_verb = verb
-        
+
         if subject:
             if hasattr(subject, 'get') and subject.get('is_creature'):
                 self.last_them = subject
@@ -437,25 +443,25 @@ class CommandContext:
                     self.last_her = subject
             else:
                 self.last_it = subject
-            
+
             self.last_subject = subject
-        
+
         if instrument:
             self.last_instrument = instrument
-    
+
     def resolve_pronoun(self, pronoun: str, game_state=None):
         """
         Resolve a pronoun to its referent.
-        
+
         Args:
             pronoun: The pronoun to resolve
             game_state: Optional game state for contextual resolution
-            
+
         Returns:
             The resolved referent or None if no referent is found
         """
         pronoun = pronoun.lower()
-        
+
         if pronoun == "it":
             return self.last_it
         elif pronoun == "him":
@@ -464,7 +470,7 @@ class CommandContext:
             return self.last_her
         elif pronoun == "them":
             return self.last_them
-        
+
         return None
 
 # -------------------------------------------------------------------------
@@ -767,7 +773,7 @@ class ObjectBinder:
             return player_obj
 
         # Try to bind to a mob (if mob_manager is available in context)
-        mob_manager = context.get('mob_manager') if isinstance(context, dict) else None
+        mob_manager = context.get('mob_manager') if context else None
         if mob_manager and player.current_room:
             mobs_in_room = mob_manager.get_mobs_in_room(player.current_room)
             for mob in mobs_in_room:
@@ -835,7 +841,7 @@ class ObjectBinder:
             return player_obj
 
         # Try to bind to a mob (if mob_manager is available in context)
-        mob_manager = context.get('mob_manager') if isinstance(context, dict) else None
+        mob_manager = context.get('mob_manager') if context else None
         if mob_manager and player.current_room:
             mobs_in_room = mob_manager.get_mobs_in_room(player.current_room)
             for mob in mobs_in_room:
@@ -879,7 +885,7 @@ class ObjectBinder:
 class NaturalLanguageParser:
     """
     Main parser class integrating all stages.
-    
+
     This class handles:
     - Tokenizing input
     - Command chaining (splitting commands by comma or AND)
@@ -887,13 +893,17 @@ class NaturalLanguageParser:
     - Object binding
     - Error handling
     """
-    
-    def __init__(self):
+
+    def __init__(self, mob_manager=None):
         self.vocabulary = VocabularyManager()
-        self.context = CommandContext()
+        self.context = CommandContext(mob_manager=mob_manager)
         self.object_binder = ObjectBinder()
         self.command_registry = None  # Will be set by __init__.py
         logger.debug("NaturalLanguageParser initialized")
+
+    def set_mob_manager(self, mob_manager):
+        """Update the mob_manager in the context."""
+        self.context.mob_manager = mob_manager
     
     def parse(self, command_str: str, player, game_state) -> List[Dict[str, Any]]:
         """

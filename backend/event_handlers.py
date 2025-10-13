@@ -111,7 +111,16 @@ def register_handlers(sio, auth_manager, player_manager, game_state, online_sess
                 else:
                     await utils.send_message(sio, sid, "Invalid password. Try again:")
                     return
-            
+
+            # Check if user is already logged in
+            for other_sid, other_session in online_sessions.items():
+                if other_sid != sid:
+                    other_player = other_session.get('player')
+                    if other_player and other_player.name.lower() == username.lower():
+                        await utils.send_message(sio, sid, "This persona is already logged in. Connection closed.")
+                        await sio.disconnect(sid)
+                        return
+
             # Get the player and capture the last login time BEFORE updating it
             player = player_manager.login(username)
             last_login_time = player.last_active  # Store the previous login time

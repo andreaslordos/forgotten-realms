@@ -27,28 +27,33 @@ async def handle_attack(cmd, player, game_state, player_manager, online_sessions
     """
     Handle attacking a target, initiating continuous combat.
     """
+    from models.Mobile import Mobile
+
     # Get the subject (target) from the parsed command
     subject = cmd.get("subject")
     subject_obj = cmd.get("subject_object")
-    
+
     # Get the optional instrument (weapon) from the parsed command
     instrument = cmd.get("instrument")
     instrument_obj = cmd.get("instrument_object")
-    
+
     if not subject and not subject_obj:
         return "Who do you want to attack?"
-    
+
     # Check if player is already in combat
     if player.name in active_combats:
         existing_target = active_combats[player.name]['target']
         return f"You're already fighting {existing_target.name}!"
-    
+
     # Find a player target in the room
     target_player = None
     target_sid = None
-    
-    # If we have a bound subject object that's a player
-    if subject_obj and hasattr(subject_obj, 'name') and hasattr(subject_obj, 'current_room'):
+
+    # If we have a bound subject object that's a player (NOT a mob)
+    if (subject_obj and
+        not isinstance(subject_obj, Mobile) and
+        hasattr(subject_obj, 'name') and
+        hasattr(subject_obj, 'current_room')):
         if subject_obj.current_room == player.current_room and subject_obj != player:
             target_player = subject_obj
             
@@ -117,7 +122,9 @@ async def handle_attack(cmd, player, game_state, player_manager, online_sessions
             'target_sid': target_sid,
             'weapon': weapon_item,
             'initiative': True,  # Attacker starts with initiative
-            'last_turn': None    # No turn has happened yet
+            'last_turn': None,   # No turn has happened yet
+            'is_mob': False,
+            'entity': player,
         }
         
         # Start combat tracking for target
@@ -126,7 +133,9 @@ async def handle_attack(cmd, player, game_state, player_manager, online_sessions
             'target_sid': player_sid,
             'weapon': None,  # Target starts barehanded
             'initiative': False,  # Defender doesn't have initiative
-            'last_turn': None     # No turn has happened yet
+            'last_turn': None,    # No turn has happened yet
+            'is_mob': False,
+            'entity': target_player,
         }
         
         # Notify the target they are being attacked
@@ -392,146 +401,188 @@ async def process_combat_tick(sio, online_sessions, player_manager, game_state, 
         utils (module): Utilities module
         mob_manager (MobManager, optional): The mob manager for mob combat
     """
-    # Get a copy of active combat keys since we might modify during iteration
+    from models.Mobile import Mobile
+
+    def _cleanup_entry(identifier):
+        entry = active_combats.pop(identifier, None)
+        if entry:
+            entity = entry.get('entity')
+            if isinstance(entity, Mobile):
+                entity.target_player = None
+
     combat_players = list(active_combats.keys())
-    processed_pairs = set()  # Keep track of combat pairs we've processed
+    processed_pairs = set()
 
     if combat_players:
         logger.info(f"Processing combat tick. Active combats: {combat_players}")
 
-    for player_name in combat_players:
-        # Skip if combat was ended during this tick
-        if player_name not in active_combats:
-            logger.info(f"Skipping {player_name} - no longer in active_combats")
+    for combat_key in combat_players:
+        combat_entry = active_combats.get(combat_key)
+        if not combat_entry:
             continue
 
-        combat_info = active_combats[player_name]
-        target = combat_info['target']
+        attacker_entity = combat_entry.get('entity')
+        defender_entity = combat_entry.get('target')
 
-        # Get the unique identifier for the target (mob.id or player.name)
-        from models.Mobile import Mobile
-        if isinstance(target, Mobile):
-            target_identifier = target.id
-        else:
-            target_identifier = target.name
+        if not attacker_entity or not defender_entity:
+            logger.debug("Skipping %s due to missing entity or target", combat_key)
+            continue
 
-        logger.info(f"Checking combat: {player_name} vs {target_identifier}")
+        attacker_is_mob = isinstance(attacker_entity, Mobile)
+        defender_is_mob = isinstance(defender_entity, Mobile)
 
-        # Skip if we've already processed this combat pair
-        combat_pair = tuple(sorted([player_name, target_identifier]))
+        if attacker_is_mob and attacker_entity.state != "alive":
+            logger.info("Cleaning up combat for dead mob %s", attacker_entity.id)
+            _cleanup_entry(attacker_entity.id)
+            continue
+
+        if defender_is_mob and defender_entity.state != "alive":
+            logger.info("Cleaning up combat for dead mob %s", defender_entity.id)
+            _cleanup_entry(attacker_entity.id if attacker_is_mob else attacker_entity.name)
+            _cleanup_entry(defender_entity.id)
+            continue
+
+        attacker_identifier = attacker_entity.id if attacker_is_mob else attacker_entity.name
+        defender_identifier = defender_entity.id if defender_is_mob else defender_entity.name
+
+        combat_pair = tuple(sorted([attacker_identifier, defender_identifier]))
         if combat_pair in processed_pairs:
             logger.info(f"Skipping pair {combat_pair} - already processed")
             continue
-
-        # Mark this combat pair as processed
         processed_pairs.add(combat_pair)
         logger.info(f"Processing pair: {combat_pair}")
-        
-        # Determine who attacks this tick based on initiative
-        attacker_name = None
-        defender_name = None
 
-        # Log initiative state
-        player_init = active_combats.get(player_name, {}).get('initiative', 'N/A')
-        target_init = active_combats.get(target_identifier, {}).get('initiative', 'N/A')
-        logger.info(f"Initiative check - {player_name}: {player_init}, {target_identifier}: {target_init}")
+        defender_entry = active_combats.get(defender_identifier)
 
-        # If someone has initiative, they go first
-        if player_name in active_combats and active_combats[player_name]['initiative']:
-            attacker_name = player_name
-            defender_name = target_identifier
-            logger.info(f"{player_name} has initiative")
-        elif target_identifier in active_combats and active_combats[target_identifier]['initiative']:
-            attacker_name = target_identifier
-            defender_name = player_name
-            logger.info(f"{target_identifier} has initiative")
-        else:
-            # If no one has initiative yet, attacker goes first
-            logger.info(f"No one has initiative, defaulting to {player_name}")
-            attacker_name = player_name
-            defender_name = target_identifier
-            if player_name in active_combats:
-                active_combats[player_name]['initiative'] = True
+        attacker_entry_ref = combat_entry
+        defender_entry_ref = defender_entry
+        initiative_holder = None
 
-        # Check if either combatant is a mob
-        from models.Mobile import Mobile
-        attacker_is_mob = attacker_name in active_combats and active_combats[attacker_name].get('is_mob', False)
-        defender_is_mob = defender_name in active_combats and active_combats[defender_name].get('is_mob', False)
-
-        # Get combatant objects directly from active_combats (they're already stored there)
-        # This is more reliable than looking them up again
-        if attacker_name in active_combats:
-            attacker_combat_info = active_combats[attacker_name]
-            # The attacker's target is the defender
-            defender = attacker_combat_info['target']
-            # To get the attacker itself, we need to look at the defender's combat info
-            if defender_name in active_combats:
-                defender_combat_info = active_combats[defender_name]
-                attacker = defender_combat_info['target']
-            else:
-                attacker = None
-                defender = None
-        else:
-            attacker = None
-            defender = None
-
-        # Skip if we can't find both combatants
-        if not attacker or not defender:
-            logger.error(f"SKIPPING - attacker={attacker}, defender={defender}, attacker_name={attacker_name}, defender_name={defender_name}")
+        if not defender_entry:
+            logger.info(
+                "Defender entry missing for %s; removing attacker combat state",
+                defender_identifier,
+            )
+            _cleanup_entry(attacker_identifier)
             continue
 
-        # Get session IDs
-        attacker_sid = None if attacker_is_mob else find_player_sid(attacker_name, online_sessions)
-        defender_sid = None if defender_is_mob else find_player_sid(defender_name, online_sessions)
+        if combat_entry.get('initiative'):
+            initiative_holder = 'attacker'
+        elif defender_entry and defender_entry.get('initiative'):
+            initiative_holder = 'defender'
+        else:
+            combat_entry['initiative'] = True
+            initiative_holder = 'attacker'
 
-        logger.info(f"SID check - attacker_is_mob: {attacker_is_mob}, attacker_sid: {attacker_sid}, defender_is_mob: {defender_is_mob}, defender_sid: {defender_sid}")
+        if initiative_holder == 'attacker':
+            attacker = attacker_entity
+            defender = defender_entity
+            attacker_key = attacker_identifier
+            defender_key = defender_identifier
+        else:
+            if not defender_entry:
+                logger.debug("Defender entry missing for %s; defaulting to attacker initiative", combat_pair)
+                attacker = attacker_entity
+                defender = defender_entity
+                attacker_key = attacker_identifier
+                defender_key = defender_identifier
+                attacker_entry_ref = combat_entry
+                defender_entry_ref = defender_entry
+            else:
+                attacker = defender_entry.get('entity')
+                defender = defender_entry.get('target')
+                attacker_key = defender_identifier
+                defender_key = attacker_identifier
+                attacker_entry_ref = defender_entry
+                defender_entry_ref = combat_entry
 
-        # Skip if player combat without SIDs
+        if not attacker or not defender:
+            logger.error(
+                "SKIPPING - attacker=%s, defender=%s, attacker_key=%s, defender_key=%s",
+                attacker, defender, attacker_key, defender_key,
+            )
+            _cleanup_entry(attacker_key)
+            _cleanup_entry(defender_key)
+            continue
+
+        attacker_is_mob = isinstance(attacker, Mobile)
+        defender_is_mob = isinstance(defender, Mobile)
+
+        attacker_sid = None if attacker_is_mob else find_player_sid(attacker, online_sessions)
+        defender_sid = None if defender_is_mob else find_player_sid(defender, online_sessions)
+
+        logger.info(
+            "SID check - attacker_is_mob: %s, attacker_sid: %s, defender_is_mob: %s, defender_sid: %s",
+            attacker_is_mob,
+            attacker_sid,
+            defender_is_mob,
+            defender_sid,
+        )
+
         if not attacker_is_mob and not attacker_sid:
-            logger.warning(f"Skipping - attacker {attacker_name} is player but no SID found")
+            logger.warning(
+                "Skipping - attacker %s is player but no SID found",
+                attacker_identifier,
+            )
+            _cleanup_entry(attacker_identifier)
             continue
         if not defender_is_mob and not defender_sid:
-            logger.warning(f"Skipping - defender {defender_name} is player but no SID found")
+            logger.warning(
+                "Skipping - defender %s is player but no SID found",
+                defender_identifier,
+            )
+            _cleanup_entry(attacker_identifier)
+            _cleanup_entry(defender_identifier)
             continue
 
-        # Get attacker's weapon
-        attacker_weapon = None
-        if attacker_name in active_combats:
-            attacker_weapon = active_combats[attacker_name]['weapon']
+        attacker_weapon = attacker_entry_ref.get('weapon') if attacker_entry_ref else None
 
-        # Process attack
         if attacker_is_mob or defender_is_mob:
-            # Mob combat
             if mob_manager:
-                logger.info(f"Processing mob combat: {attacker_name} vs {defender_name}")
+                logger.info(
+                    "Processing mob combat: %s vs %s",
+                    attacker_identifier,
+                    defender_identifier,
+                )
+                sid_for_attack = attacker_sid if not attacker_is_mob else defender_sid
                 await process_mob_combat_attack(
-                    attacker, defender,
+                    attacker,
+                    defender,
                     attacker_weapon,
-                    attacker_sid if not attacker_is_mob else defender_sid,
-                    player_manager, game_state, online_sessions, mob_manager, sio, utils
+                    sid_for_attack,
+                    player_manager,
+                    game_state,
+                    online_sessions,
+                    mob_manager,
+                    sio,
+                    utils,
                 )
             else:
-                logger.warning(f"Mob combat skipped - no mob_manager! Attacker: {attacker_name}, Defender: {defender_name}")
+                logger.warning(
+                    "Mob combat skipped - no mob_manager! Attacker: %s, Defender: %s",
+                    attacker_identifier,
+                    defender_identifier,
+                )
         else:
-            # Player vs player combat
             await process_combat_attack(
-                attacker, defender,
+                attacker,
+                defender,
                 attacker_weapon,
-                attacker_sid, defender_sid,
-                player_manager, game_state, online_sessions, sio, utils
+                attacker_sid,
+                defender_sid,
+                player_manager,
+                game_state,
+                online_sessions,
+                sio,
+                utils,
             )
 
-        # Toggle initiative (if both combatants still exist in combat)
-        if (attacker_name in active_combats and
-            defender_name in active_combats):
-
-            # Attacker loses initiative, defender gains it
-            if attacker_name in active_combats:
-                active_combats[attacker_name]['initiative'] = False
-                logger.info(f"Toggled {attacker_name} initiative to False")
-            if defender_name in active_combats:
-                active_combats[defender_name]['initiative'] = True
-                logger.info(f"Toggled {defender_name} initiative to True")
+        if attacker_key in active_combats:
+            active_combats[attacker_key]['initiative'] = False
+            logger.info(f"Toggled {attacker_key} initiative to False")
+        if defender_key in active_combats:
+            active_combats[defender_key]['initiative'] = True
+            logger.info(f"Toggled {defender_key} initiative to True")
 
 async def process_combat_attack(attacker, defender, weapon, attacker_sid, defender_sid, 
                                player_manager, game_state, online_sessions, sio, utils):
@@ -613,10 +664,97 @@ async def process_combat_attack(attacker, defender, weapon, attacker_sid, defend
         await utils.send_message(sio, attacker_sid, miss_msg_attacker)
         await utils.send_message(sio, defender_sid, miss_msg_defender)
 
+def reset_player_persona(player):
+    """
+    Reset a player's persona to neophyte (level 0) state.
+
+    Args:
+        player (Player): The player to reset
+    """
+    from models.Levels import levels
+
+    # Reset to level 0 (neophyte)
+    level_data = levels[0]
+    player.points = 0
+    player.level = level_data['name']
+    player.stamina = level_data['stamina']
+    player.max_stamina = level_data['stamina']
+    player.strength = level_data['strength']
+    player.dexterity = level_data['dexterity']
+    player.magic = level_data['magic']
+    player.carrying_capacity_num = level_data['carrying_capacity_num']
+    player.current_level_at = 0
+    player.next_level_at = 400
+
+
+async def handle_respawn_choice(player, choice, player_sid, game_state, player_manager, online_sessions, sio, utils, combat_death=True):
+    """
+    Handle a player's choice to respawn or disconnect after death.
+
+    Args:
+        player (Player): The player who died
+        choice (str): The player's choice ("yes", "y", "no", or anything else)
+        player_sid (str): The player's session ID
+        game_state (GameState): The game state
+        player_manager (PlayerManager): The player manager
+        online_sessions (dict): Online sessions dictionary
+        sio (SocketIO): Socket.IO instance
+        utils (module): Utilities module
+        combat_death (bool): Whether this was a combat death (True) or non-combat death (False)
+
+    Returns:
+        str or None: Response message if continuing, None if disconnecting
+    """
+    choice_lower = choice.lower().strip()
+
+    if choice_lower in ['yes', 'y']:
+        # Player wants to respawn
+        if combat_death:
+            # Combat death: reset persona
+            reset_player_persona(player)
+
+        # Respawn at spawn room
+        player.set_current_room(player_manager.spawn_room)
+        player.stamina = player.max_stamina
+
+        # Clear the awaiting_respawn flag
+        if player_sid in online_sessions:
+            online_sessions[player_sid]['awaiting_respawn'] = False
+
+        # Save changes
+        player_manager.save_players()
+
+        # Send welcome back message and room description (with other players)
+        from commands.executor import build_look_description
+        from services.notifications import broadcast_arrival
+        mob_manager = getattr(utils, 'mob_manager', None) if hasattr(utils, '__dict__') else None
+
+        welcome_msg = "You awaken in the village center.\n\n"
+        room_desc = build_look_description(player, game_state, online_sessions, look=True, mob_manager=mob_manager)
+        welcome_msg += room_desc
+
+        await utils.send_message(sio, player_sid, welcome_msg)
+        await utils.send_stats_update(sio, player_sid, player)
+
+        # Notify other players at spawn of arrival
+        await broadcast_arrival(player)
+
+        return ""
+    else:
+        # Player chooses not to continue - disconnect them
+        if player_sid in online_sessions:
+            online_sessions[player_sid]['awaiting_respawn'] = False
+
+        # Disconnect the player
+        await utils.send_message(sio, player_sid, "Farewell! Thank you for playing.")
+        # The actual disconnection should be handled by the caller
+        return None
+
+
 async def handle_player_defeat(attacker, defender, defender_sid, game_state, player_manager, online_sessions, sio, utils):
     """
     Handle when a player defeats another player.
-    
+
     Args:
         attacker (Player): The attacking player
         defender (Player): The defeated player
@@ -629,75 +767,68 @@ async def handle_player_defeat(attacker, defender, defender_sid, game_state, pla
     """
     # End combat tracking for both players
     end_combat(attacker.name, defender.name)
-    
+
     # Drop all defender's items in the current room
     current_room = game_state.get_room(defender.current_room)
-    
+    old_room = defender.current_room
+
     for item in list(defender.inventory):
         defender.remove_item(item)
         current_room.add_item(item)
-    
-    # Zero out defender's points completely when they die
+
+    # Transfer points to attacker
     points_lost = defender.points
     points_gained = max(100, points_lost // 2)  # Victor gets half or at least 100 points
-    
-    # Transfer the points - use add_points to properly update levels
-    defender.add_points(-points_lost, sio, online_sessions, send_notification=False)  # Zero out points
-    attacker.add_points(points_gained, sio, online_sessions, send_notification=False)  # Award points to winner
-    
-    # Respawn at spawn room
-    old_room = defender.current_room
-    defender.set_current_room(player_manager.spawn_room)
-    
-    # Reset stamina to a percentage of max (e.g., 50%)
-    defender.stamina = defender.max_stamina // 2
-    
-    # Save changes
+    attacker.add_points(points_gained, sio, online_sessions, send_notification=False)
+
+    # Save attacker's changes
     player_manager.save_players()
-    
+
     # Find attacker's session ID
     attacker_sid = find_player_sid(attacker.name, online_sessions)
-    
+
     # Get attacker's weapon
     attacker_weapon = None
     if attacker.name in active_combats:
         attacker_weapon = active_combats[attacker.name]['weapon']
-    
+
     # Get killing blow message
     killing_blow_msg = CombatDialogue.get_killing_blow_message(defender.name, attacker_weapon)
-    
-    # Notify the defender of their defeat
-    if defender_sid and sio and utils:
-        defeat_msg = f"{attacker.name} has defeated you! You've lost ALL your points.\n"
-        defeat_msg += "All your items have been dropped.\n"
-        defeat_msg += "You've been returned to the village center."
-        
-        await utils.send_message(sio, defender_sid, defeat_msg)
-        await utils.send_stats_update(sio, defender_sid, defender)
-        
-        # Send the new room description to the defender
-        spawn_room = game_state.get_room(player_manager.spawn_room)
-        if spawn_room:
-            await utils.send_message(sio, defender_sid, 
-                                   f"{spawn_room.name}\n{spawn_room.description}")
-    
-    # Notify the attacker of their victory with the killing blow message
+
+    # Notify the attacker of their victory
     if attacker_sid and sio and utils:
         points_msg = f"[{attacker.points}]"
         await utils.send_message(sio, attacker_sid, points_msg)
         await utils.send_message(sio, attacker_sid, killing_blow_msg)
         await utils.send_stats_update(sio, attacker_sid, attacker)
-    
+
     # Notify others in the old room
     if online_sessions and sio and utils:
         for sid, session_data in online_sessions.items():
             other_player = session_data.get('player')
-            if (other_player and 
-                other_player.current_room == old_room and 
+            if (other_player and
+                other_player.current_room == old_room and
                 other_player != defender and
                 other_player != attacker):
-                await utils.send_message(sio, sid, 
+                await utils.send_message(sio, sid,
                                        f"{attacker.name} has defeated {defender.name}!")
+
+    # Notify the defender and prompt for respawn choice
+    if defender_sid and sio and utils:
+        defeat_msg = f"{attacker.name} has defeated you!\n"
+        defeat_msg += "All your items have been dropped.\n\n"
+        defeat_msg += "Persona reset.\nWould you like to play again?"
+
+        await utils.send_message(sio, defender_sid, defeat_msg)
+
+        # Set flag indicating player is awaiting respawn choice
+        # Also remove player from game world (limbo state)
+        if defender_sid in online_sessions:
+            online_sessions[defender_sid]['awaiting_respawn'] = True
+            online_sessions[defender_sid]['combat_death'] = True
+
+        # Put player in limbo (remove from game world)
+        defender.current_room = None
 
 # ===== HELPER FUNCTIONS =====
 def find_player_sid(player_name_or_obj, online_sessions):
@@ -858,7 +989,8 @@ async def handle_mob_attack(player, mob, weapon, player_sid, player_manager, gam
         'weapon': weapon,
         'initiative': True,  # Attacker starts with initiative
         'last_turn': None,
-        'is_mob': False  # Player is not a mob
+        'is_mob': False,  # Player is not a mob
+        'entity': player,
     }
 
     # Start combat tracking for mob
@@ -868,7 +1000,8 @@ async def handle_mob_attack(player, mob, weapon, player_sid, player_manager, gam
         'weapon': None,  # Mobs use their base damage
         'initiative': False,  # Defender doesn't have initiative
         'last_turn': None,
-        'is_mob': True  # This is a mob
+        'is_mob': True,  # This is a mob
+        'entity': mob,
     }
 
     # Set mob's target
@@ -926,7 +1059,8 @@ async def mob_initiate_attack(mob, player, player_sid, player_manager, game_stat
         'weapon': None,
         'initiative': True,  # Mob gets initiative
         'last_turn': None,
-        'is_mob': True
+        'is_mob': True,
+        'entity': mob,
     }
 
     # Start combat tracking for player
@@ -936,7 +1070,8 @@ async def mob_initiate_attack(mob, player, player_sid, player_manager, game_stat
         'weapon': None,  # Player starts barehanded
         'initiative': False,
         'last_turn': None,
-        'is_mob': False
+        'is_mob': False,
+        'entity': player,
     }
 
     # Set mob's target
@@ -1106,8 +1241,6 @@ async def handle_mob_defeat(player, mob, player_sid, game_state, player_manager,
 
     # Save
     player_manager.save_players()
-    if mob_manager:
-        mob_manager.save_mobs()
 
 
 async def handle_player_defeat_by_mob(mob, player, game_state, player_manager, online_sessions, sio, utils):
@@ -1133,36 +1266,11 @@ async def handle_player_defeat_by_mob(mob, player, game_state, player_manager, o
 
     # Drop all items
     current_room = game_state.get_room(player.current_room)
+    old_room = player.current_room
+
     for item in list(player.inventory):
         player.remove_item(item)
         current_room.add_item(item)
-
-    # Lose all points
-    points_lost = player.points
-    player.add_points(-points_lost, sio, online_sessions, send_notification=False)
-
-    # Respawn
-    old_room = player.current_room
-    player.set_current_room(player_manager.spawn_room)
-    player.stamina = player.max_stamina // 2
-
-    # Save
-    player_manager.save_players()
-
-    # Notify player
-    player_sid = find_player_sid(player, online_sessions)
-    if player_sid:
-        defeat_msg = f"{mob.name.capitalize()} has defeated you! You've lost ALL your points.\n"
-        defeat_msg += "All your items have been dropped.\n"
-        defeat_msg += "You've been returned to the village center."
-
-        await utils.send_message(sio, player_sid, defeat_msg)
-        await utils.send_stats_update(sio, player_sid, player)
-
-        # Send new room description
-        spawn_room = game_state.get_room(player_manager.spawn_room)
-        if spawn_room:
-            await utils.send_message(sio, player_sid, f"{spawn_room.name}\n{spawn_room.description}")
 
     # Notify others in old room
     if online_sessions and sio and utils:
@@ -1172,6 +1280,72 @@ async def handle_player_defeat_by_mob(mob, player, game_state, player_manager, o
                 other_player.current_room == old_room and
                 other_player != player):
                 await utils.send_message(sio, sid, f"{mob.name.capitalize()} has defeated {player.name}!")
+
+    # Notify player and prompt for respawn choice
+    player_sid = find_player_sid(player, online_sessions)
+    if player_sid:
+        defeat_msg = f"{mob.name.capitalize()} has defeated you!\n"
+        defeat_msg += "All your items have been dropped.\n\n"
+        defeat_msg += "Persona reset.\nWould you like to play again?"
+
+        await utils.send_message(sio, player_sid, defeat_msg)
+
+        # Set flag indicating player is awaiting respawn choice
+        # Also remove player from game world (limbo state)
+        if player_sid in online_sessions:
+            online_sessions[player_sid]['awaiting_respawn'] = True
+            online_sessions[player_sid]['combat_death'] = True
+
+        # Put player in limbo (remove from game world)
+        player.current_room = None
+
+
+async def handle_non_combat_death(player, player_sid, game_state, player_manager, online_sessions, sio, utils):
+    """
+    Handle when a player dies from non-combat sources (traps, etc.).
+
+    Args:
+        player (Player): The defeated player
+        player_sid (str): The player's session ID
+        game_state (GameState): Game state instance
+        player_manager (PlayerManager): Player manager instance
+        online_sessions (dict): Online sessions
+        sio: Socket.IO instance
+        utils: Utils module
+    """
+    # Drop all items in current room
+    current_room = game_state.get_room(player.current_room)
+    old_room = player.current_room
+
+    for item in list(player.inventory):
+        player.remove_item(item)
+        current_room.add_item(item)
+
+    # Notify others in the room
+    if online_sessions and sio and utils:
+        for sid, session_data in online_sessions.items():
+            other_player = session_data.get('player')
+            if (other_player and
+                other_player.current_room == old_room and
+                other_player != player):
+                await utils.send_message(sio, sid, f"{player.name} has died!")
+
+    # Notify player and prompt for respawn choice
+    if player_sid and sio and utils:
+        death_msg = "You have died!\n"
+        death_msg += "All your items have been dropped.\n\n"
+        death_msg += "Persona updated.\nWould you like to play again?"
+
+        await utils.send_message(sio, player_sid, death_msg)
+
+        # Set flag indicating player is awaiting respawn choice
+        # Also remove player from game world (limbo state)
+        if player_sid in online_sessions:
+            online_sessions[player_sid]['awaiting_respawn'] = True
+            online_sessions[player_sid]['combat_death'] = False  # Non-combat death
+
+        # Put player in limbo (remove from game world)
+        player.current_room = None
 
 # Register combat commands
 command_registry.register("attack", handle_attack, "Attack a target (player or NPC).")

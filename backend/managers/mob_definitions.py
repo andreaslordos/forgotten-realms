@@ -75,7 +75,7 @@ def get_mob_definitions():
             "aggro_delay_min": 0,
             "aggro_delay_max": 0,
             "patrol_rooms": [],  # Stationary
-            "movement_interval": 10,
+            "movement_interval": 0,
             "loot_table": [
                 {"item": gold_coin, "chance": 0.8},
                 {"item": gold_coin, "chance": 0.5}  # Can drop multiple coins
@@ -97,7 +97,7 @@ def get_mob_definitions():
             "aggro_delay_min": 3,  # Becomes aggressive after 3-8 ticks
             "aggro_delay_max": 8,
             "patrol_rooms": ["forest_clearing", "forest_edge", "northern_path", "forest_hideaway"],
-            "movement_interval": 8,  # Moves every 8 ticks
+            "movement_interval": 80,  # Moves every 8 ticks
             "loot_table": [
                 {"item": rusty_dagger, "chance": 0.3},
                 {"item": gold_coin, "chance": 0.6},
@@ -119,8 +119,8 @@ def get_mob_definitions():
             "aggressive": True,
             "aggro_delay_min": 0,  # Instantly aggressive
             "aggro_delay_max": 0,
-            "patrol_rooms": ["swamp1", "underswamp", "golden_door"],
-            "movement_interval": 5,  # Fast movement
+            "patrol_rooms": [],
+            "movement_interval": 0,  # No movement
             "loot_table": [
                 {"item": wolf_pelt, "chance": 0.9},
                 {"item": gold_coin, "chance": 0.4}
@@ -164,7 +164,7 @@ def get_mob_definitions():
             "aggro_delay_min": 0,
             "aggro_delay_max": 0,
             "patrol_rooms": ["cottage_garden", "elders_cottage", "cottage_interior"],
-            "movement_interval": 15,  # Slow movement
+            "movement_interval": 240,  # Slow movement
             "loot_table": [
                 {"item": ancient_key, "chance": 1.0}  # Always drops key (for quest)
             ],
@@ -185,7 +185,7 @@ def get_mob_definitions():
             "aggro_delay_min": 0,
             "aggro_delay_max": 0,
             "patrol_rooms": ["spawn", "marketplace", "tower_interior"],
-            "movement_interval": 12,
+            "movement_interval": 120,
             "loot_table": [
                 {"item": gold_coin, "chance": 1.0},
                 {"item": gold_coin, "chance": 0.8},

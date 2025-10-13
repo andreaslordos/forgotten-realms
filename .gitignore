@@ -21,6 +21,10 @@ ENV/
 env/
 .venv/
 
+# Coverage artifacts
+.coverage
+htmlcov/
+
 # Environment variables
 *.env
 

@@ -404,13 +404,14 @@ async def handle_users(cmd, player, game_state, player_manager, online_sessions,
     """Handle the 'users' command."""
     if not online_sessions:
         return "How is this possible?"
-    
+
     user_list = []
     for sid, session_data in online_sessions.items():
         other_player = session_data.get('player')
-        if other_player:
+        # Filter out players awaiting respawn or in limbo
+        if other_player and not session_data.get('awaiting_respawn', False) and other_player.current_room is not None:
             user_list.append(f"{other_player.name} the {other_player.level}")
-    
+
     return "\n".join(f"{user} is playing" for user in user_list)
 
 

@@ -10,10 +10,10 @@ from services.notifications import broadcast_arrival, broadcast_departure
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def execute_command(cmd, player, game_state, player_manager, online_sessions=None, sio=None, utils=None):
+async def execute_command(cmd, player, game_state, player_manager, online_sessions=None, sio=None, utils=None, player_sid=None):
     """
     Execute a command.
-    
+
     Args:
         cmd: The parsed command dictionary
         player: The player executing the command
@@ -22,10 +22,31 @@ async def execute_command(cmd, player, game_state, player_manager, online_sessio
         online_sessions: Optional online sessions dictionary
         sio: Optional Socket.IO instance
         utils: Optional utilities module
-        
+        player_sid: Optional player's session ID
+
     Returns:
         The result of the command execution
     """
+    # Check if player is awaiting respawn
+    if online_sessions and player_sid and online_sessions.get(player_sid, {}).get('awaiting_respawn', False):
+        # Player is awaiting respawn - intercept their input
+        from commands.combat import handle_respawn_choice
+
+        # Get the raw input (verb or original)
+        choice = cmd.get("verb") or cmd.get("original", "")
+        combat_death = online_sessions.get(player_sid, {}).get('combat_death', True)
+
+        result = await handle_respawn_choice(
+            player, choice, player_sid, game_state, player_manager,
+            online_sessions, sio, utils, combat_death=combat_death
+        )
+
+        # If result is None, player chose to disconnect
+        if result is None:
+            return "quit"
+
+        return result
+
     # Get the verb from the command dictionary
     verb = cmd.get("verb")
     

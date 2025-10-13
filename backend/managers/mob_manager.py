@@ -1,10 +1,7 @@
 # backend/managers/mob_manager.py
 
-import json
-import os
 import logging
 from models.Mobile import Mobile
-from models.Item import Item
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -14,15 +11,13 @@ logger = logging.getLogger(__name__)
 class MobManager:
     """
     Manages all mobs in the game world.
-    Handles spawning, tracking, AI ticking, and persistence.
+    Handles spawning, tracking, and AI ticking.
     """
 
-    def __init__(self, save_file="storage/mobs.json"):
-        self.save_file = save_file
+    def __init__(self):
         self.mobs = {}  # Dict of mob_id -> Mobile instance
         self.mob_definitions = {}  # Dict of definition_id -> mob template
         self.global_tick_counter = 0  # Track ticks for movement timing
-        self.load_mobs()
 
     def load_mob_definitions(self, definitions):
         """
@@ -157,8 +152,14 @@ class MobManager:
         """
         self.global_tick_counter += 1
 
+        from commands.combat import is_in_combat
+
         for mob_id, mob in list(self.mobs.items()):
             if mob.state != "alive":
+                continue
+
+            if is_in_combat(mob_id):
+                logger.debug(f"Skipping movement for {mob.name} while in combat")
                 continue
 
             # Tick aggro counter
@@ -235,6 +236,7 @@ class MobManager:
         if online_sessions:
             for sid, session_data in online_sessions.items():
                 player = session_data.get('player')
+                # Players in limbo (current_room == None) won't match
                 if player and player.current_room == mob.current_room:
                     target_player = player
                     target_sid = sid
@@ -246,27 +248,3 @@ class MobManager:
         # Import combat module to initiate attack
         from commands.combat import mob_initiate_attack
         await mob_initiate_attack(mob, target_player, target_sid, player_manager, game_state, online_sessions, sio, utils)
-
-    def save_mobs(self):
-        """Save all mobs to file."""
-        # Ensure directory exists
-        directory = os.path.dirname(self.save_file)
-        if directory and not os.path.exists(directory):
-            os.makedirs(directory)
-
-        with open(self.save_file, "w") as f:
-            mob_data = {mob_id: mob.to_dict() for mob_id, mob in self.mobs.items()}
-            json.dump(mob_data, f, indent=4)
-
-        logger.info(f"Saved {len(self.mobs)} mobs to {self.save_file}")
-
-    def load_mobs(self):
-        """Load mobs from file."""
-        if os.path.exists(self.save_file):
-            with open(self.save_file, "r") as f:
-                data = json.load(f)
-                self.mobs = {mob_id: Mobile.from_dict(mob_data) for mob_id, mob_data in data.items()}
-                logger.info(f"Loaded {len(self.mobs)} mobs from {self.save_file}")
-        else:
-            self.mobs = {}
-            logger.info("No saved mobs found, starting fresh")

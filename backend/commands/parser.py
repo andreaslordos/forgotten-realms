@@ -25,17 +25,20 @@ def parse_command_wrapper(command_str: str, context=None, players_in_room=None, 
     """
     logger.debug(f"Parse command wrapper called with: '{command_str}'")
     
-    # Extract player and game_state from context if available
+    # Extract player, game_state, and mob_manager from context if available
     player = None
     game_state = None
-    
+    mob_manager = None
+
     if context and isinstance(context, dict):
         player = context.get('player')
         game_state = context.get('game_state')
+        mob_manager = context.get('mob_manager')
     elif context and hasattr(context, 'get'):
         # Try to get player and game_state from context object
         player = getattr(context, 'get')('player', None)
         game_state = getattr(context, 'get')('game_state', None)
+        mob_manager = getattr(context, 'get')('mob_manager', None)
     
     # Try to extract player from players_in_room if needed
     if not player and players_in_room and len(players_in_room) > 0:
@@ -96,6 +99,9 @@ def parse_command_wrapper(command_str: str, context=None, players_in_room=None, 
         return [cmd]
     
     # For regular commands, use the natural language parser
+    # Set mob_manager if available
+    if mob_manager:
+        natural_language_parser.set_mob_manager(mob_manager)
     commands = parse_command(command_str, player, game_state)
     logger.debug(f"Parser returned: {commands}")
     

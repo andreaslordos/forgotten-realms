@@ -7,6 +7,11 @@ async def send_message(sio, sid, message):
 async def send_stats_update(sio, sid, player):
     if not player:
         return
+
+    # Defensive: some call sites may pass non-player objects (e.g., mobs).
+    required_attrs = ("points", "stamina", "max_stamina")
+    if any(not hasattr(player, attr) for attr in required_attrs):
+        return
     stats_data = {
         "name": player.name,
         "score": player.points,
