@@ -2220,7 +2220,7 @@ class HandleRespawnChoiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(self.online_sessions["player_sid"]["awaiting_respawn"])
         # Should send farewell message
         self.utils.send_message.assert_called_with(
-            self.sio, "player_sid", "Farewell! Thank you for playing."
+            self.sio, "player_sid", "Your persona has been deleted."
         )
 
 

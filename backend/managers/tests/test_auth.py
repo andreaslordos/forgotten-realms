@@ -299,6 +299,106 @@ class AuthManagerLoginTest(unittest.TestCase):
             os.remove(temp_file)
 
 
+class AuthManagerDeleteTest(unittest.TestCase):
+    """Test user deletion."""
+
+    def test_delete_user_removes_from_credentials(self):
+        """Test delete_user removes user from credentials."""
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+            json.dump({}, f)
+            temp_file = f.name
+
+        try:
+            auth = AuthManager(save_file=temp_file)
+            auth.register("user", "password")
+
+            result = auth.delete_user("user")
+
+            self.assertTrue(result)
+            self.assertNotIn("user", auth.credentials)
+        finally:
+            os.remove(temp_file)
+
+    def test_delete_user_removes_from_json_file(self):
+        """Test delete_user removes user from JSON file."""
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+            json.dump({}, f)
+            temp_file = f.name
+
+        try:
+            auth = AuthManager(save_file=temp_file)
+            auth.register("user", "password")
+
+            # Verify user is in file
+            with open(temp_file, "r") as f:
+                data = json.load(f)
+            self.assertIn("user", data)
+
+            # Delete user
+            auth.delete_user("user")
+
+            # Verify user is removed from file
+            with open(temp_file, "r") as f:
+                data = json.load(f)
+            self.assertNotIn("user", data)
+        finally:
+            os.remove(temp_file)
+
+    def test_delete_user_is_case_insensitive(self):
+        """Test delete_user is case insensitive."""
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+            json.dump({}, f)
+            temp_file = f.name
+
+        try:
+            auth = AuthManager(save_file=temp_file)
+            auth.register("TestUser", "password")
+
+            # Delete with different casing
+            result = auth.delete_user("TESTUSER")
+
+            self.assertTrue(result)
+            self.assertNotIn("testuser", auth.credentials)
+        finally:
+            os.remove(temp_file)
+
+    def test_delete_user_returns_false_when_user_not_found(self):
+        """Test delete_user returns False when user doesn't exist."""
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+            json.dump({}, f)
+            temp_file = f.name
+
+        try:
+            auth = AuthManager(save_file=temp_file)
+
+            result = auth.delete_user("nonexistent")
+
+            self.assertFalse(result)
+        finally:
+            os.remove(temp_file)
+
+    def test_delete_user_persists_deletion_across_instances(self):
+        """Test deleted user stays deleted across AuthManager instances."""
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+            json.dump({}, f)
+            temp_file = f.name
+
+        try:
+            # First instance - register and delete
+            auth1 = AuthManager(save_file=temp_file)
+            auth1.register("user", "password")
+            auth1.delete_user("user")
+
+            # Second instance - verify user is gone
+            auth2 = AuthManager(save_file=temp_file)
+            with self.assertRaises(Exception) as context:
+                auth2.login("user", "password")
+
+            self.assertIn("Invalid credentials", str(context.exception))
+        finally:
+            os.remove(temp_file)
+
+
 class AuthManagerPersistenceTest(unittest.TestCase):
     """Test credential persistence."""
 

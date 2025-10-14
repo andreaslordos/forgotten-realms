@@ -40,6 +40,28 @@ class PlayerManager:
     def login(self, name: str) -> Optional[Player]:
         return self.players.get(name.lower(), None)
 
+    def delete_player(self, name: str) -> bool:
+        """
+        Delete a player's persona and authentication credentials permanently.
+
+        Args:
+            name (str): The player's name (case-insensitive)
+
+        Returns:
+            bool: True if player was deleted, False if player not found
+        """
+        uname = name.lower()
+        if uname in self.players:
+            del self.players[uname]
+            self.save_players()
+
+            # Also delete authentication credentials if auth_manager is available
+            if self.auth_manager:
+                self.auth_manager.delete_user(uname)
+
+            return True
+        return False
+
     def save_players(self) -> None:
         with open(self.save_file, "w") as f:
             # Create a dictionary of player data without inventory

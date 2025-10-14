@@ -913,12 +913,15 @@ async def handle_respawn_choice(
 
         return ""
     else:
-        # Player chooses not to continue - disconnect them
+        # Player chooses not to continue - delete their persona
         if player_sid in online_sessions:
             online_sessions[player_sid]["awaiting_respawn"] = False
 
+        # Delete the player's persona permanently
+        player_manager.delete_player(player.name)
+
         # Disconnect the player
-        await utils.send_message(sio, player_sid, "Farewell! Thank you for playing.")
+        await utils.send_message(sio, player_sid, "Your persona has been deleted.")
         # The actual disconnection should be handled by the caller
         return None
 

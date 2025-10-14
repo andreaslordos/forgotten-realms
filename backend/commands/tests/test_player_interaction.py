@@ -21,6 +21,7 @@ from commands.player_interaction import handle_give, handle_steal
 from models.Player import Player
 from models.Item import Item
 from models.Room import Room
+from models.Mobile import Mobile
 from managers.game_state import GameState
 
 
@@ -278,6 +279,42 @@ class GiveCommandTest(AsyncTestCase):
 
         self.assertIn("given to Bob", result)
         self.assertIn(self.item1, self.other_player.inventory)
+
+    async def test_give_to_mobile_fails(self):
+        """Test that giving items to mobiles is not allowed."""
+        self.player.add_item(self.item1)
+
+        # Create a mobile in the same room
+        elder = Mobile(
+            name="Elder",
+            id="elder_1",
+            description="The village elder",
+            current_room="test_room",
+        )
+
+        cmd = {
+            "verb": "give",
+            "instrument": "sword",
+            "instrument_object": self.item1,
+            "subject": "Elder",
+            "subject_object": elder,
+            "reversed_syntax": True,
+        }
+
+        result = await handle_give(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Should reject giving to mobile
+        self.assertIn("cannot accept items", result)
+        # Item should still be with player
+        self.assertIn(self.item1, self.player.inventory)
 
 
 class StealCommandTest(AsyncTestCase):
@@ -597,6 +634,36 @@ class StealCommandTest(AsyncTestCase):
             )
 
         self.assertIn("stolen", result)
+
+    async def test_steal_from_mobile_fails(self):
+        """Test that stealing from mobiles is not allowed."""
+        # Create a mobile in the same room
+        merchant = Mobile(
+            name="Merchant",
+            id="merchant_1",
+            description="A traveling merchant",
+            current_room="test_room",
+        )
+
+        cmd = {
+            "verb": "steal",
+            "subject": "Merchant",
+            "subject_object": merchant,
+            "instrument": "key",
+        }
+
+        result = await handle_steal(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Should reject stealing from mobile
+        self.assertIn("cannot steal from", result)
 
 
 class PlayerInteractionEdgeCasesTest(AsyncTestCase):

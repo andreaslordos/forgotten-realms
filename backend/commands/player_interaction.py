@@ -70,6 +70,12 @@ async def handle_give(
     if not item:
         return f"You don't have '{item_name}' in your inventory."
 
+    # Check if target is a mobile (can't give items to mobs)
+    from models.Mobile import Mobile
+
+    if target_obj and isinstance(target_obj, Mobile):
+        return f"{target_obj.name} cannot accept items."
+
     # Find the target player - prefer bound object
     target_player = None
     target_sid = None
@@ -78,6 +84,7 @@ async def handle_give(
         target_obj
         and hasattr(target_obj, "name")
         and hasattr(target_obj, "current_room")
+        and not isinstance(target_obj, Mobile)
     ):
         if target_obj.current_room == player.current_room:
             target_player = target_obj
@@ -87,7 +94,7 @@ async def handle_give(
                     target_sid = sid
                     break
     else:
-        # Find by name
+        # Find by name (only search players, not mobs)
         for sid, session in online_sessions.items():
             other = session.get("player")
             if other and other.current_room == player.current_room and other != player:
@@ -174,6 +181,12 @@ async def handle_steal(
     if not instrument and not instrument_obj:
         return "What do you want to steal?"
 
+    # Check if target is a mobile (can't steal from mobs)
+    from models.Mobile import Mobile
+
+    if subject_obj and isinstance(subject_obj, Mobile):
+        return f"You cannot steal from {subject_obj.name}."
+
     # Find the target player - prefer bound object
     target_player = None
     target_sid = None
@@ -182,6 +195,7 @@ async def handle_steal(
         subject_obj
         and hasattr(subject_obj, "name")
         and hasattr(subject_obj, "current_room")
+        and not isinstance(subject_obj, Mobile)
     ):
         if subject_obj.current_room == player.current_room:
             target_player = subject_obj
@@ -191,7 +205,7 @@ async def handle_steal(
                     target_sid = sid
                     break
     else:
-        # Find by name
+        # Find by name (only search players, not mobs)
         for sid, session in online_sessions.items():
             other = session.get("player")
             if other and other.current_room == player.current_room and other != player:

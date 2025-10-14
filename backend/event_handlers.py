@@ -349,6 +349,15 @@ Welcome! By what name shall I call you?
             if "player" in session:
                 player = session["player"]
 
+                # Check if player is awaiting respawn - delete their persona
+                if session.get("awaiting_respawn", False):
+                    print(
+                        f"[Disconnect] Player {player.name} disconnected while awaiting respawn - deleting persona"
+                    )
+                    player_manager.delete_player(player.name)
+                    del online_sessions[sid]
+                    return
+
                 # Check if the player is in combat
                 if is_in_combat(player.name):
                     # Handle combat disconnection before normal cleanup

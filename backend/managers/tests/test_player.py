@@ -520,5 +520,139 @@ class PlayerManagerSaveLoadTest(unittest.TestCase):
             os.remove(temp_file)
 
 
+class PlayerManagerDeleteTest(unittest.TestCase):
+    """Test PlayerManager.delete_player functionality."""
+
+    def test_delete_player_removes_from_players_dict(self):
+        """Test delete_player removes player from players dict."""
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+            json.dump({}, f)
+            temp_file = f.name
+
+        try:
+            pm = PlayerManager(save_file=temp_file)
+            pm.register("TestPlayer")
+
+            result = pm.delete_player("TestPlayer")
+
+            self.assertTrue(result)
+            self.assertNotIn("testplayer", pm.players)
+        finally:
+            os.remove(temp_file)
+
+    def test_delete_player_removes_from_json_file(self):
+        """Test delete_player removes player from JSON file."""
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+            json.dump({}, f)
+            temp_file = f.name
+
+        try:
+            pm = PlayerManager(save_file=temp_file)
+            pm.register("TestPlayer")
+
+            # Verify player is in file
+            with open(temp_file, "r") as f:
+                data = json.load(f)
+            self.assertIn("testplayer", data)
+
+            # Delete player
+            pm.delete_player("TestPlayer")
+
+            # Verify player is removed from file
+            with open(temp_file, "r") as f:
+                data = json.load(f)
+            self.assertNotIn("testplayer", data)
+        finally:
+            os.remove(temp_file)
+
+    def test_delete_player_is_case_insensitive(self):
+        """Test delete_player is case insensitive."""
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+            json.dump({}, f)
+            temp_file = f.name
+
+        try:
+            pm = PlayerManager(save_file=temp_file)
+            pm.register("TestPlayer")
+
+            # Delete with different casing
+            result = pm.delete_player("TESTPLAYER")
+
+            self.assertTrue(result)
+            self.assertNotIn("testplayer", pm.players)
+        finally:
+            os.remove(temp_file)
+
+    def test_delete_player_returns_false_when_player_not_found(self):
+        """Test delete_player returns False when player doesn't exist."""
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+            json.dump({}, f)
+            temp_file = f.name
+
+        try:
+            pm = PlayerManager(save_file=temp_file)
+
+            result = pm.delete_player("NonExistent")
+
+            self.assertFalse(result)
+        finally:
+            os.remove(temp_file)
+
+    def test_delete_player_persists_deletion_across_instances(self):
+        """Test deleted player stays deleted across PlayerManager instances."""
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+            json.dump({}, f)
+            temp_file = f.name
+
+        try:
+            # First instance - register and delete
+            pm1 = PlayerManager(save_file=temp_file)
+            pm1.register("TestPlayer")
+            pm1.delete_player("TestPlayer")
+
+            # Second instance - verify player is gone
+            pm2 = PlayerManager(save_file=temp_file)
+            player = pm2.login("TestPlayer")
+
+            self.assertIsNone(player)
+        finally:
+            os.remove(temp_file)
+
+    def test_delete_player_also_deletes_auth_credentials(self):
+        """Test delete_player also deletes authentication credentials."""
+        from managers.auth import AuthManager
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+            json.dump({}, f)
+            player_file = f.name
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
+            json.dump({}, f)
+            auth_file = f.name
+
+        try:
+            # Create auth manager and player manager with auth reference
+            auth = AuthManager(save_file=auth_file)
+            pm = PlayerManager(save_file=player_file, auth_manager=auth)
+
+            # Register player and auth credentials
+            auth.register("TestPlayer", "password123")
+            pm.register("TestPlayer")
+
+            # Verify both exist
+            self.assertIn("testplayer", pm.players)
+            self.assertIn("testplayer", auth.credentials)
+
+            # Delete player
+            pm.delete_player("TestPlayer")
+
+            # Verify both are deleted
+            self.assertNotIn("testplayer", pm.players)
+            self.assertNotIn("testplayer", auth.credentials)
+        finally:
+            os.remove(player_file)
+            os.remove(auth_file)
+
+
 if __name__ == "__main__":
     unittest.main()

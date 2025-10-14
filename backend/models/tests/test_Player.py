@@ -412,6 +412,36 @@ class PlayerSerializationTest(unittest.TestCase):
         self.assertIn("inventory", summary)
 
 
+class PlayerDeathRespawnTest(unittest.TestCase):
+    """Test Player death and respawn behavior with score/points."""
+
+    def test_player_serialization_preserves_points(self):
+        """
+        Test that Player.to_dict() and from_dict() preserve points.
+
+        This tests the serialization/deserialization process to ensure
+        points are correctly saved and restored. While this is basic
+        functionality, it's important to verify for the death system.
+
+        NOTE: In actual gameplay, if a player disconnects while awaiting
+        respawn, their persona is DELETED by the disconnect handler in
+        event_handlers.py, so they would never reach the "saved and loaded"
+        state. This test only verifies the serialization logic itself.
+        """
+        # Create a player with some points/score
+        player = Player("TestPlayer")
+        player.points = 500
+        player.level_up()
+        original_points = player.points
+
+        # Save/load cycle (tests serialization only)
+        saved_data = player.to_dict()
+        restored_player = Player.from_dict(saved_data)
+
+        # RESULT: Points should be preserved through serialization
+        self.assertEqual(restored_player.points, original_points)
+
+
 class PlayerActivityTest(unittest.TestCase):
     """Test Player activity tracking."""
 

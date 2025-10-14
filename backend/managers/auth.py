@@ -50,3 +50,20 @@ class AuthManager:
             return True
         else:
             raise Exception("Invalid credentials")
+
+    def delete_user(self, username: str) -> bool:
+        """
+        Delete a user's authentication credentials permanently.
+
+        Args:
+            username (str): The username (case-insensitive)
+
+        Returns:
+            bool: True if user was deleted, False if user not found
+        """
+        uname = username.lower()
+        if uname in self.credentials:
+            del self.credentials[uname]
+            self.save_credentials()
+            return True
+        return False
