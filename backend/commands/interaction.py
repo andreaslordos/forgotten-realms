@@ -233,6 +233,13 @@ async def handle_interaction(
             target_state = valid_interaction["target_state"]
             primary_item.set_state(target_state, game_state)
 
+            # Check if this state change should make the item emit light
+            # Items in "lit" state emit light
+            if target_state == "lit":
+                primary_item.emits_light = True
+            elif target_state == "unlit" or target_state == "extinguished":
+                primary_item.emits_light = False
+
             # Broadcast state change to other players in the room
             if hasattr(primary_item, "room_id") and primary_item.room_id:
                 # Create a message that describes what happened

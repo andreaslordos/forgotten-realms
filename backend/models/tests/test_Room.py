@@ -311,5 +311,53 @@ class RoomSerializationTest(unittest.TestCase):
         self.assertEqual(reconstructed.exits, original.exits)
 
 
+class RoomDarknessTest(unittest.TestCase):
+    """Test room darkness property."""
+
+    def test___init___defaults_is_dark_to_false(self):
+        """Test room defaults to not dark."""
+        room = Room("room1", "Test Room", "A test room")
+
+        self.assertFalse(room.is_dark)
+
+    def test___init___accepts_is_dark_parameter(self):
+        """Test creating a dark room."""
+        room = Room("room1", "Dark Room", "A dark room", is_dark=True)
+
+        self.assertTrue(room.is_dark)
+
+    def test_to_dict_includes_is_dark(self):
+        """Test serialization includes is_dark property."""
+        room = Room("room1", "Dark Room", "A dark room", is_dark=True)
+        room_dict = room.to_dict()
+
+        self.assertIn("is_dark", room_dict)
+        self.assertTrue(room_dict["is_dark"])
+
+    def test_from_dict_restores_is_dark(self):
+        """Test deserialization restores is_dark property."""
+        data = {
+            "room_id": "cellar",
+            "name": "Dark Cellar",
+            "description": "A dark cellar",
+            "exits": {},
+            "items": [],
+            "is_dark": True,
+        }
+
+        room = Room.from_dict(data)
+
+        self.assertTrue(room.is_dark)
+
+    def test_to_dict_from_dict_round_trip_with_is_dark(self):
+        """Test serialization cycle preserves is_dark."""
+        original = Room("dungeon", "Dark Dungeon", "A dark dungeon", is_dark=True)
+
+        serialized = original.to_dict()
+        reconstructed = Room.from_dict(serialized)
+
+        self.assertEqual(reconstructed.is_dark, original.is_dark)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -226,6 +226,13 @@ def build_look_description(
     # This function remains largely unchanged
     current_room = game_state.get_room(player.current_room)
 
+    # Check if room is visible (accounts for darkness)
+    if online_sessions:
+        from commands.darkness_utils import room_is_visible, get_dark_room_description
+
+        if not room_is_visible(current_room, online_sessions, game_state):
+            return get_dark_room_description(current_room)
+
     # Build the room description
     room_desc = f"{current_room.name}"
 

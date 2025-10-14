@@ -458,5 +458,153 @@ class PlayerActivityTest(unittest.TestCase):
         self.assertGreater(player.last_active, old_time)
 
 
+class PlayerLightSourceTest(unittest.TestCase):
+    """Test Player light source detection for darkness system."""
+
+    def test_has_light_source_returns_false_with_no_items(self):
+        """Test has_light_source returns False when inventory is empty."""
+        player = Player("TestPlayer")
+
+        self.assertFalse(player.has_light_source())
+
+    def test_has_light_source_returns_false_with_non_light_items(self):
+        """Test has_light_source returns False when no items emit light."""
+        player = Player("TestPlayer")
+        item1 = create_mock_item(name="sword", emits_light=False)
+        item2 = create_mock_item(name="shield", emits_light=False)
+        player.inventory = [item1, item2]
+
+        self.assertFalse(player.has_light_source())
+
+    def test_has_light_source_returns_true_with_light_emitting_item(self):
+        """Test has_light_source returns True when player has a light source."""
+        player = Player("TestPlayer")
+        torch = create_mock_item(name="torch", emits_light=True)
+        player.inventory = [torch]
+
+        self.assertTrue(player.has_light_source())
+
+    def test_has_light_source_finds_light_among_multiple_items(self):
+        """Test has_light_source finds light source in mixed inventory."""
+        player = Player("TestPlayer")
+        sword = create_mock_item(name="sword", emits_light=False)
+        torch = create_mock_item(name="torch", emits_light=True)
+        shield = create_mock_item(name="shield", emits_light=False)
+        player.inventory = [sword, torch, shield]
+
+        self.assertTrue(player.has_light_source())
+
+
+class PlayerEffectiveDexterityTest(unittest.TestCase):
+    """Test Player effective dexterity calculation with darkness penalty."""
+
+    def test_get_effective_dexterity_returns_full_dex_in_lit_room(self):
+        """Test get_effective_dexterity returns full dexterity in lit room."""
+        from models.Room import Room
+
+        player = Player("TestPlayer")
+        player.dexterity = 20
+        room = Room("room1", "Lit Room", "A well-lit room", is_dark=False)
+        online_sessions = {}
+        game_state = Mock()
+
+        effective_dex = player.get_effective_dexterity(
+            room, online_sessions, game_state
+        )
+
+        self.assertEqual(effective_dex, 20)
+
+    def test_get_effective_dexterity_applies_50_percent_penalty_in_dark_room_without_light(
+        self,
+    ):
+        """Test get_effective_dexterity applies 50% penalty in dark room without light."""
+        from models.Room import Room
+
+        player = Player("TestPlayer")
+        player.dexterity = 20
+        room = Room("room1", "Dark Room", "A dark room", is_dark=True)
+        online_sessions = {}
+        game_state = Mock()
+        game_state.get_room = Mock(return_value=room)
+        room.get_items = Mock(return_value=[])
+
+        effective_dex = player.get_effective_dexterity(
+            room, online_sessions, game_state
+        )
+
+        self.assertEqual(effective_dex, 10)  # 50% penalty
+
+    def test_get_effective_dexterity_returns_full_dex_in_dark_room_with_personal_light(
+        self,
+    ):
+        """Test get_effective_dexterity returns full dexterity when player has light."""
+        from models.Room import Room
+
+        player = Player("TestPlayer")
+        player.dexterity = 20
+        player.current_room = "room1"  # Must match room's room_id
+        torch = create_mock_item(name="torch", emits_light=True)
+        player.inventory = [torch]
+        room = Room("room1", "Dark Room", "A dark room", is_dark=True)
+        room.get_items = Mock(return_value=[])  # No items on ground
+        online_sessions = {
+            "sid1": {"player": player}
+        }  # Player with light is in the room
+        game_state = Mock()
+
+        effective_dex = player.get_effective_dexterity(
+            room, online_sessions, game_state
+        )
+
+        self.assertEqual(effective_dex, 20)  # No penalty
+
+    def test_get_effective_dexterity_returns_full_dex_when_other_player_has_light(
+        self,
+    ):
+        """Test get_effective_dexterity returns full dexterity when another player has light."""
+        from models.Room import Room
+
+        player = Player("TestPlayer")
+        player.dexterity = 20
+        player.current_room = "room1"
+
+        other_player = Player("OtherPlayer")
+        other_player.current_room = "room1"
+        torch = create_mock_item(name="torch", emits_light=True)
+        other_player.inventory = [torch]
+
+        room = Room("room1", "Dark Room", "A dark room", is_dark=True)
+        online_sessions = {
+            "sid1": {"player": player},
+            "sid2": {"player": other_player},
+        }
+        game_state = Mock()
+
+        effective_dex = player.get_effective_dexterity(
+            room, online_sessions, game_state
+        )
+
+        self.assertEqual(effective_dex, 20)  # No penalty due to shared light
+
+    def test_get_effective_dexterity_returns_full_dex_with_ground_light_source(self):
+        """Test get_effective_dexterity returns full dexterity with light on ground."""
+        from models.Room import Room
+
+        player = Player("TestPlayer")
+        player.dexterity = 20
+        room = Room("room1", "Dark Room", "A dark room", is_dark=True)
+        torch_on_ground = create_mock_item(name="torch", emits_light=True)
+        room.items = [torch_on_ground]
+        online_sessions = {}
+        game_state = Mock()
+        game_state.get_room = Mock(return_value=room)
+
+        effective_dex = player.get_effective_dexterity(
+            room, online_sessions, game_state
+        )
+
+        self.assertEqual(effective_dex, 20)  # No penalty due to ground light
+
+
 if __name__ == "__main__":
     unittest.main()

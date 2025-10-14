@@ -15,6 +15,7 @@ class Room:
         str, Tuple[Any, Callable[[Any], bool]]
     ]  # Dict[str, Tuple["Item", Callable[["GameState"], bool]]]
     exits: Dict[str, str]
+    is_dark: bool
 
     def __init__(
         self,
@@ -22,6 +23,7 @@ class Room:
         name: str,
         description: str,
         exits: Optional[Dict[str, str]] = None,
+        is_dark: bool = False,
     ) -> None:
         self.room_id = room_id
         self.name = name
@@ -29,6 +31,7 @@ class Room:
         self.items = []  # Holds all visible items in the room
         self.hidden_items = {}  # Maps item_id to (item, condition_func) pairs
         self.exits = exits if exits is not None else {}
+        self.is_dark = is_dark  # Whether room requires light source to see
 
     def add_item(self, item: Any) -> None:  # item: "Item"
         """Add a visible item to the room."""
@@ -87,6 +90,7 @@ class Room:
                 id: item.to_dict() for id, (item, _) in self.hidden_items.items()
             },
             "exits": self.exits,
+            "is_dark": self.is_dark,
         }
 
     @staticmethod
@@ -97,6 +101,7 @@ class Room:
             data["name"],
             data["description"],
             exits=data.get("exits", {}),
+            is_dark=data.get("is_dark", False),
         )
         # room.items = [Item.from_dict(item_data) for item_data in data.get("items", [])]
         # Note: condition functions can't be easily serialized, so they'd need to be re-attached

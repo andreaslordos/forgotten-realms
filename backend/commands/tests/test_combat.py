@@ -168,6 +168,9 @@ class HandleAttackTest(unittest.IsolatedAsyncioTestCase):
         self.player.strength = 20
         self.player.dexterity = 15
         self.player.inventory = []
+        self.player.get_effective_dexterity = (
+            lambda *args, **kwargs: self.player.dexterity
+        )
 
         self.game_state = Mock()
         self.player_manager = Mock()
@@ -252,9 +255,13 @@ class HandleRetaliateTest(unittest.IsolatedAsyncioTestCase):
 
         self.player = Mock()
         self.player.name = "TestPlayer"
+        self.player.current_room = "room1"
         self.player.strength = 20
         self.player.dexterity = 15
         self.player.inventory = []
+        self.player.get_effective_dexterity = (
+            lambda *args, **kwargs: self.player.dexterity
+        )
 
         self.weapon = Weapon(
             name="iron sword",
@@ -360,15 +367,24 @@ class HandleFleeTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "TestPlayer"
         self.player.current_room = "room1"
         self.player.points = 100
+        self.player.dexterity = 15
         self.player.inventory = []
         self.player.set_current_room = Mock()
         self.player.remove_item = Mock()
         self.player.add_points = Mock(return_value=(False, ""))
+        self.player.get_effective_dexterity = (
+            lambda *args, **kwargs: self.player.dexterity
+        )
 
         self.opponent = Mock()
         self.opponent.name = "Opponent"
+        self.opponent.current_room = "room1"
+        self.opponent.dexterity = 15
         self.opponent.stamina = 100
         self.opponent.add_points = Mock()
+        self.opponent.get_effective_dexterity = (
+            lambda *args, **kwargs: self.opponent.dexterity
+        )
 
         self.room = Room(
             room_id="room1",
@@ -633,15 +649,19 @@ class ProcessCombatTickTest(unittest.IsolatedAsyncioTestCase):
 
         player1 = Mock()
         player1.name = "Player1"
+        player1.current_room = "room1"
         player1.strength = 50
         player1.dexterity = 50
         player1.stamina = 100
+        player1.get_effective_dexterity = lambda *args, **kwargs: player1.dexterity
 
         player2 = Mock()
         player2.name = "Player2"
+        player2.current_room = "room1"
         player2.strength = 40
         player2.dexterity = 40
         player2.stamina = 100
+        player2.get_effective_dexterity = lambda *args, **kwargs: player2.dexterity
 
         active_combats["Player1"] = {
             "target": player2,
@@ -737,6 +757,9 @@ class HandleAttackAdvancedTest(unittest.IsolatedAsyncioTestCase):
         self.player.inventory = []
         self.player.strength = 50
         self.player.dexterity = 50
+        self.player.get_effective_dexterity = (
+            lambda *args, **kwargs: self.player.dexterity
+        )
 
         self.target = Mock()
         self.target.name = "Target"
@@ -744,6 +767,9 @@ class HandleAttackAdvancedTest(unittest.IsolatedAsyncioTestCase):
         self.target.stamina = 100
         self.target.max_stamina = 100
         self.target.dexterity = 40
+        self.target.get_effective_dexterity = (
+            lambda *args, **kwargs: self.target.dexterity
+        )
 
         self.game_state = Mock()
         self.player_manager = Mock()
@@ -1139,12 +1165,20 @@ class ProcessCombatAttackTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Attacker"
         self.player.strength = 50
         self.player.dexterity = 50
+        self.player.current_room = "room1"
         self.player.inventory = []
+        self.player.get_effective_dexterity = (
+            lambda *args, **kwargs: self.player.dexterity
+        )
 
         self.target = Mock()
         self.target.name = "Defender"
         self.target.stamina = 100
         self.target.dexterity = 40
+        self.target.current_room = "room1"
+        self.target.get_effective_dexterity = (
+            lambda *args, **kwargs: self.target.dexterity
+        )
 
         self.weapon = Item(name="sword", id="sword_1", description="A sword")
         self.weapon.damage = 10
@@ -1353,12 +1387,17 @@ class HandleMobAttackTest(unittest.IsolatedAsyncioTestCase):
         self.player.inventory = []
         self.player.strength = 50
         self.player.dexterity = 50
+        self.player.get_effective_dexterity = (
+            lambda *args, **kwargs: self.player.dexterity
+        )
 
         self.mob = Mock(spec=Mobile)
         self.mob.id = "goblin_1"
         self.mob.name = "goblin"
         self.mob.current_room = "room1"
         self.mob.target_player = None
+        self.mob.dexterity = 40
+        self.mob.get_effective_dexterity = lambda *args, **kwargs: self.mob.dexterity
 
         self.weapon = Item(name="sword", id="sword_1", description="A sword")
         self.weapon.damage = 10
@@ -1610,10 +1649,14 @@ class ProcessMobCombatAttackTest(unittest.IsolatedAsyncioTestCase):
         """Set up test fixtures."""
         self.player = Mock()
         self.player.name = "Player1"
+        self.player.current_room = "room1"
         self.player.inventory = []
         self.player.strength = 50
         self.player.dexterity = 50
         self.player.stamina = 100
+        self.player.get_effective_dexterity = (
+            lambda *args, **kwargs: self.player.dexterity
+        )
 
         self.mob = Mock(spec=Mobile)
         self.mob.id = "goblin_1"
@@ -1621,6 +1664,7 @@ class ProcessMobCombatAttackTest(unittest.IsolatedAsyncioTestCase):
         self.mob.damage = 10
         self.mob.dexterity = 40
         self.mob.take_damage = Mock(return_value=(False, 80))
+        self.mob.get_effective_dexterity = lambda *args, **kwargs: self.mob.dexterity
 
         self.weapon = Item(name="sword", id="sword_1", description="A sword")
         self.weapon.damage = 10

@@ -10,6 +10,7 @@ class Item:
     weight: int
     value: int
     takeable: bool
+    emits_light: bool
 
     def __init__(
         self,
@@ -19,6 +20,7 @@ class Item:
         weight: int = 1,
         value: int = 0,
         takeable: bool = True,
+        emits_light: bool = False,
     ) -> None:
         """
         :param name: The name of the item.
@@ -27,6 +29,7 @@ class Item:
         :param weight: How much the item weighs (default: 1kg).
         :param value: The amount of points given if swamped (default: 0).
         :param takeable: Whether the item can be picked up (default: True).
+        :param emits_light: Whether the item emits light (default: False).
         """
         self.name = name
         self.id = id
@@ -34,6 +37,7 @@ class Item:
         self.weight = weight
         self.value = value
         self.takeable = takeable
+        self.emits_light = emits_light
 
     def __repr__(self) -> str:
         return f"{self.name} - {self.description} ({self.weight}kg, {self.value}pts)"
@@ -47,6 +51,7 @@ class Item:
             "weight": self.weight,
             "value": self.value,
             "takeable": self.takeable,
+            "emits_light": self.emits_light,
         }
 
     @staticmethod
@@ -59,4 +64,5 @@ class Item:
             weight=data.get("weight", 1),
             value=data.get("value", 0),
             takeable=data.get("takeable", True),
+            emits_light=data.get("emits_light", False),
         )

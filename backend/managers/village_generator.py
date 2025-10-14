@@ -126,6 +126,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "these walls are ancient stone that predates the village itself. Shelves line the walls, holding bottles of "
         "strangely luminescent liquids and jars containing preserved specimens from beyond this reality. "
         "At the far end, a tunnel leads off to the north, its purpose and destination unclear.",
+        is_dark=True,
     )
 
     cottage_garden: Room = Room(
@@ -289,6 +290,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "revealing carefully laid stonework far older than the village above. The walls bear inscriptions predicting events "
         "in the village's future and recording its past. Water seeps from small cracks, flowing upward against gravity. "
         "A narrow tunnel leads eastward into darkness.",
+        is_dark=True,
     )
 
     underground_junction: Room = Room(
@@ -298,6 +300,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "provide soft illumination, revealing ancient support pillars carved with scenes from the village's founding. "
         "The floor is worn smooth by centuries of passage. A small underground stream bubbles from a crack in the floor, "
         "flows across the chamber, and disappears into another crevice.",
+        is_dark=True,
     )
 
     # Shrine area
@@ -963,6 +966,50 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
 
 def add_regular_items(rooms: Dict[str, Room]) -> None:
     """Add regular (non-stateful) items to rooms."""
+
+    # Fireplace in cottage interior (permanent light source)
+    fireplace: StatefulItem = StatefulItem(
+        "fireplace",
+        "fireplace_cottage",
+        "A stone fireplace with flames crackling inside.",
+        weight=999,
+        value=0,
+        takeable=False,
+        state="burning",
+    )
+    fireplace.emits_light = True  # Always emits light
+    fireplace.add_state_description(
+        "burning", "A stone fireplace with flames crackling inside."
+    )
+    fireplace.add_interaction(
+        verb="examine",
+        message="The fireplace burns with a steady, warm fire. Perfect for lighting a torch or stick.",
+    )
+    rooms["cottage_interior"].add_item(fireplace)
+
+    # Stick outside Elder's cottage (can be lit)
+    stick: StatefulItem = StatefulItem(
+        "stick",
+        "stick_1",
+        "A sturdy wooden stick lies on the ground.",
+        weight=1,
+        value=0,
+        takeable=True,
+        state="unlit",
+    )
+    stick.add_state_description("unlit", "A sturdy wooden stick lies on the ground.")
+    stick.add_state_description(
+        "lit", "A burning wooden stick, casting flickering light."
+    )
+    # Add interaction to light the stick with the fireplace
+    stick.add_interaction(
+        verb="light",
+        required_instrument="fireplace",
+        target_state="lit",
+        message="You hold the stick to the fireplace. It catches fire and burns brightly!",
+        from_state="unlit",
+    )
+    rooms["elders_cottage"].add_item(stick)
 
     # Elder's cottage items
     Item("tome", "tome", "An ancient leather-bound tome lies here.", weight=1, value=5)

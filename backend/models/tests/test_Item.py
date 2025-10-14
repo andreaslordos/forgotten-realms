@@ -115,5 +115,68 @@ class ItemSerializationTest(unittest.TestCase):
         self.assertEqual(reconstructed.value, original.value)
 
 
+class ItemLightEmissionTest(unittest.TestCase):
+    """Test item light emission property for darkness system."""
+
+    def test___init___defaults_emits_light_to_false(self):
+        """Test item defaults to not emitting light."""
+        item = Item("Stick", "stick_1", "A wooden stick")
+
+        self.assertFalse(item.emits_light)
+
+    def test___init___accepts_emits_light_parameter(self):
+        """Test creating a light-emitting item."""
+        item = Item("Torch", "torch_1", "A burning torch", weight=1, emits_light=True)
+
+        self.assertTrue(item.emits_light)
+
+    def test_to_dict_includes_emits_light(self):
+        """Test serialization includes emits_light property."""
+        item = Item("Lantern", "lantern_1", "A lit lantern", emits_light=True)
+        item_dict = item.to_dict()
+
+        self.assertIn("emits_light", item_dict)
+        self.assertTrue(item_dict["emits_light"])
+
+    def test_from_dict_restores_emits_light(self):
+        """Test deserialization restores emits_light property."""
+        data = {
+            "name": "Torch",
+            "id": "torch_1",
+            "description": "A burning torch",
+            "weight": 1,
+            "value": 10,
+            "takeable": True,
+            "emits_light": True,
+        }
+
+        item = Item.from_dict(data)
+
+        self.assertTrue(item.emits_light)
+
+    def test_to_dict_from_dict_round_trip_with_emits_light(self):
+        """Test serialization cycle preserves emits_light."""
+        original = Item("Candle", "candle_1", "A lit candle", emits_light=True)
+
+        serialized = original.to_dict()
+        reconstructed = Item.from_dict(serialized)
+
+        self.assertEqual(reconstructed.emits_light, original.emits_light)
+
+    def test_emits_light_can_be_modified_at_runtime(self):
+        """Test emits_light property can be changed (for lighting/extinguishing)."""
+        item = Item("Torch", "torch_1", "A torch", emits_light=False)
+
+        self.assertFalse(item.emits_light)
+
+        # Light the torch
+        item.emits_light = True
+        self.assertTrue(item.emits_light)
+
+        # Extinguish the torch
+        item.emits_light = False
+        self.assertFalse(item.emits_light)
+
+
 if __name__ == "__main__":
     unittest.main()

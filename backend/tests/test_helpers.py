@@ -43,6 +43,8 @@ def create_mock_player(name="TestPlayer", level="Novice", **kwargs):
     player.level_up = Mock()
     player.to_dict = Mock(return_value={"name": name, "level": level})
     player.save = Mock()
+    # Add get_effective_dexterity method for darkness system - returns dexterity directly
+    player.get_effective_dexterity = lambda *args, **kwargs: player.dexterity
     return player
 
 
@@ -63,6 +65,7 @@ def create_mock_mobile(name="TestMob", **kwargs):
     mob.max_health = kwargs.get("max_health", 50)
     mob.level = kwargs.get("level", 1)
     mob.strength = kwargs.get("strength", 8)
+    mob.dexterity = kwargs.get("dexterity", 10)  # Add dexterity
     mob.location = kwargs.get("location", "test_room_1")
     mob.is_dead = kwargs.get("is_dead", False)
     mob.combat_target = kwargs.get("combat_target", None)
@@ -94,6 +97,8 @@ def create_mock_item(name="TestItem", **kwargs):
     item.contents = kwargs.get("contents", [])
     item.is_weapon = kwargs.get("is_weapon", False)
     item.damage = kwargs.get("damage", 0)
+    item.takeable = kwargs.get("takeable", True)
+    item.emits_light = kwargs.get("emits_light", False)
     item.to_dict = Mock(return_value={"name": name, "type": item.item_type})
     return item
 

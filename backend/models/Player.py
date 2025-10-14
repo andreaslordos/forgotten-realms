@@ -197,6 +197,40 @@ class Player:
     def update_activity(self) -> None:
         self.last_active = datetime.now()
 
+    def has_light_source(self) -> bool:
+        """
+        Check if player has a light-emitting item in inventory.
+
+        Returns:
+            bool: True if player has at least one light source
+        """
+        return any(
+            hasattr(item, "emits_light") and item.emits_light for item in self.inventory
+        )
+
+    def get_effective_dexterity(
+        self, room: Any, online_sessions: Dict[str, Any], game_state: Any
+    ) -> int:
+        """
+        Get player's effective dexterity, accounting for darkness penalty.
+
+        Args:
+            room: The room the player is in
+            online_sessions: Dictionary of online sessions
+            game_state: The game state
+
+        Returns:
+            int: Effective dexterity (50% if in darkness without light)
+        """
+        # Import here to avoid circular dependency
+        from commands.darkness_utils import room_is_visible
+
+        if room_is_visible(room, online_sessions, game_state):
+            return self.dexterity
+
+        # In darkness without light - 50% penalty
+        return self.dexterity // 2
+
     def return_summary(self) -> Dict[str, Any]:
         inv_items = (
             ", ".join(item.name for item in self.inventory)

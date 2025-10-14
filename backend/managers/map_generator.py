@@ -18,13 +18,13 @@ def generate_3x3_grid() -> Dict[str, Room]:
             description: str = f"This is the room located at position ({row}, {col})."
             exits: Dict[str, str] = {}
             if row > 0:
-                exits["north"] = f"room_{row-1}_{col}"
+                exits["north"] = f"room_{row - 1}_{col}"
             if row < grid_size - 1:
-                exits["south"] = f"room_{row+1}_{col}"
+                exits["south"] = f"room_{row + 1}_{col}"
             if col > 0:
-                exits["west"] = f"room_{row}_{col-1}"
+                exits["west"] = f"room_{row}_{col - 1}"
             if col < grid_size - 1:
-                exits["east"] = f"room_{row}_{col+1}"
+                exits["east"] = f"room_{row}_{col + 1}"
             room: Room = Room(room_id, name, description, exits)
             rooms[room_id] = room
     return rooms

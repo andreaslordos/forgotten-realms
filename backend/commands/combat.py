@@ -763,7 +763,17 @@ async def process_combat_attack(
     damage = max(1, int(base_damage * variation))
 
     # Calculate hit chance based on attacker's dexterity versus defender's
-    hit_chance = min(90, 50 + (attacker.dexterity - defender.dexterity) // 2)
+    # Use effective dexterity to account for darkness penalty
+    attacker_room = game_state.get_room(attacker.current_room)
+    attacker_dex = attacker.get_effective_dexterity(
+        attacker_room, online_sessions, game_state
+    )
+    defender_room = game_state.get_room(defender.current_room)
+    defender_dex = defender.get_effective_dexterity(
+        defender_room, online_sessions, game_state
+    )
+
+    hit_chance = min(90, 50 + (attacker_dex - defender_dex) // 2)
 
     # Determine if the attack hits
     roll = random.randint(1, 100)
@@ -1425,8 +1435,25 @@ async def process_mob_combat_attack(
     variation = random.uniform(0.7, 1.3)
     damage = max(1, int(base_damage * variation))
 
-    # Calculate hit chance
-    hit_chance = min(90, 50 + (attacker.dexterity - defender.dexterity) // 2)
+    # Calculate hit chance using effective dexterity (accounts for darkness penalty)
+    # For mobs, use base dexterity; for players, use effective dexterity with darkness check
+    if attacker_is_mob:
+        attacker_dex = attacker.dexterity
+    else:
+        attacker_room = game_state.get_room(attacker.current_room)
+        attacker_dex = attacker.get_effective_dexterity(
+            attacker_room, online_sessions, game_state
+        )
+
+    if defender_is_mob:
+        defender_dex = defender.dexterity
+    else:
+        defender_room = game_state.get_room(defender.current_room)
+        defender_dex = defender.get_effective_dexterity(
+            defender_room, online_sessions, game_state
+        )
+
+    hit_chance = min(90, 50 + (attacker_dex - defender_dex) // 2)
 
     # Determine if attack hits
     roll = random.randint(1, 100)
