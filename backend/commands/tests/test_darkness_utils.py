@@ -166,14 +166,6 @@ class RoomIsVisibleTest(unittest.TestCase):
 class GetDarkRoomDescriptionTest(unittest.TestCase):
     """Test get_dark_room_description function."""
 
-    def test_get_dark_room_description_includes_room_name(self):
-        """Test get_dark_room_description includes room name."""
-        room = Room("cellar", "Dark Cellar", "A dark cellar", is_dark=True)
-
-        description = get_dark_room_description(room)
-
-        self.assertIn("Dark Cellar", description)
-
     def test_get_dark_room_description_includes_darkness_message(self):
         """Test get_dark_room_description includes darkness message."""
         room = Room("dungeon", "Dark Dungeon", "A dark dungeon", is_dark=True)
@@ -219,8 +211,7 @@ class GetDarkRoomDescriptionTest(unittest.TestCase):
 
         # Should have room name followed by darkness message
         lines = description.split("\n")
-        self.assertEqual(lines[0], "Dark Cellar")
-        self.assertEqual(lines[1], "The room is too dark to see anything.")
+        self.assertEqual(lines[0], "The room is too dark to see anything.")
 
 
 if __name__ == "__main__":

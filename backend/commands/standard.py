@@ -112,7 +112,8 @@ async def handle_exits(
     current_room = game_state.get_room(player.current_room)
     if not current_room.exits:
         return "No exits from here."
-
+    if current_room.is_dark:
+        return "It's too dark to see any exits."
     # Determine the maximum length of the direction strings
     max_length = max(len(direction) for direction in current_room.exits)
 

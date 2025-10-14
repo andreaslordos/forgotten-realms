@@ -54,7 +54,7 @@ def room_is_visible(
 def get_dark_room_description(room: Any) -> str:
     """
     Get the description shown for a dark room without light.
-    Shows ONLY room name and darkness message - NO EXITS.
+    Shows ONLY room name and darkness message.
 
     Args:
         room: The dark room
@@ -62,6 +62,5 @@ def get_dark_room_description(room: Any) -> str:
     Returns:
         str: Minimal room description
     """
-    desc = f"{room.name}\n"
-    desc += "The room is too dark to see anything."
+    desc = "The room is too dark to see anything."
     return desc
