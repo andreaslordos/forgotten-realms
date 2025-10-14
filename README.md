@@ -18,6 +18,62 @@ AI MUD is a text-based multiplayer online role-playing game (MMORPG) that uses A
 
 - **Backend**: From the `backend/` directory, install deps with `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`. Start the Socket.IO server in test mode (no SSL) with `python3 socket_server.py -test` (listens on http://localhost:8080).
 - **Frontend**: From the `frontend/` directory, install deps with `npm install` and launch the React dev server with `npm start` (serves on http://localhost:3000 and proxies API traffic to the backend on 8080).
-- **Tests**: Run the deterministic tick service tests with `python3 -m unittest -v backend.tests.test_tick_service`. Additional Python tests can be discovered with `python3 -m unittest` from the repo root.
-- **Tooling**: Install developer tooling with `pip install pre-commit coverage` and enable hooks via `pre-commit install`. Commits will run formatting (Black), linting (Ruff), and block if backend coverage from `scripts/run_backend_tests.sh` drops below 80% or if any tests fail.
-test change
+
+## Testing
+
+### Running Tests
+
+Run all backend tests with coverage:
+```bash
+./scripts/run_backend_tests.sh
+```
+
+Run specific test files:
+```bash
+python3 -m unittest backend.managers.tests.test_player -v
+python3 -m unittest backend.commands.tests.test_auth -v
+```
+
+### Coverage Requirements
+
+- **Minimum Coverage**: 80% for all files
+- **Exceptions**: `socket_server.py` and `event_handlers.py` (excluded from coverage requirements)
+- The pre-commit hook enforces 80% coverage and blocks commits if this threshold is not met
+
+To check coverage manually:
+```bash
+python3 -m coverage erase
+python3 -m coverage run --source=backend --omit='*/tests/*' -m unittest discover -s backend -p 'test_*.py'
+python3 -m coverage report --fail-under=80 --sort=cover
+```
+
+### Type Checking
+
+Run mypy for static type checking:
+```bash
+python3 -m mypy --ignore-missing-imports --strict . --exclude 'tests' --exclude 'venv'
+```
+
+### Test Structure
+
+Tests follow a consistent structure:
+- Each Python module has a corresponding test file: `foo.py` → `tests/test_foo.py`
+- Tests are located in `tests/` subdirectories within each module (e.g., `backend/commands/tests/`, `backend/models/tests/`)
+- Test functions follow the naming convention: `test_{function_name}_{description_of_test}`
+- Example: `test_handle_password_validates_old_password_success`
+
+### Pre-commit Hooks
+
+Install developer tooling:
+```bash
+pip install pre-commit coverage mypy
+pre-commit install
+```
+
+Pre-commit hooks will automatically run on each commit:
+- **Black**: Code formatting
+- **Ruff**: Linting
+- **Coverage**: Ensures 80% minimum coverage
+- **Test Execution**: All tests must pass
+
+If tests fail or coverage drops below 80%, the commit will be blocked.
