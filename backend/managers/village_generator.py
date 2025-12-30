@@ -7,6 +7,7 @@ from models.Item import Item
 from models.StatefulItem import StatefulItem
 from models.ContainerItem import ContainerItem
 from models.Weapon import Weapon
+from models.SpecializedRooms import SwampRoom
 
 
 # ============================================================================
@@ -582,13 +583,15 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "lie to the east.",
     )
 
-    lake: Room = Room(
+    lake: SwampRoom = SwampRoom(
         "lake",
         "Lake Zarovich",
         "The dark waters of Lake Zarovich lap against a rocky shore. The lake is cold and "
         "deep - some say bottomless. Fishermen tell tales of things seen in the depths, "
         "shapes that shouldn't exist. A rowboat is tied to a small dock. The Vistani camp "
-        "lies to the south.",
+        "lies to the south. Drop treasure here to offer it to the depths.",
+        treasure_destination="lake",  # Items stay in the lake (could be retrieved)
+        awards_points=True,
     )
 
     # ===== CASTLE RAVENLOFT =====
@@ -788,7 +791,7 @@ def connect_exits(rooms: Dict[str, Room]) -> None:
     rooms["church"].exits = {
         "south": "square",
         "west": "graveyard",
-        "down": "undercroft",
+        # "down": "undercroft" - revealed when grate is opened
     }
 
     rooms["undercroft"].exits = {
@@ -1200,12 +1203,14 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
         target_state="open",
         message="With effort, you pull the heavy grate open. Stone steps descend into darkness.",
         from_state="closed",
+        add_exit=("down", "undercroft"),
     )
     grate.add_interaction(
         verb="close",
         target_state="closed",
         message="You lower the iron grate back into place.",
         from_state="open",
+        remove_exit="down",
     )
     rooms["church"].add_item(grate)
 
