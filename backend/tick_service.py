@@ -101,6 +101,9 @@ class TickService:
         # Process affliction expiry
         await self._process_affliction_expiry()
 
+        # Process invisibility item expiry
+        await self._process_invisibility_expiry()
+
         if not self.online_sessions:
             return
 
@@ -158,6 +161,16 @@ class TickService:
         from services.affliction_service import process_affliction_expiry
 
         await process_affliction_expiry(
+            self.sio,
+            self.online_sessions,
+            self.utils,
+        )
+
+    async def _process_invisibility_expiry(self) -> None:
+        """Process invisibility item expiration for all players."""
+        from services.invisibility_service import process_invisibility_expiry
+
+        await process_invisibility_expiry(
             self.sio,
             self.online_sessions,
             self.utils,

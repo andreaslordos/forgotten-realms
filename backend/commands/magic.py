@@ -27,6 +27,7 @@ from services.affliction_service import (
     find_player_sid,
     has_affliction,
 )
+from services.invisibility_service import break_invisibility
 from services.notifications import broadcast_all, broadcast_item_drop
 
 # Set up logging
@@ -513,6 +514,9 @@ async def handle_summon(
             )
         return f"{target.name} resists your summon!"
 
+    # Casting offensive spell breaks invisibility
+    break_invisibility(player, online_sessions, reason="casting summon")
+
     # Success! Drop target's items in their current room
     target_room = game_state.get_room(target.current_room)
     old_room_id = target.current_room
@@ -657,6 +661,9 @@ async def handle_force(
                 sio, target_sid, f"You resist {player.name}'s force spell!"
             )
         return f"{target.name} resists your force!"
+
+    # Casting offensive spell breaks invisibility
+    break_invisibility(player, online_sessions, reason="casting force")
 
     # Success! Queue the command for target
     if target_sid:
@@ -1038,6 +1045,11 @@ async def handle_affliction_spell(
             )
         return f"{target.name} resists your {spell_name} spell!"
 
+    # Casting offensive affliction spells (blind, dumb, cripple) breaks invisibility
+    offensive_afflictions = ["blind", "dumb", "cripple"]
+    if spell_name in offensive_afflictions:
+        break_invisibility(player, online_sessions, reason=f"casting {spell_name}")
+
     # Success! Apply affliction
     if target_sid:
         target_session = online_sessions.get(target_sid, {})
@@ -1300,6 +1312,9 @@ async def handle_fod(
         return "You cannot use the Finger of Death on yourself!"
 
     # FOD always succeeds for Archmages, no resistance
+
+    # Casting FOD breaks invisibility
+    break_invisibility(player, online_sessions, reason="casting FOD")
 
     # Broadcast the thunder of the Finger of Death to all players
     await broadcast_all(

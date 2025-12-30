@@ -187,6 +187,80 @@ async def handle_reset(
         return "This will reset the entire world and disconnect all players.\nType 'reset confirm' to proceed."
 
 
+async def handle_invisible(
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
+    """
+    Handle making the player invisible. Archmage-only command.
+    Usage: invis or invisible
+    """
+    # Check if the player is an Archmage
+    if player.level != "Archmage":
+        return "You do not have the authority to use this command."
+
+    # Find player's session
+    current_sid = None
+    for sid, session in online_sessions.items():
+        if session.get("player") == player:
+            current_sid = sid
+            break
+
+    if not current_sid:
+        return "Error: Session not found."
+
+    # Check if already invisible
+    if online_sessions[current_sid].get("invisible", False):
+        return "You are already invisible."
+
+    # Set invisible flag
+    online_sessions[current_sid]["invisible"] = True
+
+    return "You fade from view. You are now invisible."
+
+
+async def handle_visible(
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
+    """
+    Handle making the player visible again. Archmage-only command.
+    Usage: vis or visible
+    """
+    # Check if the player is an Archmage
+    if player.level != "Archmage":
+        return "You do not have the authority to use this command."
+
+    # Find player's session
+    current_sid = None
+    for sid, session in online_sessions.items():
+        if session.get("player") == player:
+            current_sid = sid
+            break
+
+    if not current_sid:
+        return "Error: Session not found."
+
+    # Check if already visible
+    if not online_sessions[current_sid].get("invisible", False):
+        return "You are already visible."
+
+    # Clear invisible flag
+    online_sessions[current_sid]["invisible"] = False
+
+    return "You shimmer back into view. You are now visible."
+
+
 # Register Archmage commands
 command_registry.register(
     "set", handle_set_points, "Set points for a player (Archmage only)."
@@ -196,3 +270,11 @@ command_registry.register(
     handle_reset,
     "Reset the world to its start-of-week condition (Archmage only).",
 )
+command_registry.register(
+    "invisible", handle_invisible, "Become invisible (Archmage only)."
+)
+command_registry.register_alias("invis", "invisible")
+command_registry.register(
+    "visible", handle_visible, "Become visible again (Archmage only)."
+)
+command_registry.register_alias("vis", "visible")

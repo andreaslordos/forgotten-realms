@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional, cast
 from commands.parser import is_movement_command
 from commands.registry import command_registry
 from services.notifications import broadcast_arrival, broadcast_departure
+from services.invisibility_service import is_invisible
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -282,6 +283,9 @@ def build_look_description(
         for sid, session_data in online_sessions.items():
             other_player = session_data.get("player")
             if not other_player:
+                continue
+            # Skip invisible players
+            if is_invisible(other_player, online_sessions):
                 continue
             if (
                 other_player.current_room == current_room.room_id

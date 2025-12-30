@@ -3,6 +3,8 @@
 import logging
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
+from services.invisibility_service import is_invisible
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -59,10 +61,18 @@ async def broadcast_room(
 async def broadcast_arrival(player: Any) -> None:
     """
     Notify all players in the player's current room that the player has arrived.
+    Invisible players slip in silently (no broadcast).
 
     Args:
         player (Player): The player who arrived
     """
+    global SESSIONS
+
+    # Invisible players slip in silently
+    if SESSIONS and is_invisible(player, SESSIONS):
+        logger.debug(f"Skipping arrival broadcast for invisible player {player.name}")
+        return
+
     room_id: str = player.current_room
     display_name: str = player.name
     display_level: str = player.level
@@ -77,11 +87,21 @@ async def broadcast_arrival(player: Any) -> None:
 async def broadcast_departure(room_id: str, departing_player: Any) -> None:
     """
     Notify all players in the room that someone has left.
+    Invisible players slip out silently (no broadcast).
 
     Args:
         room_id (str): The ID of the room to broadcast to
         departing_player (Player): The player who left
     """
+    global SESSIONS
+
+    # Invisible players slip out silently
+    if SESSIONS and is_invisible(departing_player, SESSIONS):
+        logger.debug(
+            f"Skipping departure broadcast for invisible player {departing_player.name}"
+        )
+        return
+
     display_name: str = departing_player.name
     display_level: str = departing_player.level
     logger.debug(f"Broadcasting departure of {display_name} from room {room_id}")
@@ -95,10 +115,18 @@ async def broadcast_departure(room_id: str, departing_player: Any) -> None:
 async def broadcast_logout(player: Any) -> None:
     """
     Notify all players in a room that a player in that room has logged out.
+    Invisible players vanish silently (no broadcast).
 
     Args:
         player (Player): The player who logged out
     """
+    global SESSIONS
+
+    # Invisible players vanish silently
+    if SESSIONS and is_invisible(player, SESSIONS):
+        logger.debug(f"Skipping logout broadcast for invisible player {player.name}")
+        return
+
     room_id: str = player.current_room
     display_name: str = player.name
     logger.debug(f"Broadcasting logout of {display_name} from room {room_id}")

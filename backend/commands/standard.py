@@ -7,6 +7,7 @@ from models.Levels import levels
 from commands.utils import get_player_inventory
 from models.SpecializedRooms import SwampRoom
 from services.notifications import broadcast_item_drop
+from services.invisibility_service import is_invisible
 
 
 # ===== LOOK COMMAND =====
@@ -520,11 +521,12 @@ async def handle_users(
     user_list = []
     for sid, session_data in online_sessions.items():
         other_player = session_data.get("player")
-        # Filter out players awaiting respawn or in limbo
+        # Filter out players awaiting respawn, in limbo, or invisible
         if (
             other_player
             and not session_data.get("awaiting_respawn", False)
             and other_player.current_room is not None
+            and not is_invisible(other_player, online_sessions)
         ):
             user_list.append(f"{other_player.name} the {other_player.level}")
 

@@ -9,6 +9,7 @@ from models.CombatDialogue import CombatDialogue
 from commands.rest import wake_player
 from models.Item import Item
 from services.notifications import broadcast_item_drop
+from services.invisibility_service import is_invisible, break_invisibility
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -137,6 +138,10 @@ async def handle_attack(
 
     # If a player target was found
     if target_player:
+        # Check if target is invisible (can't attack invisible players)
+        if is_invisible(target_player, online_sessions):
+            return f"You don't see '{subject}' here."
+
         # Use the bound weapon if available, otherwise try to find it by name
         weapon_item = None
 
@@ -171,6 +176,9 @@ async def handle_attack(
 
         # Get session IDs
         player_sid = find_player_sid(player, online_sessions)
+
+        # Attacking breaks invisibility
+        break_invisibility(player, online_sessions, reason="attacking player")
 
         # Start combat tracking for attacker
         active_combats[player.name] = {
@@ -1255,6 +1263,9 @@ async def handle_mob_attack(
     Returns:
         str: Result message
     """
+    # Attacking a mob breaks invisibility
+    break_invisibility(player, online_sessions, reason="attacking mob")
+
     # Start combat tracking for player
     active_combats[player.name] = {
         "target": mob,

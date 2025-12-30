@@ -13,7 +13,7 @@ Tests cover:
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -400,6 +400,142 @@ class PendingCommunicationTest(AsyncTestCase):
 
         self.assertIn("cancelled", result.lower())
         self.assertNotIn("pending_comm", self.online_sessions["sid1"])
+
+
+class InvisibilityCommunicationTest(AsyncTestCase):
+    """Test invisibility effects on communication commands."""
+
+    @patch("commands.communication.is_invisible")
+    async def test_shout_shows_someone_when_invisible(self, mock_is_invisible):
+        """Test shouting while invisible shows 'Someone shouts'."""
+        # Arrange
+        mock_is_invisible.return_value = True
+        cmd = {"verb": "shout", "subject": "Hello!"}
+
+        # Act
+        await handle_shout(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertTrue(self.utils.send_message.called)
+        call_args = self.utils.send_message.call_args_list[0]
+        message = call_args[0][2]
+        self.assertIn("Someone shouts", message)
+        self.assertNotIn("TestPlayer", message)
+
+    @patch("commands.communication.is_invisible")
+    async def test_say_shows_someone_when_invisible(self, mock_is_invisible):
+        """Test saying something while invisible shows 'Someone says'."""
+        # Arrange
+        mock_is_invisible.return_value = True
+        cmd = {"verb": "say", "subject": "Hello room!"}
+
+        # Act
+        await handle_say(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertTrue(self.utils.send_message.called)
+        call_args = self.utils.send_message.call_args
+        message = call_args[0][2]
+        self.assertIn("Someone says", message)
+        self.assertNotIn("TestPlayer", message)
+
+    @patch("commands.communication.is_invisible")
+    async def test_tell_shows_someone_when_sender_invisible(self, mock_is_invisible):
+        """Test telling someone while invisible shows 'Someone tells you'."""
+
+        # Arrange
+        # Only the sender (self.player) is invisible
+        def check_invisible(player, sessions):
+            return player == self.player
+
+        mock_is_invisible.side_effect = check_invisible
+        cmd = {"verb": "tell", "subject": "OtherPlayer", "instrument": "Secret!"}
+
+        # Act
+        await handle_tell(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertTrue(self.utils.send_message.called)
+        call_args = self.utils.send_message.call_args
+        message = call_args[0][2]
+        self.assertIn("Someone tells you", message)
+        self.assertNotIn("TestPlayer", message)
+
+    @patch("commands.communication.is_invisible")
+    async def test_tell_fails_when_recipient_invisible(self, mock_is_invisible):
+        """Test telling an invisible player fails."""
+
+        # Arrange
+        # Only the recipient (other_player) is invisible
+        def check_invisible(player, sessions):
+            return player == self.other_player
+
+        mock_is_invisible.side_effect = check_invisible
+        cmd = {"verb": "tell", "subject": "OtherPlayer", "instrument": "Hello!"}
+
+        # Act
+        result = await handle_tell(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertIn("not online", result)
+        self.utils.send_message.assert_not_called()
+
+    @patch("commands.communication.is_invisible")
+    async def test_act_shows_someone_when_invisible(self, mock_is_invisible):
+        """Test emoting while invisible shows 'Someone'."""
+        # Arrange
+        mock_is_invisible.return_value = True
+        cmd = {"verb": "act", "subject": "waves"}
+
+        # Act
+        await handle_act(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertTrue(self.utils.send_message.called)
+        call_args = self.utils.send_message.call_args
+        message = call_args[0][2]
+        self.assertIn("Someone", message)
+        self.assertNotIn("TestPlayer", message)
 
 
 if __name__ == "__main__":

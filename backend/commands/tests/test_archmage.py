@@ -17,7 +17,12 @@ from unittest.mock import AsyncMock, Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from commands.archmage import handle_set_points, handle_reset
+from commands.archmage import (
+    handle_set_points,
+    handle_reset,
+    handle_invisible,
+    handle_visible,
+)
 
 
 class AsyncTestCase(unittest.IsolatedAsyncioTestCase):
@@ -546,6 +551,198 @@ class HandleResetConfirmationTest(AsyncTestCase):
         # Assert
         # Should still attempt to restart even if disconnection fails
         mock_execl.assert_called_once()
+
+
+class HandleInvisiblePermissionTest(AsyncTestCase):
+    """Test handle_invisible permission checking."""
+
+    async def test_handle_invisible_denies_non_archmage(self) -> None:
+        """Test handle_invisible denies access to non-Archmage players."""
+        # Arrange
+        cmd = {"verb": "invisible", "original": "invis"}
+
+        # Act
+        result = await handle_invisible(
+            cmd,
+            self.normal_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
+        )
+
+        # Assert
+        self.assertEqual(result, "You do not have the authority to use this command.")
+
+
+class HandleInvisibleSessionTest(AsyncTestCase):
+    """Test handle_invisible session handling."""
+
+    async def test_handle_invisible_returns_error_when_no_session(self) -> None:
+        """Test handle_invisible returns error when player has no session."""
+        # Arrange
+        cmd = {"verb": "invisible", "original": "invis"}
+        # No session added for archmage_player
+
+        # Act
+        result = await handle_invisible(
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
+        )
+
+        # Assert
+        self.assertEqual(result, "Error: Session not found.")
+
+    async def test_handle_invisible_returns_already_invisible(self) -> None:
+        """Test handle_invisible returns message when already invisible."""
+        # Arrange
+        cmd = {"verb": "invisible", "original": "invis"}
+        archmage_sid = "archmage_sid"
+        self.online_sessions[archmage_sid] = {
+            "player": self.archmage_player,
+            "invisible": True,
+        }
+
+        # Act
+        result = await handle_invisible(
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
+        )
+
+        # Assert
+        self.assertEqual(result, "You are already invisible.")
+
+    async def test_handle_invisible_makes_player_invisible(self) -> None:
+        """Test handle_invisible successfully makes player invisible."""
+        # Arrange
+        cmd = {"verb": "invisible", "original": "invis"}
+        archmage_sid = "archmage_sid"
+        self.online_sessions[archmage_sid] = {
+            "player": self.archmage_player,
+            "invisible": False,
+        }
+
+        # Act
+        result = await handle_invisible(
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
+        )
+
+        # Assert
+        self.assertEqual(result, "You fade from view. You are now invisible.")
+        self.assertTrue(self.online_sessions[archmage_sid]["invisible"])
+
+
+class HandleVisiblePermissionTest(AsyncTestCase):
+    """Test handle_visible permission checking."""
+
+    async def test_handle_visible_denies_non_archmage(self) -> None:
+        """Test handle_visible denies access to non-Archmage players."""
+        # Arrange
+        cmd = {"verb": "visible", "original": "vis"}
+
+        # Act
+        result = await handle_visible(
+            cmd,
+            self.normal_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
+        )
+
+        # Assert
+        self.assertEqual(result, "You do not have the authority to use this command.")
+
+
+class HandleVisibleSessionTest(AsyncTestCase):
+    """Test handle_visible session handling."""
+
+    async def test_handle_visible_returns_error_when_no_session(self) -> None:
+        """Test handle_visible returns error when player has no session."""
+        # Arrange
+        cmd = {"verb": "visible", "original": "vis"}
+        # No session added for archmage_player
+
+        # Act
+        result = await handle_visible(
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
+        )
+
+        # Assert
+        self.assertEqual(result, "Error: Session not found.")
+
+    async def test_handle_visible_returns_already_visible(self) -> None:
+        """Test handle_visible returns message when already visible."""
+        # Arrange
+        cmd = {"verb": "visible", "original": "vis"}
+        archmage_sid = "archmage_sid"
+        self.online_sessions[archmage_sid] = {
+            "player": self.archmage_player,
+            "invisible": False,
+        }
+
+        # Act
+        result = await handle_visible(
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
+        )
+
+        # Assert
+        self.assertEqual(result, "You are already visible.")
+
+    async def test_handle_visible_makes_player_visible(self) -> None:
+        """Test handle_visible successfully makes player visible."""
+        # Arrange
+        cmd = {"verb": "visible", "original": "vis"}
+        archmage_sid = "archmage_sid"
+        self.online_sessions[archmage_sid] = {
+            "player": self.archmage_player,
+            "invisible": True,
+        }
+
+        # Act
+        result = await handle_visible(
+            cmd,
+            self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
+        )
+
+        # Assert
+        self.assertEqual(result, "You shimmer back into view. You are now visible.")
+        self.assertFalse(self.online_sessions[archmage_sid]["invisible"])
 
 
 if __name__ == "__main__":

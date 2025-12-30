@@ -151,6 +151,26 @@ class BroadcastArrivalTest(BaseAsyncTest):
     """Test broadcast_arrival functionality."""
 
     @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
+    @patch("services.notifications.is_invisible")
+    async def test_broadcast_arrival_skips_invisible_player(
+        self, mock_is_invisible, mock_broadcast
+    ):
+        """Test broadcast_arrival skips broadcast for invisible players."""
+        # Arrange
+        player = create_mock_player(name="Alice", level="Hero")
+        player.current_room = "room1"
+
+        mock_sessions = {"sid1": {"player": player, "invisible": True}}
+        notifications.SESSIONS = mock_sessions
+        mock_is_invisible.return_value = True
+
+        # Act
+        await notifications.broadcast_arrival(player)
+
+        # Assert
+        mock_broadcast.assert_not_called()
+
+    @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
     async def test_broadcast_arrival_broadcasts_to_current_room(self, mock_broadcast):
         """Test broadcast_arrival broadcasts to player's current room."""
         # Arrange
@@ -186,6 +206,25 @@ class BroadcastDepartureTest(BaseAsyncTest):
     """Test broadcast_departure functionality."""
 
     @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
+    @patch("services.notifications.is_invisible")
+    async def test_broadcast_departure_skips_invisible_player(
+        self, mock_is_invisible, mock_broadcast
+    ):
+        """Test broadcast_departure skips broadcast for invisible players."""
+        # Arrange
+        player = create_mock_player(name="Bob", level="Warrior")
+
+        mock_sessions = {"sid1": {"player": player, "invisible": True}}
+        notifications.SESSIONS = mock_sessions
+        mock_is_invisible.return_value = True
+
+        # Act
+        await notifications.broadcast_departure("room1", player)
+
+        # Assert
+        mock_broadcast.assert_not_called()
+
+    @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
     async def test_broadcast_departure_broadcasts_to_room(self, mock_broadcast):
         """Test broadcast_departure broadcasts to specified room."""
         # Arrange
@@ -217,6 +256,26 @@ class BroadcastDepartureTest(BaseAsyncTest):
 
 class BroadcastLogoutTest(BaseAsyncTest):
     """Test broadcast_logout functionality."""
+
+    @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
+    @patch("services.notifications.is_invisible")
+    async def test_broadcast_logout_skips_invisible_player(
+        self, mock_is_invisible, mock_broadcast
+    ):
+        """Test broadcast_logout skips broadcast for invisible players."""
+        # Arrange
+        player = create_mock_player(name="Charlie", level="Mage")
+        player.current_room = "room1"
+
+        mock_sessions = {"sid1": {"player": player, "invisible": True}}
+        notifications.SESSIONS = mock_sessions
+        mock_is_invisible.return_value = True
+
+        # Act
+        await notifications.broadcast_logout(player)
+
+        # Assert
+        mock_broadcast.assert_not_called()
 
     @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
     async def test_broadcast_logout_broadcasts_to_current_room(self, mock_broadcast):

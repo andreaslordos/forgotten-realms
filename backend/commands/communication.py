@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional
 from commands.registry import command_registry
 import logging
 from commands.rest import wake_player
+from services.invisibility_service import is_invisible
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,11 @@ async def handle_shout(
         return "You need to provide a message to shout."
 
     # Broadcast the shout to all players
-    shout_text = f'{player.name} the {player.level} shouts "{subject}"'
+    # Use "Someone" if player is invisible
+    if is_invisible(player, online_sessions):
+        shout_text = f'Someone shouts "{subject}"'
+    else:
+        shout_text = f'{player.name} the {player.level} shouts "{subject}"'
 
     if online_sessions and sio and utils:
         for sid, session_data in online_sessions.items():
@@ -133,7 +138,11 @@ async def handle_say(
         return "You try to speak but no words come out!"
 
     # Format the message
-    room_msg = f'{player.name} the {player.level} says "{subject}"'
+    # Use "Someone" if player is invisible
+    if is_invisible(player, online_sessions):
+        room_msg = f'Someone says "{subject}"'
+    else:
+        room_msg = f'{player.name} the {player.level} says "{subject}"'
 
     # Send to all players in the same room
     if online_sessions and sio and utils:
@@ -209,14 +218,20 @@ async def handle_tell(
 
     # Find the recipient
     recipient_sid: Optional[str] = None
+    recipient_player: Optional[Any] = None
 
     for sid, session_data in online_sessions.items():
         other_player = session_data.get("player")
         if other_player and other_player.name.lower() == recipient_name.lower():
             recipient_sid = sid
+            recipient_player = other_player
             break
 
-    if recipient_sid:
+    if recipient_sid and recipient_player:
+        # Check if recipient is invisible (can't target invisible players)
+        if is_invisible(recipient_player, online_sessions):
+            return f"Player '{recipient_name}' is not online."
+
         # Check if recipient is DEAF (cannot hear)
         recipient_session = online_sessions.get(recipient_sid, {})
         if has_affliction(recipient_session, "deaf"):
@@ -224,10 +239,15 @@ async def handle_tell(
 
         if sio and utils:
             # Send the private message
+            # Use "Someone" if sender is invisible
+            if is_invisible(player, online_sessions):
+                sender_display = "Someone"
+            else:
+                sender_display = f"{player.name} the {player.level}"
             await utils.send_message(
                 sio,
                 recipient_sid,
-                f'{player.name} the {player.level} tells you "{message}"',
+                f'{sender_display} tells you "{message}"',
             )
         return f'You tell {recipient_name}, "{message}"'
     else:
@@ -265,7 +285,11 @@ async def handle_act(
         return "Error: Session not found"
 
     # Format the action message
-    action_msg = f"**{player.name} {subject}**"
+    # Use "Someone" if player is invisible
+    if is_invisible(player, online_sessions):
+        action_msg = f"**Someone {subject}**"
+    else:
+        action_msg = f"**{player.name} {subject}**"
 
     # Send to all players in the same room
     if online_sessions and sio and utils:
@@ -351,7 +375,11 @@ async def handle_pending_communication(
 
     if pending["type"] == "shout":
         # Handle pending shout
-        shout_text = f'{player.name} the {player.level} shouts "{message_text}"'
+        # Use "Someone" if player is invisible
+        if is_invisible(player, online_sessions):
+            shout_text = f'Someone shouts "{message_text}"'
+        else:
+            shout_text = f'{player.name} the {player.level} shouts "{message_text}"'
 
         for osid, osession in online_sessions.items():
             if "player" in osession and osid != sid:
@@ -364,18 +392,30 @@ async def handle_pending_communication(
         # Handle pending private message
         recipient_name: str = pending["recipient"].lower()
         recipient_sid: Optional[str] = None
+        recipient_player: Optional[Any] = None
 
         for osid, osession in online_sessions.items():
             other_player = osession.get("player")
             if other_player and other_player.name.lower() == recipient_name:
                 recipient_sid = osid
+                recipient_player = other_player
                 break
 
-        if recipient_sid:
+        if recipient_sid and recipient_player:
+            # Check if recipient is invisible (can't target invisible players)
+            if is_invisible(recipient_player, online_sessions):
+                del online_sessions[sid]["pending_comm"]
+                return f"Player '{pending['recipient']}' is not online."
+
+            # Use "Someone" if sender is invisible
+            if is_invisible(player, online_sessions):
+                sender_display = "Someone"
+            else:
+                sender_display = f"{player.name} the {player.level}"
             await utils.send_message(
                 sio,
                 recipient_sid,
-                f'{player.name} the {player.level} tells you "{message_text}"',
+                f'{sender_display} tells you "{message_text}"',
             )
             del online_sessions[sid]["pending_comm"]
             return ""
