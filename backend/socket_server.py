@@ -17,7 +17,7 @@ from managers.game_state import GameState
 from managers.mob_definitions import get_mob_definitions
 from managers.mob_manager import MobManager
 from managers.player import PlayerManager
-from managers.village_generator import generate_village_of_chronos
+from managers.village_generator import generate_valley_of_barovia
 from services.notifications import set_context
 from tick_service import start_background_tick
 
@@ -47,7 +47,9 @@ sio.attach(app)
 # Initialize managers and game state.
 logger.info("Initializing game managers and state...")
 auth_manager = AuthManager()
-player_manager = PlayerManager(spawn_room="spawn", auth_manager=auth_manager)
+player_manager = PlayerManager(
+    auth_manager=auth_manager
+)  # Uses SPAWN_ROOM from globals
 mob_manager = MobManager()
 
 # Load mob definitions
@@ -57,12 +59,12 @@ logger.info(f"Loaded {len(mob_definitions)} mob definitions.")
 
 game_state = GameState()
 if not game_state.rooms:
-    logger.info("No game rooms found. Generating village with mobs...")
-    new_rooms = generate_village_of_chronos(mob_manager=mob_manager)
+    logger.info("No game rooms found. Generating Valley of Barovia...")
+    new_rooms = generate_valley_of_barovia(mob_manager=mob_manager)
     for room in new_rooms.values():
         game_state.add_room(room)
     # game_state.save_rooms()
-    logger.info("Game rooms and mobs generated.")
+    logger.info("Valley of Barovia generated.")
 else:
     logger.info("Game rooms loaded from existing state.")
 

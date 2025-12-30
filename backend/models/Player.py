@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Tuple
 from models.Levels import levels
 from models.Item import Item
+from globals import SPAWN_ROOM
 
 
 class Player:
@@ -32,7 +33,7 @@ class Player:
         name: str,
         sex: str = "M",
         email: Optional[str] = None,
-        spawn_room: str = "village_center",
+        spawn_room: str = SPAWN_ROOM,
     ) -> None:
         self.name = name
         self.email = email
@@ -264,7 +265,7 @@ class Player:
             data["name"],
             data.get("sex", "M"),
             data.get("email"),
-            spawn_room=data.get("current_room", "village_center"),
+            spawn_room=data.get("current_room", SPAWN_ROOM),
         )
         player.points = data["points"]
         inventory_data = data.get("inventory", [])

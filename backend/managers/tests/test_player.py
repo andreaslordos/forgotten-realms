@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from managers.player import PlayerManager
 from models.Player import Player
+from backend.globals import SPAWN_ROOM
 
 
 class PlayerManagerInitializationTest(unittest.TestCase):
@@ -47,7 +48,7 @@ class PlayerManagerInitializationTest(unittest.TestCase):
 
         try:
             pm = PlayerManager(save_file=temp_file)
-            self.assertEqual(pm.spawn_room, "spawn")
+            self.assertEqual(pm.spawn_room, SPAWN_ROOM)
         finally:
             os.remove(temp_file)
 

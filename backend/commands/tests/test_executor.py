@@ -257,9 +257,9 @@ class HandleMovementTest(unittest.IsolatedAsyncioTestCase):
             # Should not move player
             self.player.set_current_room.assert_not_called()
 
-    async def test_handle_movement_triggers_mob_aggro(self):
-        """Test moving into room with aggressive mob triggers combat."""
-        # Create aggressive mob
+    async def test_handle_movement_resets_idle_mob_aggro_delay(self):
+        """Test moving into room with idle aggressive mob resets its aggro delay."""
+        # Create aggressive mob that is idle (counter at 0)
         mob = Mobile(
             name="goblin",
             id="goblin_1",
@@ -267,32 +267,145 @@ class HandleMovementTest(unittest.IsolatedAsyncioTestCase):
             aggressive=True,
             max_stamina=50,
             current_room="room2",
+            aggro_delay_min=2,
+            aggro_delay_max=4,
         )
-        mob.can_attack_player = Mock(return_value=True)
+        mob.aggro_tick_counter = 0  # Mob is idle
+        mob.target_player = None
 
         self.utils.mob_manager.get_mobs_in_room = Mock(return_value=[mob])
         self.online_sessions["player_sid"] = {"player": self.player}
 
         with patch("commands.executor.broadcast_departure", new=AsyncMock()):
             with patch("commands.executor.broadcast_arrival", new=AsyncMock()):
-                with patch("commands.combat.is_in_combat", return_value=False):
-                    with patch(
-                        "commands.combat.mob_initiate_attack", new=AsyncMock()
-                    ) as mock_mob_attack:
-                        cmd = {"verb": "north"}
+                cmd = {"verb": "north"}
 
-                        await handle_movement(
-                            cmd,
-                            self.player,
-                            self.game_state,
-                            self.player_manager,
-                            self.online_sessions,
-                            self.sio,
-                            self.utils,
-                        )
+                await handle_movement(
+                    cmd,
+                    self.player,
+                    self.game_state,
+                    self.player_manager,
+                    self.online_sessions,
+                    self.sio,
+                    self.utils,
+                )
 
-                        # Should trigger mob attack
-                        mock_mob_attack.assert_called_once()
+                # Aggro delay should be reset (between min and max)
+                self.assertIsNotNone(mob.aggro_tick_counter)
+                self.assertGreaterEqual(mob.aggro_tick_counter, 2)
+                self.assertLessEqual(mob.aggro_tick_counter, 4)
+
+    async def test_handle_movement_does_not_reset_counting_mob_aggro(self):
+        """Test moving into room doesn't reset mob aggro if already counting down."""
+        # Create aggressive mob that is already counting down
+        mob = Mobile(
+            name="goblin",
+            id="goblin_1",
+            description="An aggressive goblin",
+            aggressive=True,
+            max_stamina=50,
+            current_room="room2",
+            aggro_delay_min=2,
+            aggro_delay_max=4,
+        )
+        mob.aggro_tick_counter = 3  # Already counting down
+        mob.target_player = None
+
+        self.utils.mob_manager.get_mobs_in_room = Mock(return_value=[mob])
+        self.online_sessions["player_sid"] = {"player": self.player}
+
+        with patch("commands.executor.broadcast_departure", new=AsyncMock()):
+            with patch("commands.executor.broadcast_arrival", new=AsyncMock()):
+                cmd = {"verb": "north"}
+
+                await handle_movement(
+                    cmd,
+                    self.player,
+                    self.game_state,
+                    self.player_manager,
+                    self.online_sessions,
+                    self.sio,
+                    self.utils,
+                )
+
+                # Aggro delay should NOT be reset - still at 3
+                self.assertEqual(mob.aggro_tick_counter, 3)
+
+    async def test_handle_movement_does_not_reset_mob_with_target(self):
+        """Test moving into room doesn't reset mob aggro if mob has a target."""
+        # Create aggressive mob that already has a target
+        mob = Mobile(
+            name="goblin",
+            id="goblin_1",
+            description="An aggressive goblin",
+            aggressive=True,
+            max_stamina=50,
+            current_room="room2",
+            aggro_delay_min=2,
+            aggro_delay_max=4,
+        )
+        mob.aggro_tick_counter = 0
+        mob.target_player = Mock()  # Has a target
+
+        self.utils.mob_manager.get_mobs_in_room = Mock(return_value=[mob])
+        self.online_sessions["player_sid"] = {"player": self.player}
+
+        with patch("commands.executor.broadcast_departure", new=AsyncMock()):
+            with patch("commands.executor.broadcast_arrival", new=AsyncMock()):
+                cmd = {"verb": "north"}
+
+                await handle_movement(
+                    cmd,
+                    self.player,
+                    self.game_state,
+                    self.player_manager,
+                    self.online_sessions,
+                    self.sio,
+                    self.utils,
+                )
+
+                # Aggro delay should NOT be reset since mob has a target
+                self.assertEqual(mob.aggro_tick_counter, 0)
+
+    async def test_handle_movement_resets_mob_after_previous_player_left(self):
+        """Test new player gets grace period even if previous player left mid-countdown."""
+        # Scenario: Player A triggered countdown but left. Counter reached 0.
+        # Player B enters - should get a fresh grace period.
+        mob = Mobile(
+            name="goblin",
+            id="goblin_1",
+            description="An aggressive goblin",
+            aggressive=True,
+            max_stamina=50,
+            current_room="room2",
+            aggro_delay_min=2,
+            aggro_delay_max=4,
+        )
+        # Mob countdown reached 0 after previous player left
+        mob.aggro_tick_counter = 0
+        mob.target_player = None  # No target (previous player left)
+
+        self.utils.mob_manager.get_mobs_in_room = Mock(return_value=[mob])
+        self.online_sessions["player_sid"] = {"player": self.player}
+
+        with patch("commands.executor.broadcast_departure", new=AsyncMock()):
+            with patch("commands.executor.broadcast_arrival", new=AsyncMock()):
+                cmd = {"verb": "north"}
+
+                await handle_movement(
+                    cmd,
+                    self.player,
+                    self.game_state,
+                    self.player_manager,
+                    self.online_sessions,
+                    self.sio,
+                    self.utils,
+                )
+
+                # New player should get fresh grace period
+                self.assertIsNotNone(mob.aggro_tick_counter)
+                self.assertGreaterEqual(mob.aggro_tick_counter, 2)
+                self.assertLessEqual(mob.aggro_tick_counter, 4)
 
 
 class BuildLookDescriptionTest(unittest.TestCase):

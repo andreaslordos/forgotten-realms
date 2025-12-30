@@ -347,6 +347,39 @@ class HandleExitsTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("It's too dark to see any exits.", result)
 
+    async def test_handle_exits_dark_room_with_light_source(self):
+        """Test exits command shows exits when player has light in dark room."""
+        self.current_room.is_dark = True
+        self.current_room.exits = {"north": "north_room"}
+
+        # Set up player with light source in online_sessions
+        self.player.has_light_source = Mock(return_value=True)
+        self.online_sessions["test_sid"] = {"player": self.player}
+
+        # Mock the destination room
+        north_room = Mock()
+        north_room.name = "North Room"
+        self.game_state.get_room.side_effect = lambda room_id: (
+            self.current_room if room_id == "test_room" else north_room
+        )
+
+        cmd = {"verb": "exits"}
+
+        result = await handle_exits(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Should show exits since player has light
+        self.assertIn("north", result)
+        self.assertIn("North Room", result)
+        self.assertNotIn("too dark", result)
+
 
 class HandleGetTest(unittest.IsolatedAsyncioTestCase):
     """Test handle_get functionality."""

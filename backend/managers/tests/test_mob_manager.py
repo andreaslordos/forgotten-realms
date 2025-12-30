@@ -507,6 +507,51 @@ class MobManagerProcessMovementTest(BaseAsyncTest):
 
         self.mock_room1.remove_item.assert_not_called()
 
+    async def test_process_mob_movement_resets_aggro_when_entering_room_with_player(
+        self,
+    ):
+        """Test aggressive mob resets aggro delay when moving into room with player."""
+        # Arrange - create aggressive mob with counter at 0 (ready to attack)
+        mob = self.manager.spawn_mob("goblin", "room1")
+        mob.aggressive = True
+        mob.aggro_delay_min = 2  # Set delay range so reset works
+        mob.aggro_delay_max = 4
+        mob.aggro_tick_counter = 0  # Ready to attack
+        mob.current_patrol_index = 0
+
+        player = create_mock_player(location="room2")
+        player.current_room = "room2"
+        online_sessions = {"sid1": {"player": player}}
+
+        # Act - mob moves into room with player
+        await self.manager._process_mob_movement(
+            mob, self.mock_game_state, online_sessions, self.mock_sio, self.mock_utils
+        )
+
+        # Assert - aggro delay should be reset (counter > 0)
+        self.assertIsNotNone(mob.aggro_tick_counter)
+        self.assertGreater(mob.aggro_tick_counter, 0)
+
+    async def test_process_mob_movement_no_aggro_reset_for_non_aggressive_mob(self):
+        """Test non-aggressive mob doesn't reset aggro when moving into room with player."""
+        # Arrange - create non-aggressive mob
+        mob = self.manager.spawn_mob("goblin", "room1")
+        mob.aggressive = False
+        mob.aggro_tick_counter = None
+        mob.current_patrol_index = 0
+
+        player = create_mock_player(location="room2")
+        player.current_room = "room2"
+        online_sessions = {"sid1": {"player": player}}
+
+        # Act - mob moves into room with player
+        await self.manager._process_mob_movement(
+            mob, self.mock_game_state, online_sessions, self.mock_sio, self.mock_utils
+        )
+
+        # Assert - aggro counter should still be None (non-aggressive)
+        self.assertIsNone(mob.aggro_tick_counter)
+
 
 class MobManagerProcessAggressionTest(BaseAsyncTest):
     """Test MobManager._process_mob_aggression functionality."""

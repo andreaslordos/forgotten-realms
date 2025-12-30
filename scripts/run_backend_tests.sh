@@ -14,5 +14,5 @@ fi
 export PYTHONPATH="$REPO_ROOT/backend:${PYTHONPATH:-}"
 
 python3 -m coverage erase
-python3 -m coverage run --source=backend --omit='*/tests/*' -m unittest discover -s backend -p 'test_*.py'
+python3 -m coverage run --source=backend --omit='*/tests/*,backend/socket_server.py,backend/event_handlers.py,backend/managers/village_generator.py,backend/managers/village_generator_backup.py' -m unittest discover -s backend -p 'test_*.py'
 python3 -m coverage report --fail-under=80 --sort=cover

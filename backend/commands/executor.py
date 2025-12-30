@@ -187,36 +187,23 @@ async def handle_movement(
         if online_sessions and sio and utils:
             await broadcast_arrival(player)
 
-        # Check for aggressive mobs in the new room and trigger immediate attack if needed
+        # Check for aggressive mobs in the new room - reset their aggro delay
+        # so the player has time to react before being attacked
         mob_manager = (
             getattr(utils, "mob_manager", None) if hasattr(utils, "__dict__") else None
         )
         if mob_manager:
             mobs_in_room = mob_manager.get_mobs_in_room(new_room_id)
             for mob in mobs_in_room:
-                if mob.can_attack_player():
-                    # Found an aggressive mob - initiate combat
-                    from commands.combat import mob_initiate_attack, is_in_combat
-
-                    # Only attack if not already in combat
-                    if not is_in_combat(player.name) and not is_in_combat(mob.id):
-                        player_sid = None
-                        for sid, session_data in online_sessions.items():
-                            if session_data.get("player") == player:
-                                player_sid = sid
-                                break
-                        if player_sid:
-                            await mob_initiate_attack(
-                                mob,
-                                player,
-                                player_sid,
-                                player_manager,
-                                game_state,
-                                online_sessions,
-                                sio,
-                                utils,
-                            )
-                            break  # Only one mob attacks at a time
+                if (
+                    mob.aggressive
+                    and mob.state == "alive"
+                    and mob.target_player is None
+                ):
+                    # Only reset delay if mob is idle (not already targeting someone)
+                    # This prevents player B from resetting the timer when player A is being stalked
+                    if mob.aggro_tick_counter is None or mob.aggro_tick_counter == 0:
+                        mob.initialize_aggro_delay()
 
         return build_look_description(
             player, game_state, online_sessions, mob_manager=mob_manager

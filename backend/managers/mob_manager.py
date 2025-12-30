@@ -3,6 +3,7 @@
 import logging
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from models.Mobile import Mobile
+from services.invisibility_service import is_invisible
 
 if TYPE_CHECKING:
     from managers.game_state import GameState
@@ -250,12 +251,19 @@ class MobManager:
 
             # Notify players in new room
             if online_sessions and sio and utils:
+                players_in_room = False
                 for sid, session_data in online_sessions.items():
                     player = session_data.get("player")
                     if player and player.current_room == new_room_id:
+                        players_in_room = True
                         await utils.send_message(
                             sio, sid, f"{mob.name.capitalize()} arrives."
                         )
+
+                # If mob is aggressive and moved into room with players,
+                # reset aggro delay to give players time to react
+                if players_in_room and mob.aggressive and mob.state == "alive":
+                    mob.initialize_aggro_delay()
 
     async def _process_mob_aggression(
         self,
@@ -285,7 +293,12 @@ class MobManager:
             for sid, session_data in online_sessions.items():
                 player = session_data.get("player")
                 # Players in limbo (current_room == None) won't match
-                if player and player.current_room == mob.current_room:
+                # Invisible players can't be detected by mobs
+                if (
+                    player
+                    and player.current_room == mob.current_room
+                    and not is_invisible(player, online_sessions)
+                ):
                     target_player = player
                     target_sid = sid
                     break

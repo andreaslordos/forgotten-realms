@@ -322,18 +322,20 @@ def register_handlers(
             "failedAttempts": 0,
         }
         MYSTICAL_SPLASH = f"""\
-                  Forgotten Realms - Version {version}
+                  Valley of Barovia - Version {version}
 
-                  Veritas Domini manet in aeternum
+                       Mors certa, hora incerta.
 ********************************************************************
-* In the mystic twilight of forgotten ages, a realm of ancient     *
-* magic and untold legends awaits. Here, your choices echo through *
-* the halls of eternity.                                           *
+*  The mists have claimed you. There is no escape from Barovia.    *
 *                                                                  *
-* Are you destined to shape the fate of this forgotten realm?      *
+*  In this land of eternal twilight, a vampire lord rules from     *
+*  his castle above. The villagers whisper of curses and death.    *
+*  The wolves howl in the night.                                   *
+*                                                                  *
+*  Will you break the curse... or become another of his victims?   *
 ********************************************************************
 
-Welcome! By what name shall I call you?
+You stumble through the mists... What is your name?
 """
         await utils.send_message(sio, sid, MYSTICAL_SPLASH)
 

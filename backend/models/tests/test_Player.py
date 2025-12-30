@@ -22,6 +22,7 @@ from tests.test_base import BaseModelTest
 from tests.test_helpers import create_mock_item
 from models.Player import Player
 from models.Levels import levels
+from backend.globals import SPAWN_ROOM
 
 
 class PlayerInitializationTest(BaseModelTest):
@@ -48,9 +49,9 @@ class PlayerInitializationTest(BaseModelTest):
         self.assertEqual(player.email, "test@example.com")
 
     def test___init___sets_default_spawn_room(self):
-        """Test __init__ sets default spawn room to village_center."""
+        """Test __init__ sets default spawn room to the right spawn room."""
         player = Player("TestPlayer")
-        self.assertEqual(player.current_room, "village_center")
+        self.assertEqual(player.current_room, SPAWN_ROOM)
 
     def test___init___accepts_custom_spawn_room(self):
         """Test __init__ accepts custom spawn room."""

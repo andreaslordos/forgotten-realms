@@ -5,6 +5,7 @@ import os
 from typing import Dict, Optional
 from models.Player import Player
 from managers.auth import AuthManager
+from globals import SPAWN_ROOM
 
 
 class PlayerManager:
@@ -16,7 +17,7 @@ class PlayerManager:
     def __init__(
         self,
         save_file: str = "storage/players.json",
-        spawn_room: str = "spawn",
+        spawn_room: str = SPAWN_ROOM,
         auth_manager: Optional[AuthManager] = None,
     ) -> None:
         self.save_file = save_file

@@ -1,17 +1,108 @@
 # backend/managers/village_generator.py
+# Valley of Barovia - A Curse of Strahd inspired gothic horror world
 
 from typing import Dict, Optional, Any
 from models.Room import Room
 from models.Item import Item
 from models.StatefulItem import StatefulItem
 from models.ContainerItem import ContainerItem
-from models.SpecializedRooms import SwampRoom
 from models.Weapon import Weapon
 
 
-def generate_village_of_chronos(mob_manager: Optional[Any] = None) -> Dict[str, Room]:
+# ============================================================================
+# PUZZLE CONDITION FUNCTIONS
+# These are used by StatefulItem.add_interaction(conditional_fn=...)
+# ============================================================================
+
+
+def has_sunsword(player: Any, game_state: Any) -> bool:
+    """Check if player has the sunsword in their inventory."""
+    return any(
+        hasattr(item, "id") and item.id == "sunsword" for item in player.inventory
+    )
+
+
+def has_any_weapon(player: Any, game_state: Any) -> bool:
+    """Check if player has any weapon in their inventory."""
+    from models.Weapon import Weapon
+
+    return any(isinstance(item, Weapon) for item in player.inventory)
+
+
+def stones_aligned(player: Any, game_state: Any) -> bool:
+    """Check if all three standing stones are correctly aligned."""
+    room = game_state.get_room("clearing")
+    if not room:
+        return False
+
+    east_state = None
+    west_state = None
+    north_state = None
+
+    for item in room.items:
+        if hasattr(item, "id"):
+            if item.id == "eaststone":
+                east_state = getattr(item, "state", None)
+            elif item.id == "weststone":
+                west_state = getattr(item, "state", None)
+            elif item.id == "northstone":
+                north_state = getattr(item, "state", None)
+
+    return east_state == "sunrise" and west_state == "sunset" and north_state == "noon"
+
+
+def beacon_has_skull(player: Any, game_state: Any) -> bool:
+    """Check if the dragon skull has been placed on the beacon."""
+    room = game_state.get_room("hall")
+    if not room:
+        return False
+    for item in room.items:
+        if hasattr(item, "id") and item.id == "dragon_beacon":
+            return getattr(item, "state", None) == "skull_placed"
+    return False
+
+
+def player_has_light(player: Any, game_state: Any) -> bool:
+    """Check if player has a light source in their inventory."""
+    for item in player.inventory:
+        if getattr(item, "emits_light", False):
+            return True
+    return False
+
+
+def knight_honored(player: Any, game_state: Any) -> bool:
+    """Check if player has shown respect to the knights (knelt before inscription)."""
+    room = game_state.get_room("quarters")
+    if not room:
+        return False
+    for item in room.items:
+        if hasattr(item, "id") and item.id == "knight_inscription":
+            return getattr(item, "state", None) == "honored"
+    return False
+
+
+def treasury_unlocked(player: Any, game_state: Any) -> bool:
+    """Check if the treasury pedestal dials are correctly set."""
+    room = game_state.get_room("treasury")
+    if not room:
+        return False
+
+    dial_states: Dict[str, Optional[str]] = {}
+    for item in room.items:
+        if hasattr(item, "id") and item.id in ("dial1", "dial2", "dial3"):
+            dial_states[item.id] = getattr(item, "state", None)
+
+    # Correct sequence: sun, star, moon (hinted in tome)
+    return (
+        dial_states.get("dial1") == "sun"
+        and dial_states.get("dial2") == "star"
+        and dial_states.get("dial3") == "moon"
+    )
+
+
+def generate_valley_of_barovia(mob_manager: Optional[Any] = None) -> Dict[str, Room]:
     """
-    Generates the Village of Chronos, the default starting area.
+    Generates the Valley of Barovia, a gothic horror world.
     Returns a dictionary mapping room_id to Room objects.
 
     Args:
@@ -34,6 +125,7 @@ def generate_village_of_chronos(mob_manager: Optional[Any] = None) -> Dict[str, 
     # Add container items
     add_container_items(rooms)
 
+    # Add weapons
     add_weapons(rooms)
 
     # Spawn mobs if mob_manager provided
@@ -45,14 +137,13 @@ def generate_village_of_chronos(mob_manager: Optional[Any] = None) -> Dict[str, 
 
 def spawn_initial_mobs(mob_manager: Any, rooms: Dict[str, Room]) -> None:
     """
-    Spawn initial mobs in the village.
+    Spawn initial mobs in the Valley of Barovia.
 
     Args:
         mob_manager (MobManager): The mob manager
         rooms (dict): Dictionary of room objects
     """
 
-    # Helper function to spawn and add mob to room
     def spawn_mob_in_room(mob_type: str, room_id: str) -> None:
         if room_id in rooms:
             mob_manager.spawn_mob(mob_type, room_id)
@@ -60,1240 +151,2224 @@ def spawn_initial_mobs(mob_manager: Any, rooms: Dict[str, Room]) -> None:
             if mob:
                 rooms[room_id].add_item(mob)
 
-    # Village area - peaceful NPCs
-    spawn_mob_in_room("village_merchant", "marketplace")
-    spawn_mob_in_room(
-        "guard_captain", "spawn"
-    )  # Patrols spawn/village_gates/guard_tower
-    spawn_mob_in_room("elder_sage", "cottage_garden")  # Patrols cottage areas
+    # Village of Barovia - peaceful NPCs and undead
+    spawn_mob_in_room("peasant", "square")
+    spawn_mob_in_room("barkeep", "tavern")
+    spawn_mob_in_room("priest", "church")
+    spawn_mob_in_room("zombie", "graveyard")
+    spawn_mob_in_room("ghoul", "crypt")
 
-    # Forest area - goblin scouts (moderate danger)
-    spawn_mob_in_room("goblin_scout", "forest_clearing")
+    # Svalich Woods - wolves and Vistani
+    spawn_mob_in_room("wolf", "woods")
+    spawn_mob_in_room("vistani", "pool")
+    spawn_mob_in_room("seer", "wagon")
+    spawn_mob_in_room("bats", "hollow")
 
-    # Underground/shrine area - skeletons (easy, instant death)
-    spawn_mob_in_room("brittle_skeleton", "well_bottom")
+    # Old Bonegrinder - hags
+    spawn_mob_in_room("hag", "mill")
+    spawn_mob_in_room("daughter", "bedroom")
+    spawn_mob_in_room("raven", "path")
 
-    # Swamp area - dire wolves (high danger)
-    spawn_mob_in_room("dire_wolf", "golden_door")
+    # Argynvostholt - ghosts and revenants
+    spawn_mob_in_room("revenant", "hall")
+    spawn_mob_in_room("phantom", "approach")
+    spawn_mob_in_room("specter", "chapel")
+
+    # Vallaki - guards, allies, and vampire spawn
+    spawn_mob_in_room("guard", "towngate")
+    spawn_mob_in_room("baron", "mansion")
+    spawn_mob_in_room("wereraven", "attic")
+    spawn_mob_in_room("hunter", "inn")
+
+    # Castle Ravenloft - the deadliest encounters
+    spawn_mob_in_room("gargoyle", "courtyard")
+    spawn_mob_in_room("wraith", "dungeon")
+    spawn_mob_in_room("consort", "dining")
+    spawn_mob_in_room("strahd", "tomb")
+    spawn_mob_in_room("skeleton", "castlecrypt")
 
 
 def generate_rooms(rooms: Dict[str, Room]) -> None:
-    """Generate all the rooms for the village."""
+    """Generate all the rooms for the Valley of Barovia."""
 
-    # Village Center
-    spawn: Room = Room(
-        "spawn",
-        "Village Center",
-        "The heart of Chronos Village pulses with subtle energy. Cobblestone paths radiate in all directions. "
-        "A weathered sundial stands in the center, its shadow perpetually fixed despite the passing of day and night. "
-        "The air feels charged, as if time itself hesitates here. Villagers move about with practiced routine, "
-        "unaware they've lived this same moment countless times before. Paths lead to various village structures.",
+    # ===== VILLAGE OF BAROVIA =====
+
+    square: Room = Room(
+        "square",
+        "Village Square",
+        "A bleak village square choked with perpetual mist. A gallows stands in the center, "
+        "its rope swaying despite the still air. Boarded windows stare down from decaying buildings "
+        "like hollow eyes. The smell of fear hangs heavier than the fog. A crumbling church offers "
+        "faint hope to the north. The tavern's dim light flickers to the east. A dirt road leads "
+        "south toward the woods, and the burgomaster's manor looms to the west.",
     )
 
-    # Elder's Cottage - exterior and interior
-    elders_cottage: Room = Room(
-        "elders_cottage",
-        "Outside Elder's Cottage",
-        "A quaint cottage of weathered stone stands before you. Herbs hang in bunches beside the entrance, and "
-        "wind chimes crafted from bones and crystal tinkle softly. Smoke curls from the chimney, carrying the scent "
-        "of strange incense. Through a window, you glimpse the stooped figure of the village Elder moving about inside. "
-        "The village center lies to the east, while a small garden path circles behind the cottage to the north.",
+    tavern: Room = Room(
+        "tavern",
+        "Blood of the Vine Tavern",
+        "The tavern's interior is dim and smoky. A few haggard villagers nurse drinks in silence, "
+        "their eyes darting nervously toward the door. The barkeep polishes the same glass endlessly. "
+        "Scratched tables and a cold hearth complete the miserable atmosphere. A worn rug lies "
+        "near the back wall. The village square is visible through grimy windows to the west.",
     )
 
-    cottage_interior: Room = Room(
-        "cottage_interior",
-        "Inside Elder's Cottage",
-        "The interior is larger than it appeared from outside. The air smells of herbs and old parchment. "
-        "The Elder Chronister, a woman whose age seems impossible to determine, sits by a hearth that "
-        "flickers with blue-white flames. Time-worn books and curious instruments line the shelves, and a large "
-        "mechanical model of celestial bodies hangs from the ceiling, rotating without any obvious mechanism. "
-        "A narrow staircase in the corner leads upward.",
-    )
-
-    cottage_upstairs: Room = Room(
-        "cottage_upstairs",
-        "Cottage Upper Floor",
-        "This upper floor serves as the Elder's observatory and private study. A large circular window "
-        "faces the night sky, regardless of the time of day outside. Star charts and temporal diagrams cover the walls, "
-        "many marked with notes in a script that seems to change as you look at it. A desk cluttered with scrolls "
-        "sits beneath the window, and a comfortable-looking bed occupies one corner.",
-    )
-
-    cottage_cellar: Room = Room(
-        "cottage_cellar",
-        "Hidden Cellar",
-        "A cool, dry cellar extends beneath the cottage. Unlike the wooden construction above, "
-        "these walls are ancient stone that predates the village itself. Shelves line the walls, holding bottles of "
-        "strangely luminescent liquids and jars containing preserved specimens from beyond this reality. "
-        "At the far end, a tunnel leads off to the north, its purpose and destination unclear.",
+    cellar: Room = Room(
+        "cellar",
+        "Tavern Cellar",
+        "Dusty wine barrels line the walls of this cold cellar. Cobwebs hang thick in the corners. "
+        "The smell of damp earth and old wine fills the air. Behind some barrels, there appears to "
+        "be a darker space - perhaps a passage?",
         is_dark=True,
     )
 
-    cottage_garden: Room = Room(
-        "cottage_garden",
-        "Herb Garden",
-        "Behind the Elder's cottage lies a circular garden of impeccably maintained herbs and flowers, many of which "
-        "don't seem native to this world. The plants grow in concentric rings around a small reflecting pool, their "
-        "colors and scents shifting subtly. Some appear to bloom and wither in moments, while others remain "
-        "frozen in perfect bloom. A stone bench provides a place for contemplation.",
+    church: Room = Room(
+        "church",
+        "Village Church",
+        "This small stone church has seen better days. Cracked pews face a simple altar, and "
+        "what remains of stained glass depicts scenes of lost hope. Father Donavich's prayers echo "
+        "weakly off the walls. Despite the decay, something about this place feels... safer. The "
+        "village square lies to the south. An iron grate in the floor leads down to the undercroft.",
     )
 
-    # Marketplace area
-    marketplace: Room = Room(
-        "marketplace",
-        "Village Marketplace",
-        "Wooden stalls arranged in a semicircle host merchants who call out their wares in practiced cadence. "
-        "Oddly, many of the same items appear day after day despite being sold. The smell of fresh bread and "
-        "exotic spices fills the air. To the west lies the village center, while north stands the imposing "
-        "Mystic's Tower. A narrow alley leads east toward the edge of the village, where mist rises from the "
-        "Swamp.",
-    )
-
-    curiosity_shop: Room = Room(
-        "curiosity_shop",
-        "Curiosity Shop",
-        "This space expands impossibly once you enter, revealing a cluttered shop filled with artifacts from "
-        "across multiple realities. The proprietor, an ageless figure with kaleidoscope eyes, nods in greeting. "
-        "Shelves bend with the weight of strange items. Time feels peculiar here - sometimes speeding up, "
-        "sometimes slowing to a crawl. The exit back to the marketplace seems both close and impossibly distant.",
-    )
-
-    # Mystic's Tower complex
-    mystics_tower: Room = Room(
-        "mystics_tower",
-        "Mystic's Tower Base",
-        "A spiral tower of pale stone reaches skyward, occasionally shimmering as if not fully anchored in reality. "
-        "The tower's shadow behaves strangely, sometimes pointing opposite the sun or splitting into multiple silhouettes. "
-        "From inside, you hear the synchronized ticking of countless clocks. The marketplace bustles to the south, "
-        "while a winding path leads west into the forest.",
-    )
-
-    tower_interior: Room = Room(
-        "tower_interior",
-        "Tower Main Chamber",
-        "Inside, pendulum clocks line the walls, each showing a different time, their ticking strangely synchronized. "
-        "Crystals hang from the ceiling, refracting light in impossible patterns. A circular staircase wraps around "
-        "a central column inscribed with mathematical formulae and arcane symbols. Across the chamber lies a workshop "
-        "filled with half-finished temporal instruments.",
-    )
-
-    tower_workshop: Room = Room(
-        "tower_workshop",
-        "Clockwork Workshop",
-        "This circular room branches off from the main chamber, filled with workbenches covered in gears, "
-        "springs, and crystalline components. Half-assembled devices tick and whir, measuring unknown forces. "
-        "Blueprints on the walls depict machines that could never function in normal physics. Through a round window, "
-        "you see the village from an angle that shouldn't be possible from this position.",
-    )
-
-    tower_upper: Room = Room(
-        "tower_upper",
-        "Upper Observatory",
-        "This chamber near the tower's peak has walls transparent from the inside, offering panoramic views of the village "
-        "and lands beyond - though sometimes showing what might be rather than what is. A massive telescope points "
-        "toward the stars, even in daylight. Star charts hover in mid-air, rearranging themselves as you watch.",
-    )
-
-    tower_top: Room = Room(
-        "tower_top",
-        "Tower Summit",
-        "The highest room offers breathtaking views in all directions. The floor is a glass mosaic depicting "
-        "the convergence of multiple timelines into the single point that is Chronos Village. At the center stands a "
-        "pedestal holding a slowly rotating crystal. The air is charged with possibility, and occasionally your vision "
-        "splits, showing multiple versions of the same view.",
-    )
-
-    tower_basement: Room = Room(
-        "tower_basement",
-        "Tower Underchamber",
-        "This spherical chamber beneath the tower has walls covered in softly glowing runes that pulse in rhythm "
-        "with the ticking clocks above. The floor is a perfect mirror, reflecting not the ceiling but a star-filled void. "
-        "In the center, a complex mechanical device maps the flow of time throughout the village. A narrow tunnel leads north.",
-    )
-
-    # Library area
-    ancient_library: Room = Room(
-        "ancient_library",
-        "Ancient Library Entrance",
-        "A building of pale stone stands before you, its architecture unlike the rest of the village. Wide steps lead up "
-        "to massive bronze doors. Golden light spills out from inside along with the distinctive scent of old books. "
-        "The well courtyard lies to the north, while a small reading garden is visible to the east.",
-    )
-
-    library_main: Room = Room(
-        "library_main",
-        "Grand Archive",
-        "Towering bookshelves filled with leather-bound tomes reach up to vaulted ceilings. Some books appear partially "
-        "transparent, while others shift position when not directly observed. In the center sits a massive circular "
-        "table with an inlaid map of what might be Chronos, showing more paths and structures than currently exist. "
-        "Archways lead to specialized reading rooms, while a spiral staircase connects to other levels.",
-    )
-
-    library_reading: Room = Room(
-        "library_reading",
-        "Reading Room",
-        "A peaceful circular chamber branches off from the Grand Archive, furnished with comfortable chairs and reading "
-        "desks. Soft, sourceless light provides perfect illumination. Occasionally, transparent scholars appear, engaged "
-        "in silent discussion before fading away. Windows look out onto the reading garden, though the angle seems "
-        "impossible given the room's location.",
-    )
-
-    reading_garden: Room = Room(
-        "reading_garden",
-        "Library Gardens",
-        "A tranquil garden surrounds the eastern side of the library, designed for outdoor reading and contemplation. "
-        "Stone benches sit among flowering plants that bloom regardless of season. A small fountain at the center "
-        "produces a soothing backdrop, its water occasionally flowing upward before resuming its normal course. "
-        "Several forgotten tomes rest on the benches.",
-    )
-
-    library_mezzanine: Room = Room(
-        "library_mezzanine",
-        "Library Mezzanine",
-        "A balcony level overlooks the Grand Archive below. This level houses rarer volumes in glass cases that occasionally "
-        "become transparent, allowing glimpses of the knowledge within. A series of reading desks are positioned near "
-        "the railing, each equipped with magnifying glasses and translation codices.",
-    )
-
-    library_astronomy: Room = Room(
-        "library_astronomy",
-        "Astronomy Section",
-        "The highest level of the library is dedicated to astronomical knowledge. The ceiling is an enchanted "
-        "glass dome showing the night sky regardless of the time of day. Star charts and telescopes are arranged "
-        "around the circular room. In the center, a complex orrery depicts not just this world's solar system "
-        "but several others as well, all in constant motion.",
-    )
-
-    library_basement: Room = Room(
-        "library_basement",
-        "Forbidden Archives",
-        "The most dangerous knowledge is kept in this shadowy basement. The air is noticeably cooler here, and the silence deeper. "
-        "Books are chained to shelves, some visibly straining against their bindings. Warning signs in multiple languages "
-        "caution against reading certain tomes aloud. At the far end, a narrow tunnel leads northward, partially hidden "
-        "behind a bookshelf.",
-    )
-
-    # Well and underground areas
-    old_well: Room = Room(
-        "old_well",
-        "The Old Well Courtyard",
-        "A stone well stands in a small courtyard surrounded by cobblestone paths. The ground around it is always damp "
-        "despite no evidence of spills. Villagers hurry past, avoiding eye contact with the well from which whispers "
-        "occasionally emerge - voices that speak of events yet to happen. Paths lead to the village center north, "
-        "the library south, and the forgotten shrine east.",
-    )
-
-    well_bottom: Room = Room(
-        "well_bottom",
-        "Bottom of the Well",
-        "This surprisingly dry chamber lies at the bottom of the ancient well shaft. Glowing moss provides dim illumination, "
-        "revealing carefully laid stonework far older than the village above. The walls bear inscriptions predicting events "
-        "in the village's future and recording its past. Water seeps from small cracks, flowing upward against gravity. "
-        "A narrow tunnel leads eastward into darkness.",
+    undercroft: Room = Room(
+        "undercroft",
+        "Church Undercroft",
+        "A cramped stone chamber beneath the church. The air is thick with the smell of incense "
+        "and something else - something wrong. Scratching sounds come from behind a heavy iron door. "
+        "Holy symbols have been scratched into the walls, some drawn in what looks like dried blood.",
         is_dark=True,
     )
 
-    underground_junction: Room = Room(
-        "underground_junction",
-        "Underground Passage Junction",
-        "Several rough-hewn tunnels converge in this spacious underground chamber. Glowing crystals embedded in the walls "
-        "provide soft illumination, revealing ancient support pillars carved with scenes from the village's founding. "
-        "The floor is worn smooth by centuries of passage. A small underground stream bubbles from a crack in the floor, "
-        "flows across the chamber, and disappears into another crevice.",
+    shop: Room = Room(
+        "shop",
+        "Bildrath's Mercantile",
+        "A cramped general store crammed with overpriced goods. Bildrath eyes you with undisguised "
+        "greed. The shelves hold basic supplies, all marked at extortionate prices. 'If you want it, "
+        "you'll pay for it,' he mutters. The square lies to the east.",
+    )
+
+    manor: Room = Room(
+        "manor",
+        "Burgomaster's Manor",
+        "Once grand, this manor now shows signs of siege. Claw marks score the wooden door, and "
+        "the windows are boarded shut. The smell of death lingers in the air. Dust covers everything, "
+        "and portraits of the Kolyan family watch from the walls with painted eyes. A study lies "
+        "to the north. The square is to the east.",
+    )
+
+    study: Room = Room(
+        "study",
+        "Manor Study",
+        "Books line the walls, many dealing with the history of Barovia and its dread lord. "
+        "A desk sits by a shuttered window, covered in papers and a half-finished letter. "
+        "Something important might be found among these documents.",
+    )
+
+    graveyard: Room = Room(
+        "graveyard",
+        "Village Graveyard",
+        "Crooked headstones jut from the muddy earth at odd angles. Many graves show signs of "
+        "disturbance - dirt mounded fresh, stones overturned. The mist clings especially thick here, "
+        "and you swear you can see shapes moving within it. An iron gate leads to a family crypt. "
+        "The church stands to the east.",
+    )
+
+    crypt: Room = Room(
+        "crypt",
+        "Family Crypt",
+        "Stone sarcophagi line the walls of this underground chamber. The air is stale and cold. "
+        "Names and dates are carved into the stone - Kolyanovich, Dilisnya, Wachter. Something "
+        "skitters in the shadows. The dead do not rest easy in Barovia.",
         is_dark=True,
     )
 
-    # Shrine area
-    forgotten_shrine: Room = Room(
-        "forgotten_shrine",
-        "Forgotten Shrine Entrance",
-        "Half-buried in the earth lies an ancient shrine predating the village itself. Stone steps descend into "
-        "a semicircular courtyard surrounded by weathered columns. Vines with luminescent flowers crawl across the "
-        "stonework, and the air hums with residual magic. From deep within comes a soft, rhythmic pulse, like the "
-        "heartbeat of time itself.",
+    # ===== SVALICH WOODS =====
+
+    road: Room = Room(
+        "road",
+        "Old Svalich Road",
+        "A muddy road winds through oppressive forest. The trees press close on either side, "
+        "their bare branches reaching like grasping fingers. Mist pools in every hollow. "
+        "The village lies to the north, while the road continues south toward a crossroads. "
+        "Wolf howls echo in the distance.",
     )
 
-    shrine_interior: Room = Room(
-        "shrine_interior",
-        "Shrine Inner Sanctum",
-        "The heart of the ancient shrine is a circular chamber dominated by a central altar with seven different-colored "
-        "indentations forming a circle. The air hums with powerful magic, and time seems to slow in this sacred space. "
-        "At the back stands a weathered statue of a hooded figure with outstretched hands. A narrow staircase spirals "
-        "downward along the wall.",
+    crossroads: Room = Room(
+        "crossroads",
+        "Gallows Crossroads",
+        "Four roads meet at a weathered signpost. A gallows stands here, a rotting corpse "
+        "swinging gently in the breeze. The signs point in various directions: 'Barovia' to the north, "
+        "'Vallaki' to the west, 'Castle Ravenloft' to the east, and 'Tser Pool' to the south. "
+        "Crows watch from nearby branches.",
     )
 
-    shrine_underground: Room = Room(
-        "shrine_underground",
-        "Ritual Chamber",
-        "A perfectly circular chamber extends beneath the shrine. The walls are mirror-smooth obsidian reflecting "
-        "distorted images of yourself, sometimes showing alternate versions. In the center is a circular pool of "
-        "silvery liquid that occasionally ripples without cause. Seven pedestals surround the pool, each aligned with "
-        "one of the indentations on the altar above.",
+    woods: Room = Room(
+        "woods",
+        "Svalich Woods",
+        "Dense forest surrounds you. The trees here are ancient and twisted, their bark "
+        "blackened as if by fire. Mist curls between the trunks, and the silence is oppressive. "
+        "Occasionally, you catch glimpses of movement - wolves perhaps, or something worse. "
+        "A clearing is visible to the west. The crossroads lies to the north.",
     )
 
-    # Forest and northern areas
-    northern_path: Room = Room(
-        "northern_path",
-        "Northern Path",
-        "A winding dirt path stretches northward from the village, flanked by ancient oak trees whose branches "
-        "intertwine overhead. Occasionally, the leaves shift color from green to autumn gold and back again in seconds. "
-        "Small lights - perhaps fireflies or something more magical - flicker among the branches. The village center "
-        "lies south, the mystic's tower east, and the dense forest continues north.",
+    clearing: Room = Room(
+        "clearing",
+        "Forest Clearing",
+        "A small clearing in the endless forest. Three ancient standing stones form a circle "
+        "at the center, each carved with faded symbols. Wolf tracks crisscross the muddy ground. "
+        "A path leads toward a windmill on a distant hill to the west. The dark woods continue east.",
     )
 
-    forest_edge: Room = Room(
-        "forest_edge",
-        "Edge of the Whispering Forest",
-        "The forest creates a natural boundary for the village to the north. Trees with silvery bark stand "
-        "like sentinels, their leaves rustling with whispers that sound almost like words. One massive yew tree "
-        "dominates the area, its trunk bearing carvings that change meaning depending on when viewed. The path "
-        "back to the village lies south, while barely visible trails lead deeper into the forest.",
+    barrow: Room = Room(
+        "barrow",
+        "Ancient Barrow",
+        "Stone steps descend into an ancient burial mound. The air is thick with the dust of ages. "
+        "Offerings to forgotten gods lie scattered about - tarnished coins, crumbled bones, a rusted blade. "
+        "The darkness here feels sacred, undisturbed for centuries. Steps lead back up to the clearing.",
+        is_dark=True,
     )
 
-    forest_clearing: Room = Room(
-        "forest_clearing",
-        "Whispering Clearing",
-        "The forest opens into a perfectly circular clearing where no trees grow. The ground is covered in soft moss "
-        "that glows faintly at night, and standing stones form a small circle at the center. Each stone bears symbols "
-        "similar to those in the forgotten shrine. The clearing is eerily quiet compared to the surrounding forest, "
-        "as if sound itself is muffled here.",
+    pool: Room = Room(
+        "pool",
+        "Tser Pool",
+        "A dark pool reflects the grey sky. Colorful Vistani wagons are camped on the shore, "
+        "their painted sides a stark contrast to the dreary landscape. Cooking fires burn, and "
+        "the sound of music drifts from somewhere. A worn path leads to a fortune teller's wagon. "
+        "The crossroads lies to the north.",
     )
 
-    forest_hideaway: Room = Room(
-        "forest_hideaway",
-        "Hidden Grove",
-        "This secluded grove is hidden from casual discovery by dense foliage. A small structure resembling a combination "
-        "of tree house and shrine nestles among ancient branches - apparently the dwelling of a forest hermit, though "
-        "they're nowhere to be seen. Curious tools and gathered herbs hang from branches, and a small fire pit shows "
-        "recent use. Carved wooden figurines depict various village residents in remarkable detail.",
+    wagon: Room = Room(
+        "wagon",
+        "Fortune Teller's Wagon",
+        "Inside the cramped wagon, incense smoke hangs thick in the air. Silken scarves cover "
+        "every surface, and strange charms dangle from the ceiling. An ancient woman sits before "
+        "a worn deck of cards, her milky eyes seeing far more than they should. "
+        "'Sit,' she says. 'The cards have been expecting you.'",
     )
 
-    yew_tree_hollow: Room = Room(
-        "yew_tree_hollow",
-        "Within the Ancient Yew",
-        "This impossible space within the massive yew tree is larger inside than the tree could possibly contain. "
-        "The walls are living wood, pulsing gently like a heartbeat. Soft light filters through the wood grain, "
-        "and the air smells of sap and ancient magic. Carved into the living wood are images showing the history "
-        "of the village and events yet to come.",
+    hollow: Room = Room(
+        "hollow",
+        "Dark Hollow",
+        "This depression in the forest floor is unnaturally dark. The trees overhead block "
+        "what little light exists, and the mist here has a cloying quality. Something rustles "
+        "in the undergrowth. The forest path continues to the north.",
+        is_dark=True,
     )
 
-    # Swamp areas - now using SwampRoom class
-    swamp1: SwampRoom = SwampRoom(
-        "swamp1",
-        "Treacherous Swamp",
-        "You are waylaid in a treacherous swamp.",
-        treasure_destination="underswamp",
-        awards_points=True,
+    bridge: Room = Room(
+        "bridge",
+        "Stone Bridge",
+        "An ancient stone bridge spans a rushing river. The water below is black and swift. "
+        "Gargoyle statues crouch at each end, their faces worn smooth by centuries of rain. "
+        "The road to Vallaki continues to the west, while the crossroads lies to the east.",
     )
 
-    # Golden Door
-    golden_door: Room = Room(
-        "golden_door",
-        "The First Golden Door",
-        "A small island in the deepest part of the swamp holds a free-standing archway of obsidian stone. The archway "
-        "is accessible by a partially submerged path of ancient stepping stones. Warnings in ancient script are carved "
-        "into the stone, cautioning about unstable fragments of other worlds - pocket dimensions that follow different rules.",
+    castlegates: Room = Room(
+        "castlegates",
+        "Castle Gates",
+        "Massive iron gates stand open, their hinges groaning in the wind. Beyond them, a "
+        "crumbling bridge leads to the castle itself, its spires stabbing at the grey sky. "
+        "The gates seem to invite you in. Or perhaps... they're ensuring you can't leave. "
+        "The crossroads lies to the west. The castle courtyard beckons to the east.",
     )
 
-    # Underswamp - special area only accessible to archmages
-    underswamp: Room = Room(
-        "underswamp",
-        "The Underswamp",
-        "This vast cavern hidden beneath the Swamp can only be accessed by those with the highest "
-        "dimensional awareness. The chamber glitters with accumulated treasures from countless cycles. "
-        "Crystalline formations grow from the ceiling, each containing what appears to be a frozen moment "
-        "from a different potential timeline. There is no physical entrance or exit - only Archmages can teleport here.",
+    mists: Room = Room(
+        "mists",
+        "Choking Mists",
+        "The mists here are so thick you can barely see your hand before your face. They "
+        "seem almost solid, pressing against you, turning you back. No matter which direction "
+        "you try, you always end up back where you started. There is no escape from Barovia.",
+    )
+
+    # ===== OLD BONEGRINDER =====
+
+    millpath: Room = Room(
+        "millpath",
+        "Path to Windmill",
+        "A winding path leads up a barren hill toward a decrepit windmill. The sails turn "
+        "slowly despite the lack of wind, creaking with each rotation. The smell of baking "
+        "drifts down - something sweet, but wrong. A raven watches from a dead tree. "
+        "The clearing lies to the east.",
+    )
+
+    mill: Room = Room(
+        "mill",
+        "Old Bonegrinder",
+        "The ground floor of the windmill is cluttered with old millstones and mysterious "
+        "sacks. The smell of baking is stronger here, mixed with something rotten. Flour "
+        "covers everything in a fine layer. Stairs lead up to a kitchen, and a trapdoor "
+        "leads down to a basement.",
+    )
+
+    kitchen: Room = Room(
+        "kitchen",
+        "Hag's Kitchen",
+        "The smell hits you first - sweetness masking something rotten. Pastries cool on a "
+        "wooden table beside a massive oven. The oven is large enough to fit a child. "
+        "A closer look at the ingredients reveals they are... wrong. Very wrong. "
+        "Something scratches from within a cabinet. You shouldn't be here.",
+    )
+
+    bedroom: Room = Room(
+        "bedroom",
+        "Hag's Bedroom",
+        "A filthy bedroom with a straw mattress and piles of stolen clothes. Strange dolls "
+        "made of sticks and bone hang from the ceiling. A cracked mirror shows reflections "
+        "that don't quite match reality. The attic is accessible via a rickety ladder.",
+    )
+
+    millattic: Room = Room(
+        "millattic",
+        "Windmill Attic",
+        "Dusty and cramped, the attic contains several wooden crates. Muffled sounds come "
+        "from one of them - crying, perhaps. The floorboards creak ominously. A small window "
+        "offers a view of the bleak landscape below.",
+    )
+
+    millbasement: Room = Room(
+        "millbasement",
+        "Root Cellar",
+        "Cold earth walls press close in this cramped cellar. Bones are scattered across the "
+        "floor - chicken bones, you hope. Jars of preserved... things line rough shelves. "
+        "The smell of decay is overwhelming.",
+        is_dark=True,
+    )
+
+    # ===== ARGYNVOSTHOLT =====
+
+    approach: Room = Room(
+        "approach",
+        "Overgrown Path",
+        "A path choked with dead weeds leads to a ruined manor. The building was once grand - "
+        "a dragon statue still stands proud atop the main tower, despite centuries of decay. "
+        "Ghostly lights flicker in the windows. The main hall is visible through broken doors "
+        "to the east.",
+    )
+
+    hall: Room = Room(
+        "hall",
+        "Ruined Great Hall",
+        "The once-magnificent hall is now open to the elements. A massive dragon skull hangs "
+        "above a cold fireplace - not a true dragon, but the sigil of the Order of the Silver "
+        "Dragon. Tattered banners bearing the same symbol hang from the walls. Passages lead "
+        "to a chapel to the north and quarters to the south.",
+    )
+
+    argchapel: Room = Room(
+        "argchapel",
+        "Destroyed Chapel",
+        "This chapel has been desecrated. The altar is overturned, holy symbols smashed, and "
+        "dark stains mark the floor. Yet something lingers here - a cold presence filled with "
+        "ancient rage. The great hall lies to the south.",
+    )
+
+    quarters: Room = Room(
+        "quarters",
+        "Knights' Quarters",
+        "Rows of beds line the walls, their occupants long dead. Armor stands on wooden racks, "
+        "tarnished but intact. Personal effects - letters, tokens, small portraits - speak to "
+        "the knights who once lived here. A tower stair leads up.",
+    )
+
+    argtower: Room = Room(
+        "argtower",
+        "Watchtower",
+        "From this crumbling tower, you can see for miles - the Svalich Woods, the village "
+        "of Barovia, and in the distance, Castle Ravenloft looming over all. A spectral knight "
+        "might once have stood watch here.",
+    )
+
+    vault: Room = Room(
+        "vault",
+        "Hidden Vault",
+        "Behind a secret panel lies a small vault. The Order kept their most precious items "
+        "here - weapons blessed against the undead, relics of their dragon patron. Most have "
+        "been looted, but something might remain.",
+        is_dark=True,
+    )
+
+    argtomb: Room = Room(
+        "argtomb",
+        "Argynvost's Tomb",
+        "This grand chamber was built to honor the silver dragon Argynvost, who fell defending "
+        "Barovia. His bones were stolen long ago by Strahd, but the memorial remains. Cold "
+        "light filters through stained glass depicting the dragon in life.",
+    )
+
+    # ===== VALLAKI =====
+
+    towngate: Room = Room(
+        "towngate",
+        "Vallaki Gates",
+        "Heavy wooden gates mark the entrance to Vallaki. Guards eye you suspiciously, "
+        "checking for signs of vampirism. Posters proclaim the 'Festival of the Blazing Sun' - "
+        "apparently, mandatory happiness is enforced here. The main street leads west into town. "
+        "The bridge and road to Barovia lie to the east.",
+    )
+
+    street: Room = Room(
+        "street",
+        "Main Street",
+        "The main street of Vallaki is lined with shops and homes. Colorful decorations hang "
+        "everywhere, but the townspeople's smiles look forced. Guards patrol constantly. "
+        "A sign points to the Blue Water Inn to the south. St. Andral's Church stands to the "
+        "north. The burgomaster's mansion looms to the west.",
+    )
+
+    inn: Room = Room(
+        "inn",
+        "Blue Water Inn",
+        "This inn is the most welcoming place you've found in Barovia. A fire crackles in the "
+        "hearth, and the smell of cooking food fills the air. The innkeepers, the Martikov family, "
+        "seem genuinely kind. A grizzled hunter nurses a drink in the corner. "
+        "Stairs lead up to guest rooms. An attic door is visible in the ceiling.",
+    )
+
+    attic: Room = Room(
+        "attic",
+        "Inn Attic",
+        "The dusty attic seems empty at first, but you notice signs of habitation - bedrolls, "
+        "scattered feathers, a crude nest. Someone - or something - has been living here. "
+        "The space feels oddly safe.",
+    )
+
+    stockyard: Room = Room(
+        "stockyard",
+        "Stockyard",
+        "A grim stockyard where wolf heads are displayed on spikes - the Baron's trophies. "
+        "An executioner's block stands in the center, stained dark with old blood. The smell "
+        "of death lingers. This is where the Baron's 'justice' is carried out.",
+    )
+
+    mansion: Room = Room(
+        "mansion",
+        "Burgomaster's Mansion",
+        "Baron Vallakovich's mansion is garishly decorated with sun symbols and banners "
+        "proclaiming 'ALL WILL BE WELL.' Guards stand rigid at every door. The Baron himself "
+        "paces the main hall, muttering about the upcoming festival. A door leads down to the "
+        "mansion dungeon.",
+    )
+
+    mansiondungeon: Room = Room(
+        "mansiondungeon",
+        "Mansion Dungeon",
+        "The Baron's private dungeon is a place of horror. Torture implements line the walls. "
+        "Prisoners - those who failed to be happy enough - moan in their cells. The guards "
+        "pretend not to hear.",
+        is_dark=True,
+    )
+
+    vallakichurch: Room = Room(
+        "vallakichurch",
+        "St. Andral's Church",
+        "This church stands as a beacon of hope in Vallaki. Father Lucian tends to his flock "
+        "with genuine care. The church is protected by the bones of St. Andral - or it was, "
+        "until they were stolen. Without them, even this sanctuary is not safe.",
+    )
+
+    camp: Room = Room(
+        "camp",
+        "Vistani Camp",
+        "A Vistani camp sits outside Vallaki's walls. These wanderers come and go as they "
+        "please - the only people in Barovia who can leave. They trade in secrets and dreams, "
+        "and are not above deception. The lake shore is visible to the north.",
+    )
+
+    lake: Room = Room(
+        "lake",
+        "Lake Zarovich",
+        "The dark waters of Lake Zarovich lap against a rocky shore. The lake is cold and "
+        "deep - some say bottomless. Fishermen tell tales of things seen in the depths, "
+        "shapes that shouldn't exist. A rowboat is tied to a small dock.",
+    )
+
+    # ===== CASTLE RAVENLOFT =====
+
+    courtyard: Room = Room(
+        "courtyard",
+        "Castle Courtyard",
+        "Massive stone walls loom overhead, blocking what little light penetrates Barovia's "
+        "eternal gloom. Gargoyles perch on every ledge, their eyes seeming to follow your "
+        "movements. The grand entrance beckons ahead, its doors hanging open in mocking "
+        "invitation. The howl of wolves echoes from somewhere far below. The gates lie to "
+        "the west.",
+    )
+
+    entrance: Room = Room(
+        "entrance",
+        "Grand Entrance Hall",
+        "Dust covers everything in this cavernous hall. Twin staircases sweep upward to a "
+        "balcony. Suits of armor stand silent sentinel along the walls, and you can't shake "
+        "the feeling they're watching you. A chandelier hangs overhead, its candles burning "
+        "with an eerie blue flame. An invitation card lies on a table.",
+    )
+
+    dining: Room = Room(
+        "dining",
+        "Dining Hall",
+        "A long table is set for a feast that has waited centuries for guests. The food looks "
+        "fresh - impossibly so. Candles burn without melting. A figure sits at the head of the "
+        "table, but vanishes when you look directly at it. Strahd's mockery of hospitality.",
+    )
+
+    stairs: Room = Room(
+        "stairs",
+        "Spiral Staircase",
+        "A massive spiral staircase connects the castle's many levels. The steps are worn "
+        "smooth by centuries of use. Cold drafts sweep up and down, carrying whispers and "
+        "the occasional scream. Passages lead off in multiple directions.",
+    )
+
+    castlestudy: Room = Room(
+        "castlestudy",
+        "Strahd's Study",
+        "This private study is filled with books and maps. Many detail the history of Barovia, "
+        "others the nature of vampirism. A portrait of a beautiful woman hangs above the "
+        "fireplace - Tatyana, the object of Strahd's eternal obsession. A tome bound in "
+        "black leather sits on the desk.",
+    )
+
+    castlecrypt: Room = Room(
+        "castlecrypt",
+        "Castle Crypt",
+        "Rows of stone coffins fill this underground chamber. Many bear the names of Strahd's "
+        "victims and servants. The air is cold and still, and the darkness seems to press "
+        "against your light source. Something stirs in the shadows.",
+        is_dark=True,
+    )
+
+    tomb: Room = Room(
+        "tomb",
+        "Strahd's Tomb",
+        "The heart of Castle Ravenloft. An ornate coffin sits on a raised dais, surrounded by "
+        "treasure accumulated over centuries. This is where the Dark Lord rests. The walls are "
+        "covered in murals depicting Strahd's life and crimes. A crystal heart pulses with "
+        "red light in an alcove - the Heart of Sorrow, source of his power.",
+        is_dark=True,
+    )
+
+    treasury: Room = Room(
+        "treasury",
+        "Castle Treasury",
+        "Gold and jewels are piled carelessly in this chamber - wealth means nothing to an "
+        "immortal. Among the treasure lie items of true value: enchanted weapons, magical "
+        "artifacts, and perhaps the legendary Sunsword, bane of vampires.",
+    )
+
+    castledungeon: Room = Room(
+        "castledungeon",
+        "Castle Dungeon",
+        "The dungeons of Castle Ravenloft have held countless prisoners over the centuries. "
+        "Most didn't survive long. Chains hang from the walls, some still bearing bones. "
+        "The screams of the damned echo through these halls.",
+        is_dark=True,
+    )
+
+    tower: Room = Room(
+        "tower",
+        "High Tower",
+        "From the highest point of Castle Ravenloft, all of Barovia is visible - a land "
+        "trapped in eternal twilight, surrounded by impenetrable mists. Strahd has stood "
+        "here countless times, surveying his prison. The view is beautiful and terrible.",
+    )
+
+    castlechapel: Room = Room(
+        "castlechapel",
+        "Desecrated Chapel",
+        "Once a place of worship, this chapel has been corrupted by Strahd's presence. "
+        "Holy symbols have been inverted, the altar stained with old blood. Yet something "
+        "remains - the Icon of Ravenloft, hidden behind the altar, still holds power.",
+    )
+
+    coffin: Room = Room(
+        "coffin",
+        "Coffin Room",
+        "Rows of empty coffins line this hidden chamber - resting places for Strahd's vampire "
+        "spawn. Most are empty now, their occupants hunting in the night. But some are "
+        "occupied, waiting for sunset.",
+        is_dark=True,
     )
 
     # Add all rooms to the dictionary
-    rooms["spawn"] = spawn
-    rooms["elders_cottage"] = elders_cottage
-    rooms["cottage_interior"] = cottage_interior
-    rooms["cottage_upstairs"] = cottage_upstairs
-    rooms["cottage_cellar"] = cottage_cellar
-    rooms["cottage_garden"] = cottage_garden
-    rooms["marketplace"] = marketplace
-    rooms["curiosity_shop"] = curiosity_shop
-    rooms["mystics_tower"] = mystics_tower
-    rooms["tower_interior"] = tower_interior
-    rooms["tower_workshop"] = tower_workshop
-    rooms["tower_upper"] = tower_upper
-    rooms["tower_top"] = tower_top
-    rooms["tower_basement"] = tower_basement
-    rooms["ancient_library"] = ancient_library
-    rooms["library_main"] = library_main
-    rooms["library_reading"] = library_reading
-    rooms["reading_garden"] = reading_garden
-    rooms["library_mezzanine"] = library_mezzanine
-    rooms["library_astronomy"] = library_astronomy
-    rooms["library_basement"] = library_basement
-    rooms["old_well"] = old_well
-    rooms["well_bottom"] = well_bottom
-    rooms["underground_junction"] = underground_junction
-    rooms["forgotten_shrine"] = forgotten_shrine
-    rooms["shrine_interior"] = shrine_interior
-    rooms["shrine_underground"] = shrine_underground
-    rooms["northern_path"] = northern_path
-    rooms["forest_edge"] = forest_edge
-    rooms["forest_clearing"] = forest_clearing
-    rooms["forest_hideaway"] = forest_hideaway
-    rooms["yew_tree_hollow"] = yew_tree_hollow
-    rooms["swamp1"] = swamp1
-    rooms["golden_door"] = golden_door
-    rooms["underswamp"] = underswamp
+    rooms["square"] = square
+    rooms["tavern"] = tavern
+    rooms["cellar"] = cellar
+    rooms["church"] = church
+    rooms["undercroft"] = undercroft
+    rooms["shop"] = shop
+    rooms["manor"] = manor
+    rooms["study"] = study
+    rooms["graveyard"] = graveyard
+    rooms["crypt"] = crypt
+    rooms["road"] = road
+    rooms["crossroads"] = crossroads
+    rooms["woods"] = woods
+    rooms["clearing"] = clearing
+    rooms["barrow"] = barrow
+    rooms["pool"] = pool
+    rooms["wagon"] = wagon
+    rooms["hollow"] = hollow
+    rooms["bridge"] = bridge
+    rooms["castlegates"] = castlegates
+    rooms["mists"] = mists
+    rooms["millpath"] = millpath
+    rooms["mill"] = mill
+    rooms["kitchen"] = kitchen
+    rooms["bedroom"] = bedroom
+    rooms["millattic"] = millattic
+    rooms["millbasement"] = millbasement
+    rooms["approach"] = approach
+    rooms["hall"] = hall
+    rooms["argchapel"] = argchapel
+    rooms["quarters"] = quarters
+    rooms["argtower"] = argtower
+    rooms["vault"] = vault
+    rooms["argtomb"] = argtomb
+    rooms["towngate"] = towngate
+    rooms["street"] = street
+    rooms["inn"] = inn
+    rooms["attic"] = attic
+    rooms["stockyard"] = stockyard
+    rooms["mansion"] = mansion
+    rooms["mansiondungeon"] = mansiondungeon
+    rooms["vallakichurch"] = vallakichurch
+    rooms["camp"] = camp
+    rooms["lake"] = lake
+    rooms["courtyard"] = courtyard
+    rooms["entrance"] = entrance
+    rooms["dining"] = dining
+    rooms["stairs"] = stairs
+    rooms["castlestudy"] = castlestudy
+    rooms["castlecrypt"] = castlecrypt
+    rooms["tomb"] = tomb
+    rooms["treasury"] = treasury
+    rooms["castledungeon"] = castledungeon
+    rooms["tower"] = tower
+    rooms["castlechapel"] = castlechapel
+    rooms["coffin"] = coffin
 
 
 def connect_exits(rooms: Dict[str, Room]) -> None:
     """Connect all rooms with appropriate exits."""
 
-    # Village Center connections
-    rooms["spawn"].exits = {
-        "north": "northern_path",
-        "east": "marketplace",
-        "south": "old_well",
-        "west": "elders_cottage",
+    # ===== VILLAGE OF BAROVIA =====
+    rooms["square"].exits = {
+        "north": "church",
+        "east": "tavern",
+        "south": "road",
+        "west": "manor",
+        "southwest": "shop",
     }
 
-    # Elder's Cottage area
-    rooms["elders_cottage"].exits = {
-        "east": "spawn",
-        "north": "cottage_garden",
-        # "in" exit will be handled by the cottage door object
+    rooms["tavern"].exits = {
+        "west": "square",
+        # "down": "cellar" - will be revealed by hidden trapdoor
     }
 
-    rooms["cottage_interior"].exits = {
-        "out": "elders_cottage",
-        "up": "cottage_upstairs",
-        # "down" exit will be added when trapdoor is discovered
+    rooms["cellar"].exits = {
+        "up": "tavern",
     }
 
-    rooms["cottage_upstairs"].exits = {"down": "cottage_interior"}
-
-    rooms["cottage_cellar"].exits = {
-        "up": "cottage_interior",
-        "north": "underground_junction",
+    rooms["church"].exits = {
+        "south": "square",
+        "west": "graveyard",
+        "down": "undercroft",
     }
 
-    rooms["cottage_garden"].exits = {"south": "elders_cottage", "east": "spawn"}
-
-    # Marketplace area
-    rooms["marketplace"].exits = {
-        "west": "spawn",
-        "north": "mystics_tower",
-        "east": "swamp1",
-        # "shop" exit will be handled by the curiosity stall object
+    rooms["undercroft"].exits = {
+        "up": "church",
     }
 
-    rooms["curiosity_shop"].exits = {"out": "marketplace"}
-
-    # Mystic's Tower complex
-    rooms["mystics_tower"].exits = {
-        "south": "marketplace",
-        "west": "northern_path",
-        # "in" exit will be handled by the tower door object
+    rooms["shop"].exits = {
+        "northeast": "square",
     }
 
-    rooms["tower_interior"].exits = {
-        "out": "mystics_tower",
-        "up": "tower_upper",
-        "down": "tower_basement",
-        "west": "tower_workshop",
+    rooms["manor"].exits = {
+        "east": "square",
+        "north": "study",
     }
 
-    rooms["tower_workshop"].exits = {"east": "tower_interior"}
-
-    rooms["tower_upper"].exits = {"up": "tower_top", "down": "tower_interior"}
-
-    rooms["tower_top"].exits = {"down": "tower_upper"}
-
-    rooms["tower_basement"].exits = {
-        "up": "tower_interior",
-        "north": "underground_junction",
+    rooms["study"].exits = {
+        "south": "manor",
     }
 
-    # Library area
-    rooms["ancient_library"].exits = {
-        "north": "old_well",
-        "east": "reading_garden",
-        # "in" exit will be handled by the library doors object
+    rooms["graveyard"].exits = {
+        "east": "church",
+        "in": "crypt",
     }
 
-    rooms["library_main"].exits = {
-        "out": "ancient_library",
-        "east": "library_reading",
-        "up": "library_mezzanine",
-        "down": "library_basement",
+    rooms["crypt"].exits = {
+        "out": "graveyard",
     }
 
-    rooms["library_reading"].exits = {"west": "library_main", "out": "reading_garden"}
-
-    rooms["reading_garden"].exits = {
-        "west": "ancient_library",
-        "in": "library_reading",
-        "north": "spawn",
+    # ===== SVALICH WOODS =====
+    rooms["road"].exits = {
+        "north": "square",
+        "south": "crossroads",
     }
 
-    rooms["library_mezzanine"].exits = {
-        "down": "library_main",
-        "up": "library_astronomy",
+    rooms["crossroads"].exits = {
+        "north": "road",
+        "south": "pool",
+        "east": "castlegates",
+        "west": "bridge",
+        "southeast": "woods",
     }
 
-    rooms["library_astronomy"].exits = {"down": "library_mezzanine"}
-
-    rooms["library_basement"].exits = {
-        "up": "library_main",
-        "north": "underground_junction",
+    rooms["woods"].exits = {
+        "northwest": "crossroads",
+        "west": "clearing",
+        "south": "hollow",
     }
 
-    # Well area
-    rooms["old_well"].exits = {
-        "north": "spawn",
-        "south": "ancient_library",
-        "east": "forgotten_shrine",
-        # "down" exit will be handled by the well object
+    rooms["clearing"].exits = {
+        "east": "woods",
+        "west": "millpath",
+        # "down": "barrow" - hidden, revealed when standing stones are aligned
     }
 
-    rooms["well_bottom"].exits = {
-        "east": "underground_junction"
-        # up exit will be handled by well object
+    rooms["barrow"].exits = {
+        "up": "clearing",
     }
 
-    rooms["underground_junction"].exits = {
-        "west": "well_bottom",
-        "north": "cottage_cellar",
-        "east": "shrine_underground",
-        "southeast": "library_basement",
+    rooms["pool"].exits = {
+        "north": "crossroads",
+        "in": "wagon",
     }
 
-    # Shrine area
-    rooms["forgotten_shrine"].exits = {"west": "old_well", "east": "shrine_interior"}
-
-    rooms["shrine_interior"].exits = {
-        "west": "forgotten_shrine",
-        "down": "shrine_underground",
+    rooms["wagon"].exits = {
+        "out": "pool",
     }
 
-    rooms["shrine_underground"].exits = {
-        "up": "shrine_interior",
-        "west": "underground_junction",
+    rooms["hollow"].exits = {
+        "north": "woods",
     }
 
-    # Forest and northern areas
-    rooms["northern_path"].exits = {
-        "south": "spawn",
-        "east": "mystics_tower",
-        "north": "forest_edge",
+    rooms["bridge"].exits = {
+        "east": "crossroads",
+        "west": "towngate",
+        "south": "approach",
     }
 
-    rooms["forest_edge"].exits = {
-        "south": "northern_path",
-        "north": "forest_clearing",
-        # "in" exit to yew_tree_hollow will be handled by the yew tree object
+    rooms["castlegates"].exits = {
+        "west": "crossroads",
+        "east": "courtyard",
     }
 
-    rooms["forest_clearing"].exits = {
-        "south": "forest_edge",
-        "west": "forest_hideaway",
+    rooms["mists"].exits = {
+        "south": "crossroads",
+        "north": "crossroads",
+        "east": "crossroads",
+        "west": "crossroads",
     }
 
-    rooms["forest_hideaway"].exits = {"east": "forest_clearing"}
-
-    rooms["yew_tree_hollow"].exits = {"out": "forest_edge"}
-
-    # Swamp areas
-    rooms["swamp1"].exits = {"west": "marketplace", "south": "golden_door"}
-
-    rooms["golden_door"].exits = {
-        "north": "swamp1"
-        # "north" exit will be dynamically added by AI generation
+    # ===== OLD BONEGRINDER =====
+    rooms["millpath"].exits = {
+        "east": "clearing",
+        "in": "mill",
     }
 
-    # The underswamp has no normal exits - only accessible via archmage teleport
-    rooms["underswamp"].exits = {}
+    rooms["mill"].exits = {
+        "out": "millpath",
+        "up": "kitchen",
+        "down": "millbasement",
+    }
 
+    rooms["kitchen"].exits = {
+        "down": "mill",
+        "up": "bedroom",
+    }
 
-# Update to village_generator.py to make containers work with the interaction system
+    rooms["bedroom"].exits = {
+        "down": "kitchen",
+        "up": "millattic",
+    }
+
+    rooms["millattic"].exits = {
+        "down": "bedroom",
+    }
+
+    rooms["millbasement"].exits = {
+        "up": "mill",
+    }
+
+    # ===== ARGYNVOSTHOLT =====
+    rooms["approach"].exits = {
+        "east": "hall",
+        "north": "bridge",
+    }
+
+    rooms["hall"].exits = {
+        "west": "approach",
+        "north": "argchapel",
+        "south": "quarters",
+        "down": "argtomb",
+    }
+
+    rooms["argchapel"].exits = {
+        "south": "hall",
+    }
+
+    rooms["quarters"].exits = {
+        "north": "hall",
+        "up": "argtower",
+        # "in": "vault" - hidden, revealed by searching
+    }
+
+    rooms["argtower"].exits = {
+        "down": "quarters",
+    }
+
+    rooms["vault"].exits = {
+        "out": "quarters",
+    }
+
+    rooms["argtomb"].exits = {
+        "up": "hall",
+    }
+
+    # ===== VALLAKI =====
+    rooms["towngate"].exits = {
+        "east": "bridge",
+        "west": "street",
+    }
+
+    rooms["street"].exits = {
+        "east": "towngate",
+        "south": "inn",
+        "north": "vallakichurch",
+        "west": "mansion",
+    }
+
+    rooms["inn"].exits = {
+        "north": "street",
+        "up": "attic",
+        "east": "stockyard",
+    }
+
+    rooms["attic"].exits = {
+        "down": "inn",
+    }
+
+    rooms["stockyard"].exits = {
+        "west": "inn",
+    }
+
+    rooms["mansion"].exits = {
+        "east": "street",
+        "down": "mansiondungeon",
+    }
+
+    rooms["mansiondungeon"].exits = {
+        "up": "mansion",
+    }
+
+    rooms["vallakichurch"].exits = {
+        "south": "street",
+    }
+
+    rooms["camp"].exits = {
+        "north": "lake",
+        "east": "towngate",
+    }
+
+    rooms["lake"].exits = {
+        "south": "camp",
+    }
+
+    # ===== CASTLE RAVENLOFT =====
+    rooms["courtyard"].exits = {
+        "west": "castlegates",
+        "east": "entrance",
+    }
+
+    rooms["entrance"].exits = {
+        "west": "courtyard",
+        "north": "dining",
+        "up": "stairs",
+    }
+
+    rooms["dining"].exits = {
+        "south": "entrance",
+        "east": "stairs",
+    }
+
+    rooms["stairs"].exits = {
+        "down": "castlecrypt",
+        "up": "tower",
+        "north": "castlestudy",
+        "south": "treasury",
+        "west": "dining",
+        "east": "castlechapel",
+        "out": "entrance",
+    }
+
+    rooms["castlestudy"].exits = {
+        "south": "stairs",
+    }
+
+    rooms["castlecrypt"].exits = {
+        "up": "stairs",
+        "east": "tomb",
+        "west": "castledungeon",
+    }
+
+    rooms["tomb"].exits = {
+        "west": "castlecrypt",
+        # "in": "coffin" - hidden area
+    }
+
+    rooms["treasury"].exits = {
+        "north": "stairs",
+    }
+
+    rooms["castledungeon"].exits = {
+        "east": "castlecrypt",
+    }
+
+    rooms["tower"].exits = {
+        "down": "stairs",
+    }
+
+    rooms["castlechapel"].exits = {
+        "west": "stairs",
+        "north": "coffin",
+    }
+
+    rooms["coffin"].exits = {
+        "south": "castlechapel",
+    }
 
 
 def add_container_items(rooms: Dict[str, Room]) -> None:
-    bag: ContainerItem = ContainerItem(
-        "bag",
-        "bag",
-        "A musty carpet bag lies here",
-        weight=1,
+    """Add container items to rooms."""
+
+    # Coffin in crypt
+    coffin_container: ContainerItem = ContainerItem(
+        "coffin",
+        "coffin_crypt",
+        "A stone coffin with a heavy lid.",
+        weight=200,
         value=0,
-        capacity_limit=8,
-        capacity_weight=40,
-    )
-
-    # Add container interactions for opening and closing
-    if hasattr(bag, "add_interaction"):
-        # Add open interaction for closed state
-        bag.add_interaction(
-            verb="open",
-            target_state="open",
-            message="You open the bag.",
-            from_state="closed",
-        )
-
-        # Add close interaction for open state
-        bag.add_interaction(
-            verb="close",
-            target_state="closed",
-            message="You close the bag.",
-            from_state="open",
-        )
-
-    rooms["elders_cottage"].add_item(bag)
-
-
-def add_stateful_items(rooms: Dict[str, Room]) -> None:
-    """
-    Add all stateful interactive objects to rooms.
-
-    Args:
-        rooms (dict): Dictionary mapping room_id to Room objects
-    """
-    from models.StatefulItem import StatefulItem
-
-    # First add all the linked doors
-    add_linked_doors(rooms)
-
-    # Cottage trapdoor and rug
-    # ------------------------
-    # Create the rug that covers the trapdoor
-    cottage_rug: StatefulItem = StatefulItem(
-        "rug",
-        "cottage_rug",
-        "A worn circular rug lies in the center of the room.",
-        weight=20,
-        value=0,
+        capacity_limit=5,
+        capacity_weight=30,
         takeable=False,
-        state="covering",
     )
-    cottage_rug.add_state_description(
-        "covering", "A worn circular rug lies in the center of the room."
-    )
-    cottage_rug.add_state_description(
-        "moved", "A worn circular rug has been moved aside."
-    )
-    cottage_rug.set_room_id("cottage_interior")
-
-    # Register rug interactions
-    cottage_rug.add_interaction(
-        verb="move",
-        target_state="moved",
-        message="You move the rug aside, revealing a wooden trapdoor underneath.",
-        from_state="covering",
-    )
-    cottage_rug.add_interaction(
-        verb="pull",
-        target_state="moved",
-        message="You pull back the rug, revealing a wooden trapdoor underneath.",
-        from_state="covering",
-    )
-    cottage_rug.add_interaction(
-        verb="move",
-        target_state="covering",
-        message="You move the rug back to its original position, covering the trapdoor.",
-        from_state="moved",
-    )
-    cottage_rug.add_interaction(
-        verb="replace",
-        target_state="covering",
-        message="You replace the rug, covering the trapdoor.",
-        from_state="moved",
-    )
-
-    # Create the trapdoor as a separate item
-    cottage_trapdoor: StatefulItem = StatefulItem(
-        "trapdoor",
-        "cottage_trapdoor",
-        "A wooden trapdoor is set into the floor.",
-        weight=50,
-        value=0,
-        takeable=False,
-        state="closed",
-    )
-    cottage_trapdoor.add_state_description(
-        "closed", "A wooden trapdoor is set into the floor."
-    )
-    cottage_trapdoor.add_state_description(
-        "open", "An open trapdoor reveals stone steps leading down."
-    )
-    cottage_trapdoor.set_room_id("cottage_interior")
-
-    # Register trapdoor interactions
-    cottage_trapdoor.add_interaction(
+    coffin_container.add_interaction(
         verb="open",
         target_state="open",
-        message="You open the wooden trapdoor, revealing stone steps leading down into darkness.",
-        add_exit=("down", "cottage_cellar"),
+        message="You push the heavy lid aside, revealing the coffin's contents.",
         from_state="closed",
     )
-    cottage_trapdoor.add_interaction(
+    coffin_container.add_interaction(
         verb="close",
         target_state="closed",
-        message="You close the trapdoor.",
-        remove_exit="down",
+        message="You slide the coffin lid back into place.",
         from_state="open",
     )
+    rooms["crypt"].add_item(coffin_container)
 
-    # Add the rug as a visible item
-    rooms["cottage_interior"].add_item(cottage_rug)
-
-    # Add the trapdoor as a hidden item
-    rooms["cottage_interior"].add_hidden_item(
-        cottage_trapdoor,
-        lambda game_state: any(
-            item.id == "cottage_rug" and item.state == "moved"
-            for item in game_state.get_room("cottage_interior").items
-        ),
-    )
-
-    # Yew tree in the forest
-    # ---------------------
-    yew_tree: StatefulItem = StatefulItem(
-        "tree",
-        "yew_tree",
-        "A massive yew tree with carved symbols in its bark.",
-        weight=100000,
-        value=0,
-        takeable=False,
-        state="intact",
-    )
-    yew_tree.add_state_description(
-        "intact", "A massive yew tree with carved symbols in its bark."
-    )
-    yew_tree.add_state_description(
-        "cut", "A yew tree with a section carved out, revealing a passage inside."
-    )
-    yew_tree.set_room_id("forest_edge")
-
-    # Register yew tree interactions
-    yew_tree.add_interaction(
-        verb="chop",
-        required_instrument="axe",
-        target_state="cut",
-        message="You swing the axe at the ancient yew tree. The trunk folds inward, revealing a hidden passage.",
-        add_exit=("in", "yew_tree_hollow"),
-        from_state="intact",
-    )
-    yew_tree.add_interaction(
-        verb="cut",
-        required_instrument="axe",
-        target_state="cut",
-        message="You cut into the yew tree with the axe, revealing a hidden passage.",
-        add_exit=("in", "yew_tree_hollow"),
-        from_state="intact",
-    )
-    yew_tree.add_interaction(
-        verb="examine",
-        message="The tree's bark is covered in strange symbols that seem to shift slightly as you look at them.",
-    )
-
-    rooms["forest_edge"].add_item(yew_tree)
-
-    # Old well in the courtyard
-    # ------------------------
-    old_well: StatefulItem = StatefulItem(
-        "well",
-        "well",
-        "A stone well with a locked wooden lid sits here.",
-        weight=1000,
+    # Cage in mill attic - children trapped by hag
+    # Breaking it requires the executioner's axe from stockyard
+    # Freeing children has CONSEQUENCES - alerts the hag!
+    cage: StatefulItem = StatefulItem(
+        "cage",
+        "hag_cage",
+        "An iron cage holds several small, whimpering figures.",
+        weight=200,
         value=0,
         takeable=False,
         state="locked",
     )
-    old_well.add_state_description(
-        "locked", "A stone well with a locked wooden lid sits here."
+    cage.add_state_description(
+        "locked",
+        "An iron cage holds several children. Their hollow eyes plead for rescue. The lock looks sturdy.",
     )
-    old_well.add_state_description(
-        "unlocked", "A stone well with its wooden lid sits here."
+    cage.add_state_description(
+        "broken",
+        "The cage lies open, its bars bent and broken. The children have fled into the night.",
     )
-    old_well.add_state_description(
-        "open", "A stone well with its wooden lid removed stands open."
+    cage.add_interaction(
+        verb="examine",
+        message="Terrified children huddle inside the iron cage. They're too frightened to speak, "
+        "but their eyes beg for salvation. The cage is locked tight - "
+        "you'd need something powerful to break through.",
     )
-    old_well.add_state_description(
-        "with_rope", "A stone well with a rope descending into darkness."
+    cage.add_interaction(
+        verb="break",
+        message="You strain against the bars, but the iron is too strong. "
+        "You'd need something heavier - an axe perhaps.",
     )
-    old_well.set_room_id("old_well")
-
-    # Register well interactions
-    old_well.add_interaction(
-        verb="unlock",
-        required_instrument="key",
-        target_state="unlocked",
-        message="You unlock the well's lid with the bronze key.",
+    cage.add_interaction(
+        verb="open",
+        message="The cage is locked with a heavy padlock. You can't open it normally.",
+    )
+    cage.add_interaction(
+        verb="use",
+        required_instrument="axe",
+        target_state="broken",
+        message="You swing the executioner's axe with all your might! CLANG! CLANG! "
+        "The iron bars buckle and break! The children scramble out, crying with relief. "
+        "'Run!' you urge them, and they flee down the stairs into the night.\n\n"
+        "From below, you hear a TERRIBLE SHRIEK. The hag has noticed.\n"
+        "'MY PRETTIES! WHO DARES?!' Her voice echoes through the mill. "
+        "You hear heavy footsteps on the stairs. She's coming for you.",
         from_state="locked",
     )
-    old_well.add_interaction(
-        verb="open",
-        required_instrument="key",
-        target_state="open",
-        message="You open the well's lid, revealing a dark pit below.",
+    cage.add_interaction(
+        verb="chop",
+        required_instrument="axe",
+        target_state="broken",
+        message="You chop at the cage bars with savage determination! "
+        "The iron gives way and the children pour out, sobbing with gratitude. "
+        "As they flee, a blood-curdling scream rises from below. "
+        "'NOOOOO! MY CHILDREN!' The hag is coming!",
         from_state="locked",
     )
-    old_well.add_interaction(
-        verb="open",
-        target_state="open",
-        message="You open the well's lid, revealing a dark pit below.",
-        from_state="unlocked",
-    )
-    old_well.add_interaction(
-        verb="close",
-        target_state="unlocked",
-        message="You put back the well's lid.",
-        from_state="open",
-    )
-    old_well.add_interaction(
-        verb="lock",
-        required_instrument="key",
-        target_state="locked",
-        message="You lock the well's lid with the key.",
-        from_state="unlocked",
-    )
-    # Updated version with consume_instrument and reciprocal_exit
-    old_well.add_interaction(
-        verb="tie",
-        required_instrument="rope",
-        target_state="with_rope",
-        message="You tie the rope to the well's edge, providing a way down.",
-        add_exit=("down", "well_bottom"),
-        from_state="open",
-        consume_instrument=True,  # The rope is consumed when used
-        reciprocal_exit=("well_bottom", "up", "old_well"),  # Creates the return path
-    )
-    old_well.add_interaction(
-        verb="close",
-        target_state="unlocked",
-        message="You put back the well's lid, making the rope inaccessible.",
-        from_state="with_rope",
-        remove_exit="down",  # Remove the downward exit when well is closed
-    )
+    rooms["millattic"].add_item(cage)
 
-    rooms["old_well"].add_item(old_well)
 
-    # Shrine altar with rune stones
-    # ----------------------------
-    shrine_altar: StatefulItem = StatefulItem(
-        "altar",
-        "altar",
-        "A circular stone altar with seven empty colored indentations.",
-        weight=2000,
+def add_stateful_items(rooms: Dict[str, Room]) -> None:
+    """Add all stateful interactive objects to rooms."""
+
+    # Tavern rug hiding trapdoor
+    rug: StatefulItem = StatefulItem(
+        "rug",
+        "tavern_rug",
+        "A worn rug lies near the back wall.",
+        weight=20,
         value=0,
         takeable=False,
-        state="empty",
+        state="flat",
     )
-    shrine_altar.add_state_description(
-        "empty", "A circular stone altar with seven empty colored indentations."
+    rug.add_state_description("flat", "A worn rug lies near the back wall.")
+    rug.add_state_description(
+        "moved", "A worn rug has been pushed aside, revealing a trapdoor."
     )
-    shrine_altar.add_state_description(
-        "partial", "A circular altar with some glowing rune stones in place."
+    rug.set_room_id("tavern")
+    rug.add_interaction(
+        verb="move",
+        target_state="moved",
+        message="You push the rug aside, revealing a trapdoor leading down.",
+        from_state="flat",
+        add_exit=("down", "cellar"),
     )
-    shrine_altar.add_state_description(
-        "complete", "A circular altar with seven glowing rune stones in place."
+    rug.add_interaction(
+        verb="pull",
+        target_state="moved",
+        message="You pull the rug aside, revealing a trapdoor underneath.",
+        from_state="flat",
+        add_exit=("down", "cellar"),
     )
-    shrine_altar.set_room_id("shrine_interior")
+    rooms["tavern"].add_item(rug)
 
-    # Register altar interactions
-    shrine_altar.add_interaction(
+    # Church grate to undercroft
+    grate: StatefulItem = StatefulItem(
+        "grate",
+        "church_grate",
+        "An iron grate is set into the floor near the altar.",
+        weight=100,
+        value=0,
+        takeable=False,
+        state="closed",
+    )
+    grate.add_state_description(
+        "closed", "An iron grate is set into the floor near the altar."
+    )
+    grate.add_state_description(
+        "open", "The iron grate stands open, revealing steps leading down."
+    )
+    grate.set_room_id("church")
+    grate.add_interaction(
+        verb="open",
+        target_state="open",
+        message="With effort, you pull the heavy grate open. Stone steps descend into darkness.",
+        from_state="closed",
+    )
+    grate.add_interaction(
+        verb="close",
+        target_state="closed",
+        message="You lower the iron grate back into place.",
+        from_state="open",
+    )
+    rooms["church"].add_item(grate)
+
+    # Altar in Argynvostholt chapel
+    altar: StatefulItem = StatefulItem(
+        "altar",
+        "arg_altar",
+        "An overturned altar lies broken on the floor.",
+        weight=500,
+        value=0,
+        takeable=False,
+        state="fallen",
+    )
+    altar.add_state_description(
+        "fallen", "An overturned altar lies broken on the floor."
+    )
+    altar.add_state_description(
+        "restored", "The altar has been restored to its rightful position."
+    )
+    altar.set_room_id("argchapel")
+    altar.add_interaction(
+        verb="restore",
+        target_state="restored",
+        message="With great effort, you right the altar. A faint glow emanates from it.",
+        from_state="fallen",
+    )
+    rooms["argchapel"].add_item(altar)
+
+    # === DRAGON'S BEACON PUZZLE ===
+    # Return Argynvost's skull to the beacon and light it to honor the knights
+    # The skull is found in argtomb (Strahd's castle crypt)
+    # Completing this makes the revenant friendly
+
+    beacon: StatefulItem = StatefulItem(
+        "beacon",
+        "dragon_beacon",
+        "An unlit brazier stands beneath the dragon skull mount.",
+        weight=500,
+        value=0,
+        takeable=False,
+        state="unlit",
+    )
+    beacon.add_state_description(
+        "unlit",
+        "An unlit brazier stands beneath the empty dragon skull mount on the wall.",
+    )
+    beacon.add_state_description(
+        "skull_placed",
+        "Argynvost's skull rests on the brazier, waiting to be honored with flame.",
+    )
+    beacon.add_state_description(
+        "lit",
+        "Silver flames dance in the brazier beneath Argynvost's skull! "
+        "The entire hall is bathed in warm, protective light.",
+    )
+    beacon.set_room_id("hall")
+    beacon.add_interaction(
         verb="place",
-        required_instrument="stone",
-        message="You place the rune stone in a matching indentation. It begins to glow softly.",
-        from_state="empty",
-        target_state="partial",
-        consume_instrument=True,
+        required_instrument="skull",
+        target_state="skull_placed",
+        message="You reverently place Argynvost's skull upon the brazier. "
+        "The dragon's empty eye sockets seem to gaze upon you with approval. "
+        "Now it needs only fire to complete the memorial.",
+        from_state="unlit",
     )
-    shrine_altar.add_interaction(
-        verb="place",
-        required_instrument="stone",
-        message="You place another rune stone in its matching indentation. The altar pulses with energy.",
-        from_state="partial",
+    beacon.add_interaction(
+        verb="light",
+        target_state="lit",
+        message="You touch flame to the brazier. SILVER FIRE erupts, engulfing the skull! "
+        "But it does not burn - instead, a spectral dragon rises from the flames, "
+        "letting out a triumphant roar! The hall fills with warm silver light. "
+        "You hear armor clanking behind you - the revenant knight bows deeply. "
+        "'You have honored our lord,' he intones. 'The Order is in your debt.'",
+        from_state="skull_placed",
+        conditional_fn=player_has_light,
     )
-    shrine_altar.add_interaction(
-        verb="touch",
-        message="The altar feels cool to the touch, vibrating slightly with latent energy.",
+    beacon.add_interaction(
+        verb="light",
+        message="You need a source of fire - a torch or lantern - to light the beacon.",
+        from_state="skull_placed",
     )
-    shrine_altar.add_interaction(
+    beacon.add_interaction(
         verb="examine",
-        message="The circular altar has seven indentations arranged in a pattern: red, orange, yellow, green, blue, indigo, and violet.",
+        message="A grand brazier designed to hold Argynvost's skull. "
+        "The mount above is empty - the skull was stolen by Strahd long ago. "
+        "Returning and lighting it would honor the fallen dragon and his knights.",
     )
+    rooms["hall"].add_item(beacon)
 
-    rooms["shrine_interior"].add_item(shrine_altar)
+    # === KNIGHT'S TRIAL PUZZLE ===
+    # Must kneel before the inscription, then push the wall
+    # This teaches players that the Order values humility and respect
 
-    # Golden door in archway
-    # ---------------------
-    golden_door_obj: StatefulItem = StatefulItem(
-        "door",
-        "golden_door",
-        "A door of pure golden light shimmers within the archway.",
+    inscription: StatefulItem = StatefulItem(
+        "inscription",
+        "knight_inscription",
+        "An inscription is carved into a stone plaque on the wall.",
+        weight=10000,
+        value=0,
+        takeable=False,
+        state="waiting",
+    )
+    inscription.add_state_description(
+        "waiting",
+        "An inscription is carved into a stone plaque: 'Only the worthy may enter. Prove your valor.'",
+    )
+    inscription.add_state_description(
+        "honored", "The inscription glows faintly. You have proven your worth."
+    )
+    inscription.set_room_id("quarters")
+    inscription.add_interaction(
+        verb="read",
+        message="The inscription reads: 'Only the worthy may enter. Prove your valor. "
+        "The knights of this order valued humility above all else.'",
+    )
+    inscription.add_interaction(
+        verb="kneel",
+        target_state="honored",
+        message="You kneel before the inscription in respect to the fallen knights. "
+        "The stone glows faintly and a warmth spreads through you. "
+        "You have proven yourself worthy.",
+        from_state="waiting",
+    )
+    inscription.add_interaction(
+        verb="bow",
+        target_state="honored",
+        message="You bow deeply before the inscription, honoring the knights who fell here. "
+        "The stone glows and you feel accepted.",
+        from_state="waiting",
+    )
+    rooms["quarters"].add_item(inscription)
+
+    # Hidden wall in quarters leading to vault
+    wall: StatefulItem = StatefulItem(
+        "wall",
+        "quarters_wall",
+        "The stone wall here looks slightly different from the rest.",
+        weight=10000,
+        value=0,
+        takeable=False,
+        state="solid",
+    )
+    wall.add_state_description(
+        "solid", "The stone wall here looks slightly different from the rest."
+    )
+    wall.add_state_description(
+        "open", "A section of wall has swung open, revealing a hidden vault."
+    )
+    wall.set_room_id("quarters")
+    wall.add_interaction(
+        verb="push",
+        target_state="open",
+        message="You push against the wall. It recognizes your worth and swings inward, "
+        "revealing a hidden vault filled with the Order's treasures!",
+        from_state="solid",
+        add_exit=("in", "vault"),
+        conditional_fn=knight_honored,
+    )
+    wall.add_interaction(
+        verb="push",
+        message="You push against the wall, but it resists. You feel... judged. Unworthy. "
+        "The inscription on the stone plaque might hold the key.",
+        from_state="solid",
+    )
+    wall.add_interaction(
+        verb="examine",
+        message="Looking closely, you notice the mortar here is different - fresher, perhaps. "
+        "An inscription on a nearby plaque catches your eye.",
+    )
+    rooms["quarters"].add_item(wall)
+
+    # Skull in Argynvost's tomb (quest item)
+    skull: StatefulItem = StatefulItem(
+        "skull",
+        "dragon_skull",
+        "The dragon skull that once hung in the great hall lies here, stolen by Strahd long ago.",
+        weight=25,
+        value=100,
+        takeable=True,
+        state="here",
+    )
+    skull.add_state_description(
+        "here", "The dragon skull that once hung in the great hall lies here."
+    )
+    skull.add_interaction(
+        verb="examine",
+        message="The skull of Argynvost, the silver dragon who died defending Barovia. "
+        "His spirit cannot rest until this is returned to the manor.",
+    )
+    rooms["argtomb"].add_item(skull)
+
+    # Heart of Sorrow in Strahd's tomb - requires sunsword to destroy
+    crystal_heart: StatefulItem = StatefulItem(
+        "heart",
+        "heart_of_sorrow",
+        "A massive crystal heart pulses with blood-red light, protected by an invisible barrier.",
+        weight=50,
+        value=0,
+        takeable=False,
+        state="intact",
+    )
+    crystal_heart.add_state_description(
+        "intact",
+        "A massive crystal heart pulses with blood-red light, protected by an invisible barrier.",
+    )
+    crystal_heart.add_state_description(
+        "destroyed", "Shattered crystal fragments are all that remain of the heart."
+    )
+    crystal_heart.set_room_id("tomb")
+    # Can only destroy with sunsword - the sun's light pierces the barrier
+    crystal_heart.add_interaction(
+        verb="use",
+        required_instrument="sunsword",
+        target_state="destroyed",
+        message="You thrust the Sunsword into the Heart of Sorrow! The blade's radiant light "
+        "pierces the magical barrier. The crystal shatters with a sound like a thousand screams. "
+        "Somewhere in the castle, you hear Strahd roar in agony. His power is broken!",
+        from_state="intact",
+    )
+    # Regular attacks fail
+    crystal_heart.add_interaction(
+        verb="destroy",
+        message="Your weapon bounces off an invisible barrier. The heart pulses mockingly. "
+        "Perhaps the Tome of Strahd holds the secret to destroying it...",
+        from_state="intact",
+    )
+    crystal_heart.add_interaction(
+        verb="break",
+        message="You strike the heart, but a magical barrier repels your blow. "
+        "There must be another way...",
+        from_state="intact",
+    )
+    crystal_heart.add_interaction(
+        verb="examine",
+        message="The Heart of Sorrow - Strahd's connection to the castle itself. A shimmering "
+        "barrier protects it from harm. The Tome of Strahd whispers: 'The Heart fears only "
+        "the light of the sun.' Perhaps a weapon of pure sunlight could pierce the barrier.",
+    )
+    rooms["tomb"].add_item(crystal_heart)
+
+    # === TREASURY PUZZLE ===
+    # Three dials that must be set to sun, star, moon (in that order)
+    # Then the pedestal can be opened to reveal the sunsword
+
+    dial1: StatefulItem = StatefulItem(
+        "dial",
+        "dial1",
+        "The first dial shows a moon symbol.",
+        weight=100,
+        value=0,
+        takeable=False,
+        state="moon",
+    )
+    dial1.add_state_description("sun", "The first dial shows a sun symbol.")
+    dial1.add_state_description("star", "The first dial shows a star symbol.")
+    dial1.add_state_description("moon", "The first dial shows a moon symbol.")
+    dial1.set_room_id("treasury")
+    dial1.add_interaction(
+        verb="turn",
+        target_state="star",
+        message="You turn the first dial. It clicks to show a star.",
+        from_state="moon",
+    )
+    dial1.add_interaction(
+        verb="turn",
+        target_state="sun",
+        message="You turn the first dial. It clicks to show a sun.",
+        from_state="star",
+    )
+    dial1.add_interaction(
+        verb="turn",
+        target_state="moon",
+        message="You turn the first dial. It clicks to show a moon.",
+        from_state="sun",
+    )
+    rooms["treasury"].add_item(dial1)
+
+    dial2: StatefulItem = StatefulItem(
+        "dial",
+        "dial2",
+        "The second dial shows a sun symbol.",
+        weight=100,
+        value=0,
+        takeable=False,
+        state="sun",
+    )
+    dial2.add_state_description("sun", "The second dial shows a sun symbol.")
+    dial2.add_state_description("star", "The second dial shows a star symbol.")
+    dial2.add_state_description("moon", "The second dial shows a moon symbol.")
+    dial2.set_room_id("treasury")
+    dial2.add_interaction(
+        verb="turn",
+        target_state="star",
+        message="You turn the second dial. It clicks to show a star.",
+        from_state="sun",
+    )
+    dial2.add_interaction(
+        verb="turn",
+        target_state="moon",
+        message="You turn the second dial. It clicks to show a moon.",
+        from_state="star",
+    )
+    dial2.add_interaction(
+        verb="turn",
+        target_state="sun",
+        message="You turn the second dial. It clicks to show a sun.",
+        from_state="moon",
+    )
+    rooms["treasury"].add_item(dial2)
+
+    dial3: StatefulItem = StatefulItem(
+        "dial",
+        "dial3",
+        "The third dial shows a star symbol.",
+        weight=100,
+        value=0,
+        takeable=False,
+        state="star",
+    )
+    dial3.add_state_description("sun", "The third dial shows a sun symbol.")
+    dial3.add_state_description("star", "The third dial shows a star symbol.")
+    dial3.add_state_description("moon", "The third dial shows a moon symbol.")
+    dial3.set_room_id("treasury")
+    dial3.add_interaction(
+        verb="turn",
+        target_state="moon",
+        message="You turn the third dial. It clicks to show a moon.",
+        from_state="star",
+    )
+    dial3.add_interaction(
+        verb="turn",
+        target_state="sun",
+        message="You turn the third dial. It clicks to show a sun.",
+        from_state="moon",
+    )
+    dial3.add_interaction(
+        verb="turn",
+        target_state="star",
+        message="You turn the third dial. It clicks to show a star.",
+        from_state="sun",
+    )
+    rooms["treasury"].add_item(dial3)
+
+    # The pedestal holding the sunsword
+    pedestal: StatefulItem = StatefulItem(
+        "pedestal",
+        "treasury_pedestal",
+        "An ornate stone pedestal with three runic dials. Something glimmers behind a glass case.",
+        weight=500,
+        value=0,
+        takeable=False,
+        state="locked",
+    )
+    pedestal.add_state_description(
+        "locked",
+        "An ornate stone pedestal with three runic dials. A glass case protects "
+        "a gleaming blade within. The dials show: moon, sun, star.",
+    )
+    pedestal.add_state_description(
+        "unlocked", "The glass case has slid open, revealing the legendary Sunsword!"
+    )
+    pedestal.set_room_id("treasury")
+    pedestal.add_interaction(
+        verb="open",
+        target_state="unlocked",
+        message="As you touch the case, the dials flash! Sun... Star... Moon... "
+        "The sequence is CORRECT! The glass case slides open with a hiss, "
+        "revealing the legendary Sunsword!",
+        from_state="locked",
+        conditional_fn=treasury_unlocked,
+    )
+    pedestal.add_interaction(
+        verb="open",
+        message="You touch the glass case. The dials flash angrily and a piercing alarm "
+        "echoes through the castle! You hear stone grinding in the courtyard... "
+        "The sequence was WRONG. Perhaps the Tome of Strahd holds the answer.",
+        from_state="locked",
+        # This triggers when conditional_fn fails - alarm consequence
+    )
+    pedestal.add_interaction(
+        verb="examine",
+        message="Three dials are set into the pedestal's base, each showing a celestial symbol. "
+        "A glass case protects a blade that radiates brilliant light. "
+        "There must be a correct sequence to open it safely.",
+    )
+    rooms["treasury"].add_item(pedestal)
+
+    # === STANDING STONES PUZZLE ===
+    # Three stones in the clearing that must be aligned correctly to reveal the barrow
+    # Solution: eaststone=sunrise, weststone=sunset, northstone=noon
+    # Hint found on corpse note at crossroads
+
+    eaststone: StatefulItem = StatefulItem(
+        "eaststone",
+        "eaststone",
+        "The eastern stone is dark and dormant.",
+        weight=10000,
+        value=0,
+        takeable=False,
+        state="dark",
+    )
+    eaststone.add_state_description("dark", "The eastern stone is dark and dormant.")
+    eaststone.add_state_description(
+        "sunrise", "The eastern stone glows with the warm light of dawn."
+    )
+    eaststone.add_state_description(
+        "noon", "The eastern stone blazes with harsh midday light."
+    )
+    eaststone.add_state_description(
+        "sunset", "The eastern stone flickers with dying orange light."
+    )
+    eaststone.set_room_id("clearing")
+    eaststone.add_interaction(
+        verb="touch",
+        target_state="sunrise",
+        message="You touch the eastern stone. It warms and begins to glow with dawn's light.",
+        from_state="dark",
+    )
+    eaststone.add_interaction(
+        verb="touch",
+        target_state="noon",
+        message="You touch the eastern stone. The light intensifies to a blazing noon.",
+        from_state="sunrise",
+    )
+    eaststone.add_interaction(
+        verb="touch",
+        target_state="sunset",
+        message="You touch the eastern stone. The light dims to a warm sunset glow.",
+        from_state="noon",
+    )
+    eaststone.add_interaction(
+        verb="touch",
+        target_state="dark",
+        message="You touch the eastern stone. The light fades completely.",
+        from_state="sunset",
+    )
+    rooms["clearing"].add_item(eaststone)
+
+    weststone: StatefulItem = StatefulItem(
+        "weststone",
+        "weststone",
+        "The western stone is dark and dormant.",
+        weight=10000,
+        value=0,
+        takeable=False,
+        state="dark",
+    )
+    weststone.add_state_description("dark", "The western stone is dark and dormant.")
+    weststone.add_state_description(
+        "sunrise", "The western stone glows with the warm light of dawn."
+    )
+    weststone.add_state_description(
+        "noon", "The western stone blazes with harsh midday light."
+    )
+    weststone.add_state_description(
+        "sunset", "The western stone flickers with dying orange light."
+    )
+    weststone.set_room_id("clearing")
+    weststone.add_interaction(
+        verb="touch",
+        target_state="sunrise",
+        message="You touch the western stone. It warms and begins to glow with dawn's light.",
+        from_state="dark",
+    )
+    weststone.add_interaction(
+        verb="touch",
+        target_state="noon",
+        message="You touch the western stone. The light intensifies to a blazing noon.",
+        from_state="sunrise",
+    )
+    weststone.add_interaction(
+        verb="touch",
+        target_state="sunset",
+        message="You touch the western stone. The light dims to a warm sunset glow.",
+        from_state="noon",
+    )
+    weststone.add_interaction(
+        verb="touch",
+        target_state="dark",
+        message="You touch the western stone. The light fades completely.",
+        from_state="sunset",
+    )
+    rooms["clearing"].add_item(weststone)
+
+    northstone: StatefulItem = StatefulItem(
+        "northstone",
+        "northstone",
+        "The northern stone is dark and dormant.",
+        weight=10000,
+        value=0,
+        takeable=False,
+        state="dark",
+    )
+    northstone.add_state_description("dark", "The northern stone is dark and dormant.")
+    northstone.add_state_description(
+        "sunrise", "The northern stone glows with the warm light of dawn."
+    )
+    northstone.add_state_description(
+        "noon", "The northern stone blazes with harsh midday light."
+    )
+    northstone.add_state_description(
+        "sunset", "The northern stone flickers with dying orange light."
+    )
+    northstone.set_room_id("clearing")
+    northstone.add_interaction(
+        verb="touch",
+        target_state="sunrise",
+        message="You touch the northern stone. It warms and begins to glow with dawn's light.",
+        from_state="dark",
+    )
+    northstone.add_interaction(
+        verb="touch",
+        target_state="noon",
+        message="You touch the northern stone. The light intensifies to a blazing noon.",
+        from_state="sunrise",
+    )
+    northstone.add_interaction(
+        verb="touch",
+        target_state="sunset",
+        message="You touch the northern stone. The light dims to a warm sunset glow.",
+        from_state="noon",
+    )
+    northstone.add_interaction(
+        verb="touch",
+        target_state="dark",
+        message="You touch the northern stone. The light fades completely.",
+        from_state="sunset",
+    )
+    rooms["clearing"].add_item(northstone)
+
+    # The stones "puzzle checker" - a hidden mechanism that reveals the barrow
+    # We use a special stateful item that checks alignment and reveals the exit
+    stones: StatefulItem = StatefulItem(
+        "stones",
+        "standing_stones",
+        "Three ancient standing stones form a circle at the center of the clearing.",
+        weight=10000,
+        value=0,
+        takeable=False,
+        state="dormant",
+    )
+    stones.add_state_description(
+        "dormant",
+        "Three ancient standing stones form a circle. They seem to be waiting for something.",
+    )
+    stones.add_state_description(
+        "awakened",
+        "The three stones hum with power. A passage has opened in the earth between them!",
+    )
+    stones.set_room_id("clearing")
+    stones.add_interaction(
+        verb="examine",
+        message="Three standing stones arranged in a circle. Each stone bears faded carvings - "
+        "the eastern stone shows a rising sun, the western stone a setting sun, "
+        "and the northern stone a sun at its peak. Perhaps they can be activated?",
+    )
+    stones.add_interaction(
+        verb="touch",
+        target_state="awakened",
+        message="As you touch the central point between the stones, they resonate in harmony! "
+        "The ground trembles and splits open, revealing ancient stone steps "
+        "leading down into the earth. The barrow is revealed!",
+        from_state="dormant",
+        conditional_fn=stones_aligned,
+        add_exit=("down", "barrow"),
+    )
+    stones.add_interaction(
+        verb="touch",
+        message="The stones remain silent. They are not aligned correctly. "
+        "A note you read mentioned something about their arrangement...",
+        from_state="dormant",
+    )
+    rooms["clearing"].add_item(stones)
+
+    # === OVEN HORROR (kitchen) ===
+    # Opening the oven reveals the true horror of the hag's pastries
+    oven: StatefulItem = StatefulItem(
+        "oven",
+        "hag_oven",
+        "A massive iron oven dominates the kitchen, radiating unnatural heat.",
         weight=1000,
         value=0,
         takeable=False,
         state="closed",
     )
-    golden_door_obj.add_state_description(
-        "closed", "A door of pure golden light shimmers within the archway."
+    oven.add_state_description(
+        "closed",
+        "A massive iron oven radiates heat. Scratching sounds come from within.",
     )
-    golden_door_obj.add_state_description(
-        "open", "An open doorway of golden light leads to another reality."
+    oven.add_state_description(
+        "open", "The oven door hangs open, revealing its horrifying contents."
     )
-    golden_door_obj.set_room_id("golden_door")
-
-    # Register golden door interactions
-    golden_door_obj.add_interaction(
+    oven.set_room_id("kitchen")
+    oven.add_interaction(
+        verb="examine",
+        message="The oven is enormous - large enough to fit a person. "
+        "Scratching sounds come from inside. Do you really want to look?",
+    )
+    oven.add_interaction(
         verb="open",
         target_state="open",
-        message="As you reach for the door, it dissolves into golden mist.",
+        message="You pull open the oven door and recoil in horror! "
+        "Inside, among the ashes and coals, you see... bones. Small bones. "
+        "The scratching was a rat gnawing on what remains of the hag's 'ingredients.' "
+        "The sweet pastries... you understand now what they're made from. "
+        "You feel sick to your stomach.",
         from_state="closed",
-        remove_item=True,
     )
-    golden_door_obj.add_interaction(
-        verb="touch",
-        message="Your hand passes through the golden light, feeling warm tingles across your skin.",
+    oven.add_interaction(
+        verb="close",
+        target_state="closed",
+        message="You slam the oven door shut, but the image is burned into your mind.",
+        from_state="open",
     )
-    golden_door_obj.add_interaction(
-        verb="examine",
-        message="The golden door isn't made of physical material. It's pure light, pulsing with the rhythm of another world.",
-    )
-
-    rooms["golden_door"].add_item(golden_door_obj)
-
-
-# Update add_regular_items in village_generator.py to include readable content
+    rooms["kitchen"].add_item(oven)
 
 
 def add_regular_items(rooms: Dict[str, Room]) -> None:
     """Add regular (non-stateful) items to rooms."""
 
-    # Fireplace in cottage interior (permanent light source)
-    fireplace: StatefulItem = StatefulItem(
-        "fireplace",
-        "fireplace_cottage",
-        "A stone fireplace with flames crackling inside.",
-        weight=999,
-        value=0,
-        takeable=False,
-        state="burning",
-    )
-    fireplace.emits_light = True  # Always emits light
-    fireplace.add_state_description(
-        "burning", "A stone fireplace with flames crackling inside."
-    )
-    fireplace.add_interaction(
-        verb="examine",
-        message="The fireplace burns with a steady, warm fire. Perfect for lighting a torch or stick.",
-    )
-    rooms["cottage_interior"].add_item(fireplace)
-
-    # Stick outside Elder's cottage (can be lit)
-    stick: StatefulItem = StatefulItem(
-        "stick",
-        "stick_1",
-        "A sturdy wooden stick lies on the ground.",
+    # === LIGHT SOURCES ===
+    torch: Item = Item(
+        "torch",
+        "torch",
+        "A sputtering torch casts flickering shadows.",
         weight=1,
-        value=0,
-        takeable=True,
-        state="unlit",
+        value=2,
     )
-    stick.add_state_description("unlit", "A sturdy wooden stick lies on the ground.")
-    stick.add_state_description(
-        "lit", "A burning wooden stick, casting flickering light."
-    )
-    # Add interaction to light the stick with the fireplace
-    stick.add_interaction(
-        verb="light",
-        required_instrument="fireplace",
-        target_state="lit",
-        message="You hold the stick to the fireplace. It catches fire and burns brightly!",
-        from_state="unlit",
-    )
-    rooms["elders_cottage"].add_item(stick)
+    torch.emits_light = True
+    rooms["tavern"].add_item(torch)
 
-    # Elder's cottage items
-    Item("tome", "tome", "An ancient leather-bound tome lies here.", weight=1, value=5)
+    lantern: Item = Item(
+        "lantern",
+        "lantern",
+        "A battered lantern with a steady flame.",
+        weight=2,
+        value=15,
+    )
+    lantern.emits_light = True
+    rooms["pool"].add_item(lantern)
 
-    # Make the tome readable using the StatefulItem features
-    readable_tome: StatefulItem = StatefulItem(
-        "tome",
-        "ancient_tome",
-        "An ancient leather-bound tome lies here.",
+    # === READABLE ITEMS ===
+    letter: StatefulItem = StatefulItem(
+        "letter",
+        "kolyan_letter",
+        "A half-finished letter lies on the desk.",
         weight=1,
         value=5,
-        takeable=True,
         state="unread",
     )
-    readable_tome.add_state_description(
-        "unread", "An ancient leather-bound tome lies here."
-    )
-    readable_tome.add_state_description(
-        "read", "An ancient leather-bound tome lies here."
-    )
-
-    # Add read interaction for unread state
-    readable_tome.add_interaction(
+    letter.add_state_description("unread", "A half-finished letter lies on the desk.")
+    letter.add_state_description("read", "A letter you have read.")
+    letter.add_interaction(
         verb="read",
         target_state="read",
-        message="You carefully open the ancient tome and read:\n\n"
-        '"The village of Chronos exists at a nexus of temporal convergence. Seven cycles '
-        "bind us to the eternal return, and those who master the cycles may glimpse beyond "
-        "the golden doors. The Well of Whispers touches all realities, and those who "
-        "listen may hear secrets from worlds yet to be. Beware the thirteenth hour, when "
-        'time folds upon itself and the veil between worlds grows thin."\n\n'
-        "The rest of the pages contain complex mathematical formulae and star charts "
-        "you cannot decipher.",
-        from_state="unread",
+        message="The letter reads:\n\n"
+        "'Hail thee of might and valor. I, Burgomaster Kolyan Indirovich, write to entreat thy aid. "
+        "My adopted daughter, Ireena, is being pursued by a creature of terrible evil. He has "
+        "already visited her twice, drinking her blood each time. She grows weaker. I beg thee, "
+        "come to our village and help us escape this accursed land...\n\n"
+        "The letter trails off, unfinished. Kolyan never sent it. He never got the chance.",
     )
+    rooms["study"].add_item(letter)
 
-    # Add read interaction for already read state (no state change)
-    readable_tome.add_interaction(
-        verb="read",
-        message="You open the tome again. The text remains the same:\n\n"
-        '"The village of Chronos exists at a nexus of temporal convergence. Seven cycles '
-        "bind us to the eternal return, and those who master the cycles may glimpse beyond "
-        'the golden doors..."\n\n'
-        "The mathematical formulae still make no sense to you.",
-        from_state="read",
-    )
-
-    rooms["cottage_interior"].add_item(readable_tome)
-
-    # Library manuscript
-    glowing_manuscript: StatefulItem = StatefulItem(
-        "manuscript",
-        "manuscript",
-        "A manuscript written in glowing ink has been left here.",
-        weight=1,
-        value=20,
+    tome: StatefulItem = StatefulItem(
+        "tome",
+        "tome_of_strahd",
+        "A tome bound in black leather sits on the desk.",
+        weight=3,
+        value=100,
         state="unread",
     )
-    glowing_manuscript.add_state_description(
-        "unread", "A manuscript written in glowing ink has been left here."
+    tome.add_state_description(
+        "unread", "A tome bound in black leather sits on the desk."
     )
-    glowing_manuscript.add_state_description(
-        "read", "A manuscript written in glowing ink has been left here."
-    )
-
-    # Add read interaction
-    glowing_manuscript.add_interaction(
+    tome.add_state_description("read", "The Tome of Strahd, now read.")
+    tome.add_interaction(
         verb="read",
         target_state="read",
-        message="You open the manuscript and find that the glowing text shifts as you read:\n\n"
-        '"The Golden Doors appear where reality wears thin. Each leads to a fragment '
-        "of potential – a pocket dimension with its own rules and treasures. The fragments "
-        "persist until the Great Reset, when the timestream purifies itself. Seven stones "
-        "in the shrine altar may stabilize a fragment between resets, but such power "
-        'comes at great cost."\n\n'
-        "The remaining pages contain instructions for ritual preparation that you "
-        "cannot fully comprehend.",
+        message="You open the Tome of Strahd and read:\n\n"
+        "'I am the Ancient. I am the Land. My beginnings are lost in the darkness of the past. "
+        "I was the warrior, I was good and just. I thundered across the land like the wrath of "
+        "a just god, but the war years and the killing years wore down my soul...\n\n"
+        "I found her, my Tatyana. So beautiful, so pure. But she loved another - my brother, "
+        "Sergei. On their wedding day, I made my pact. I killed my brother. I drank her blood. "
+        "And she threw herself from the walls of this very castle rather than become mine...'\n\n"
+        "In the margins, Strahd has scrawled notes:\n\n"
+        "'The Heart of Sorrow protects me. It fears only the light of the sun.'\n\n"
+        "'My treasury is sealed by the celestial lock. Sun first, then star, then moon. "
+        "Only a fool would try to take from me without knowing the sequence.'",
     )
+    rooms["castlestudy"].add_item(tome)
 
-    rooms["library_main"].add_item(glowing_manuscript)
-
-    # Dimensional compass
-    dimensional_compass: Item = Item(
-        "compass",
-        "compass",
-        "A peculiar brass compass rests on the ground.",
-        weight=1,
-        value=15,
+    # === SEER'S PRICE (wagon) ===
+    # The seer requires payment (coin or wine) before reading the cards
+    seer_bowl: StatefulItem = StatefulItem(
+        "bowl",
+        "seer_bowl",
+        "A brass offering bowl sits before the seer.",
+        weight=5,
+        value=0,
+        takeable=False,
+        state="empty",
     )
-    rooms["cottage_upstairs"].add_item(dimensional_compass)
-
-    # Bronze key
-    bronze_key: Item = Item(
-        "key", "key", "A tarnished bronze key lies here.", weight=1, value=5
+    seer_bowl.add_state_description(
+        "empty",
+        "A brass offering bowl sits empty before the seer. She eyes you expectantly.",
     )
-    rooms["marketplace"].add_item(bronze_key)
-
-    # Remembrance charm
-    remembrance_charm: Item = Item(
-        "amulet",
-        "amulet",
-        "A faintly glowing blue amulet has been left here.",
-        weight=1,
-        value=20,
+    seer_bowl.add_state_description(
+        "filled", "The offering bowl holds your gift. The seer nods with satisfaction."
     )
-    rooms["curiosity_shop"].add_item(remembrance_charm)
-
-    # Crystal lens
-    crystal_lens: Item = Item(
-        "lens",
-        "lens",
-        "A perfectly cut crystal lens gleams nearby.",
-        weight=1,
-        value=25,
+    seer_bowl.add_interaction(
+        verb="place",
+        required_instrument="coin",
+        target_state="filled",
+        message="You place the coin in the bowl. The seer's eyes light up. "
+        "'A fair price for knowledge. Now I will read for you.'",
+        from_state="empty",
     )
-    rooms["tower_workshop"].add_item(crystal_lens)
-
-    # Add more readable items for other books and manuscripts
-    # Blue rune stone with readable carvings
-    blue_rune_stone: StatefulItem = StatefulItem(
-        "stone",
-        "bluestone",
-        "A smooth blue stone etched with a glowing rune catches your eye.",
-        weight=1,
-        value=15,
-        state="unread",
+    seer_bowl.add_interaction(
+        verb="place",
+        required_instrument="wine",
+        target_state="filled",
+        message="You place the wine in the bowl. The seer smiles approvingly. "
+        "'A fine gift! The spirits favor generosity. I will read your fortune.'",
+        from_state="empty",
     )
-    blue_rune_stone.add_state_description(
-        "unread", "A smooth blue stone etched with a glowing rune catches your eye."
-    )
-    blue_rune_stone.add_state_description(
-        "read", "A smooth blue stone etched with a glowing rune catches your eye."
-    )
-
-    blue_rune_stone.add_interaction(
-        verb="read",
-        target_state="read",
-        message="You study the rune on the stone. It seems to represent 'water' or 'flow', "
-        "and holding it gives you a sense of calm fluidity, as if time itself could "
-        "be navigated like a river.",
-    )
-    blue_rune_stone.add_interaction(
+    seer_bowl.add_interaction(
         verb="examine",
-        message="The stone is perfectly smooth and cool to the touch. The blue rune carved "
-        "into it pulses gently with inner light.",
+        message="The brass bowl is for offerings. The seer expects payment "
+        "before she will read the cards. A coin or wine would likely satisfy her.",
+    )
+    rooms["wagon"].add_item(seer_bowl)
+
+    def seer_paid(player: Any, game_state: Any) -> bool:
+        room = game_state.get_room("wagon")
+        if not room:
+            return False
+        for item in room.items:
+            if hasattr(item, "id") and item.id == "seer_bowl":
+                return getattr(item, "state", None) == "filled"
+        return False
+
+    cards: StatefulItem = StatefulItem(
+        "cards",
+        "tarokka_deck",
+        "A worn deck of Tarokka cards sits on a silk cloth.",
+        weight=1,
+        value=20,
+        takeable=False,
+        state="waiting",
+    )
+    cards.add_state_description(
+        "waiting", "A worn deck of Tarokka cards sits on a silk cloth."
+    )
+    cards.add_state_description(
+        "read", "The Tarokka cards have been read. The seer stares into nothing."
+    )
+    cards.add_interaction(
+        verb="read",
+        target_state="read",
+        message="The seer shuffles the worn deck and draws three cards:\n\n"
+        "'The Artifact - Seek the sun's blade in the castle's golden hoard.\n"
+        "The Broken One - An ally awaits in the inn of blue water.\n"
+        "The Mists - The lord of this land rests in darkness beneath his throne.'\n\n"
+        "She nods cryptically. 'The cards have spoken. Heed their wisdom, traveler.'",
+        from_state="waiting",
+        conditional_fn=seer_paid,
+    )
+    cards.add_interaction(
+        verb="read",
+        message="The seer pulls the deck away from you. 'First, you must offer a gift. "
+        "Knowledge does not come free in Barovia.' She gestures to the brass bowl.",
+        from_state="waiting",
+    )
+    rooms["wagon"].add_item(cards)
+
+    invitation: StatefulItem = StatefulItem(
+        "invitation",
+        "invitation",
+        "An elegant invitation card lies on a table.",
+        weight=1,
+        value=0,
+        state="unread",
+    )
+    invitation.add_state_description(
+        "unread", "An elegant invitation card lies on a table."
+    )
+    invitation.add_interaction(
+        verb="read",
+        message="The invitation reads:\n\n"
+        "'My Dear Guest,\n\n"
+        "I bid you welcome to my home. Your presence honors me, and I look forward to making "
+        "your acquaintance. Please, enjoy my hospitality. Dinner will be served at midnight.\n\n"
+        "Your Humble Host,\n"
+        "Count Strahd von Zarovich'\n\n"
+        "The handwriting is elegant but somehow threatening.",
+    )
+    rooms["entrance"].add_item(invitation)
+
+    # === CROSSROADS CORPSE WITH HINT NOTE ===
+    # This corpse has a note that hints at the standing stones puzzle solution
+    corpse: StatefulItem = StatefulItem(
+        "corpse",
+        "crossroads_corpse",
+        "A weathered corpse swings from the crossroads gibbet.",
+        weight=100,
+        value=0,
+        takeable=False,
+        state="unsearched",
+    )
+    corpse.add_state_description(
+        "unsearched",
+        "A weathered corpse swings from the crossroads gibbet. It might have something useful.",
+    )
+    corpse.add_state_description(
+        "searched",
+        "A weathered corpse swings from the gibbet. Its pockets have been searched.",
+    )
+    corpse.add_interaction(
+        verb="search",
+        target_state="searched",
+        message="You search the corpse's pockets and find a crumpled note.",
+        from_state="unsearched",
+    )
+    corpse.add_interaction(
+        verb="examine",
+        message="The corpse has been here for some time. Crows have been at it. "
+        "There might be something in its pockets.",
+    )
+    rooms["crossroads"].add_item(corpse)
+
+    note: StatefulItem = StatefulItem(
+        "note",
+        "corpse_note",
+        "A crumpled note found on the corpse.",
+        weight=1,
+        value=0,
+        state="unread",
+    )
+    note.add_interaction(
+        verb="read",
+        target_state="read",
+        message="The note is stained but legible:\n\n"
+        "'Three stones mark the path to the ancient barrow.\n"
+        "East greets the dawn.\n"
+        "West bids farewell.\n"
+        "North watches all from its peak.'\n\n"
+        "Below, in a shaky hand: 'I almost had it. So close...'",
     )
 
-    rooms["shrine_interior"].add_item(blue_rune_stone)
+    # Hidden until corpse is searched
+    def corpse_searched(game_state: Any) -> bool:
+        room = game_state.get_room("crossroads")
+        if not room:
+            return False
+        for item in room.items:
+            if hasattr(item, "id") and item.id == "crossroads_corpse":
+                return getattr(item, "state", None) == "searched"
+        return False
 
-    # Remaining items as before
-    frayed_rope: Item = Item(
-        "rope", "rope", "A weathered rope lies coiled on the ground.", weight=3, value=5
+    rooms["crossroads"].add_hidden_item(note, corpse_searched)
+
+    # === GALLOWS PUZZLE ===
+    # Cut the rope to drop the corpse, revealing a key in its fist
+    # Players can interact with "rope", "corpse", or "gallows"
+
+    gallows_rope: StatefulItem = StatefulItem(
+        "rope",
+        "gallows_rope",
+        "A frayed rope suspends a body from the gallows.",
+        weight=5,
+        value=0,
+        takeable=False,
+        state="taut",
     )
-    rooms["old_well"].add_item(frayed_rope)
-
-    wooden_bucket: Item = Item(
-        "bucket", "bucket", "A sturdy wooden bucket sits here.", weight=2, value=5
+    gallows_rope.add_state_description(
+        "taut",
+        "A frayed rope suspends a body from the gallows. The corpse clutches something in its fist.",
     )
-    rooms["old_well"].add_item(wooden_bucket)
+    gallows_rope.add_state_description(
+        "cut", "The severed rope dangles from the gallows beam."
+    )
+    gallows_rope.set_room_id("square")
+    gallows_rope.add_interaction(
+        verb="examine",
+        message="The rope is old but still strong. It creaks as the corpse sways. "
+        "You'd need a blade to cut through it.",
+    )
+    gallows_rope.add_interaction(
+        verb="cut",
+        target_state="cut",
+        message="You slash at the rope with your blade! The corpse drops with a sickening thud. "
+        "Its fist opens upon impact, and a rusted iron key clatters across the cobblestones.",
+        from_state="taut",
+        conditional_fn=has_any_weapon,
+    )
+    gallows_rope.add_interaction(
+        verb="cut",
+        message="You have nothing sharp enough to cut the rope. You need a blade.",
+        from_state="taut",
+    )
+    rooms["square"].add_item(gallows_rope)
 
-    silver_flute: Item = Item(
-        "flute",
-        "flute",
-        "A delicate silver flute has been discarded here.",
+    gallows_corpse: StatefulItem = StatefulItem(
+        "corpse",
+        "gallows_corpse",
+        "A body hangs from the gallows, clutching something in its rotting fist.",
+        weight=150,
+        value=0,
+        takeable=False,
+        state="hanging",
+    )
+    gallows_corpse.add_state_description(
+        "hanging",
+        "A body hangs from the gallows, clutching something in its rotting fist.",
+    )
+    gallows_corpse.add_state_description(
+        "fallen", "The corpse lies crumpled on the ground. Its fist has opened."
+    )
+    gallows_corpse.set_room_id("square")
+    gallows_corpse.add_interaction(
+        verb="examine",
+        message="The corpse has been hanging here for some time. Crows have been at it. "
+        "In its rotting fist, it clutches something - a key perhaps? "
+        "You'd need to cut the rope to get it down.",
+        from_state="hanging",
+    )
+    gallows_corpse.add_interaction(
+        verb="examine",
+        message="The corpse lies in a heap. Whatever it was holding has fallen free.",
+        from_state="fallen",
+    )
+    gallows_corpse.add_interaction(
+        verb="cut",
+        target_state="fallen",
+        message="You slash at the rope with your blade! The corpse drops with a sickening thud. "
+        "Its fist opens upon impact, and a rusted iron key clatters across the cobblestones.",
+        from_state="hanging",
+        conditional_fn=has_any_weapon,
+    )
+    gallows_corpse.add_interaction(
+        verb="cut",
+        message="You have nothing sharp enough to cut the rope. You need a blade.",
+        from_state="hanging",
+    )
+    rooms["square"].add_item(gallows_corpse)
+
+    # The crypt key - hidden until rope is cut or corpse falls
+    crypt_key: Item = Item(
+        "key",
+        "crypt_key",
+        "A rusted iron key, cold to the touch.",
+        weight=1,
+        value=5,
+    )
+
+    def gallows_puzzle_solved(game_state: Any) -> bool:
+        room = game_state.get_room("square")
+        if not room:
+            return False
+        for item in room.items:
+            # Check if either rope was cut or corpse fell
+            if hasattr(item, "id"):
+                if item.id == "gallows_rope" and getattr(item, "state", None) == "cut":
+                    return True
+                if (
+                    item.id == "gallows_corpse"
+                    and getattr(item, "state", None) == "fallen"
+                ):
+                    return True
+        return False
+
+    rooms["square"].add_hidden_item(crypt_key, gallows_puzzle_solved)
+
+    # === BARROW TREASURE ===
+    # Reward for solving the standing stones puzzle
+    amulet: Item = Item(
+        "amulet",
+        "barrow_amulet",
+        "An ancient silver amulet that glows faintly with protective magic.",
+        weight=1,
+        value=75,
+    )
+    rooms["barrow"].add_item(amulet)
+
+    gold_pile: Item = Item(
+        "gold",
+        "barrow_gold",
+        "A pile of ancient gold coins, offerings to forgotten gods.",
+        weight=5,
+        value=50,
+    )
+    rooms["barrow"].add_item(gold_pile)
+
+    # === QUEST ITEMS ===
+    symbol: Item = Item(
+        "symbol",
+        "holy_symbol",
+        "A silver holy symbol hangs on a chain.",
         weight=1,
         value=25,
     )
-    rooms["northern_path"].add_item(silver_flute)
+    rooms["church"].add_item(symbol)
 
-    enchanted_axe: Item = Item(
-        "axe", "axe", "An unusual-looking axe rests against a tree.", weight=3, value=40
+    bones: Item = Item(
+        "bones",
+        "saint_bones",
+        "Ancient bones wrapped in rotting cloth - the relics of St. Andral.",
+        weight=3,
+        value=0,
     )
-    rooms["forest_hideaway"].add_item(enchanted_axe)
+    # bones are hidden - need to be discovered via interaction
+    rooms["stockyard"].add_item(bones)  # Coffin maker hid them here
 
-
-def add_linked_doors(rooms: Dict[str, Room]) -> None:
-    """
-    Create all linked doors between rooms in the village.
-
-    Args:
-        rooms (dict): Dictionary mapping room_id to Room objects
-    """
-    from utils import create_linked_doors
-
-    # Cottage doors (exterior to interior)
-    create_linked_doors(
-        room1_id="elders_cottage",
-        room2_id="cottage_interior",
-        door1_id="cottage_exterior_door",
-        door2_id="cottage_interior_door",
-        door_name="sturdy wooden door",
-        dir1to2="in",
-        dir2to1="out",
-        initial_state="closed",
-        rooms=rooms,
+    stone: Item = Item(
+        "stone",
+        "heartstone",
+        "A smooth grey stone that pulses with inner warmth.",
+        weight=1,
+        value=50,
     )
+    rooms["bedroom"].add_item(stone)
 
-    # Tower doors (exterior to interior)
-    create_linked_doors(
-        room1_id="mystics_tower",
-        room2_id="tower_interior",
-        door1_id="tower_exterior_door",
-        door2_id="tower_interior_door",
-        door_name="massive wooden door",
-        dir1to2="in",
-        dir2to1="out",
-        initial_state="open",
-        rooms=rooms,
+    # === CONSUMABLES ===
+    wine: Item = Item(
+        "wine",
+        "wine_bottle",
+        "A dusty bottle of wine from the Wizard of Wines.",
+        weight=2,
+        value=10,
     )
+    rooms["cellar"].add_item(wine)
 
-    # Library doors (exterior to interior)
-    create_linked_doors(
-        room1_id="ancient_library",
-        room2_id="library_main",
-        door1_id="library_exterior_door",
-        door2_id="library_interior_door",
-        door_name="bronze library door",
-        dir1to2="in",
-        dir2to1="out",
-        initial_state="open",
-        rooms=rooms,
+    pastry: StatefulItem = StatefulItem(
+        "pastry",
+        "dream_pastry",
+        "A sweet-smelling pastry that looks delicious.",
+        weight=1,
+        value=5,
+        state="uneaten",
     )
+    pastry.add_state_description(
+        "uneaten", "A sweet-smelling pastry that looks delicious."
+    )
+    pastry.add_interaction(
+        verb="eat",
+        message="You eat the pastry. It's delicious, but as you chew, you realize too late "
+        "what it might be made from. A dreamy euphoria washes over you, followed by "
+        "horrifying visions. When you wake, you feel somehow... less.",
+    )
+    rooms["kitchen"].add_item(pastry)
 
-    # Workshop door (tower interior to workshop)
-    create_linked_doors(
-        room1_id="tower_interior",
-        room2_id="tower_workshop",
-        door1_id="workshop_exterior_door",
-        door2_id="workshop_interior_door",
-        door_name="ornate workshop door",
-        dir1to2="west",
-        dir2to1="east",
-        initial_state="open",
-        rooms=rooms,
+    # === TREASURE ===
+    coin1: Item = Item(
+        "coin",
+        "coin_manor",
+        "A tarnished silver coin bearing Strahd's visage.",
+        weight=1,
+        value=10,
     )
+    rooms["manor"].add_item(coin1)
 
-    # Reading room door (library main to reading room)
-    create_linked_doors(
-        room1_id="library_main",
-        room2_id="library_reading",
-        door1_id="reading_room_exterior_door",
-        door2_id="reading_room_interior_door",
-        door_name="polished oak door",
-        dir1to2="east",
-        dir2to1="west",
-        initial_state="open",
-        rooms=rooms,
-    )
+    # Removed coin from treasury to consolidate items (puzzle items take priority)
 
-    # Shrine doors (exterior to interior)
-    create_linked_doors(
-        room1_id="forgotten_shrine",
-        room2_id="shrine_interior",
-        door1_id="shrine_exterior_door",
-        door2_id="shrine_interior_door",
-        door_name="ancient stone door",
-        dir1to2="east",
-        dir2to1="west",
-        initial_state="open",
-        rooms=rooms,
+    # === MISC ===
+    cloak: Item = Item(
+        "cloak",
+        "tattered_cloak",
+        "A tattered black cloak that might provide some concealment.",
+        weight=2,
+        value=5,
     )
+    cloak.grants_invisibility = True
+    rooms["hollow"].add_item(cloak)
 
-    # Curiosity shop entry (marketplace to shop)
-    create_linked_doors(
-        room1_id="marketplace",
-        room2_id="curiosity_shop",
-        door1_id="shop_exterior_curtain",
-        door2_id="shop_interior_curtain",
-        door_name="violet curtain",
-        dir1to2="in",
-        dir2to1="out",
-        initial_state="open",
-        rooms=rooms,
+    rope: Item = Item(
+        "rope",
+        "rope",
+        "A coil of sturdy rope.",
+        weight=3,
+        value=5,
     )
+    rooms["mill"].add_item(rope)
+
+    shield: Item = Item(
+        "shield",
+        "knight_shield",
+        "A battered shield bearing the symbol of the Order of the Silver Dragon.",
+        weight=8,
+        value=30,
+    )
+    rooms["vault"].add_item(shield)  # Moved to vault to limit quarters to 2 items
+
+    banner: Item = Item(
+        "banner",
+        "order_banner",
+        "A tattered banner displaying a silver dragon.",
+        weight=2,
+        value=15,
+    )
+    rooms["hall"].add_item(banner)
+
+    icon: Item = Item(
+        "icon",
+        "icon_ravenloft",
+        "The Icon of Ravenloft, hidden behind the desecrated altar.",
+        weight=5,
+        value=100,
+    )
+    rooms["castlechapel"].add_item(icon)
 
 
 def add_weapons(rooms: Dict[str, Room]) -> None:
+    """Add weapons to rooms."""
+
+    # Sword in Argynvostholt vault - silver, effective against undead
     sword: Weapon = Weapon(
         name="sword",
-        id="sword_01",
-        description="A finely crafted steel sword with magical runes lies here.",
+        id="silver_sword",
+        description="A silver longsword engraved with prayers against the undead.",
         weight=5,
         value=150,
-        damage=10,
+        damage=12,
     )
+    rooms["vault"].add_item(sword)
 
-    rooms["spawn"].add_item(sword)
+    # Axe in Vallaki stockyard - executioner's weapon
+    axe: Weapon = Weapon(
+        name="axe",
+        id="executioner_axe",
+        description="A heavy executioner's axe, stained with old blood.",
+        weight=7,
+        value=80,
+        damage=14,
+    )
+    rooms["stockyard"].add_item(axe)
+
+    # Sunsword in castle treasury - hidden until pedestal is unlocked
+    sunsword: Weapon = Weapon(
+        name="sunsword",
+        id="sunsword",
+        description="The legendary Sunsword! Its blade blazes with brilliant sunlight.",
+        weight=4,
+        value=500,
+        damage=20,
+    )
+    sunsword.emits_light = True  # It's a sword made of sunlight!
+
+    # Hidden until pedestal is opened - condition checks pedestal state
+    def pedestal_is_open(game_state: Any) -> bool:
+        room = game_state.get_room("treasury")
+        if not room:
+            return False
+        for item in room.items:
+            if hasattr(item, "id") and item.id == "treasury_pedestal":
+                return getattr(item, "state", None) == "unlocked"
+        return False
+
+    rooms["treasury"].add_hidden_item(sunsword, pedestal_is_open)
+
+    # Dagger in cellar
+    dagger: Weapon = Weapon(
+        name="dagger",
+        id="cellar_dagger",
+        description="A rusty dagger left behind by some previous occupant.",
+        weight=1,
+        value=5,
+        damage=4,
+    )
+    rooms["cellar"].add_item(dagger)
+
+    # Staff at Tser Pool - moved from wagon to consolidate items
+    staff: Weapon = Weapon(
+        name="staff",
+        id="seer_staff",
+        description="An ornate staff topped with a crystal orb.",
+        weight=4,
+        value=75,
+        damage=8,
+    )
+    rooms["pool"].add_item(staff)

@@ -352,6 +352,9 @@ common_interaction_verbs = [
     "read",
     "tie",
     "use",
+    "kneel",
+    "bow",
+    "search",
 ]
 
 
