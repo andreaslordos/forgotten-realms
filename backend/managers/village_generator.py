@@ -216,8 +216,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "cellar",
         "Tavern Cellar",
         "Dusty wine barrels line the walls of this cold cellar. Cobwebs hang thick in the corners. "
-        "The smell of damp earth and old wine fills the air. Behind some barrels, there appears to "
-        "be a darker space - perhaps a passage?",
+        "The smell of damp earth and old wine fills the air. Rats scurry between the casks.",
         is_dark=True,
     )
 
@@ -227,14 +226,15 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "This small stone church has seen better days. Cracked pews face a simple altar, and "
         "what remains of stained glass depicts scenes of lost hope. Father Donavich's prayers echo "
         "weakly off the walls. Despite the decay, something about this place feels... safer. The "
-        "village square lies to the south. An iron grate in the floor leads down to the undercroft.",
+        "village square lies to the south, and the graveyard to the west. An iron grate in the "
+        "floor leads down to the undercroft.",
     )
 
     undercroft: Room = Room(
         "undercroft",
         "Church Undercroft",
         "A cramped stone chamber beneath the church. The air is thick with the smell of incense "
-        "and something else - something wrong. Scratching sounds come from behind a heavy iron door. "
+        "and something else - something wrong. Scratching sounds echo from the shadows. "
         "Holy symbols have been scratched into the walls, some drawn in what looks like dried blood.",
         is_dark=True,
     )
@@ -244,7 +244,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Bildrath's Mercantile",
         "A cramped general store crammed with overpriced goods. Bildrath eyes you with undisguised "
         "greed. The shelves hold basic supplies, all marked at extortionate prices. 'If you want it, "
-        "you'll pay for it,' he mutters. The square lies to the east.",
+        "you'll pay for it,' he mutters. The square lies to the northeast.",
     )
 
     manor: Room = Room(
@@ -296,10 +296,10 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
     crossroads: Room = Room(
         "crossroads",
         "Gallows Crossroads",
-        "Four roads meet at a weathered signpost. A gallows stands here, a rotting corpse "
+        "Several roads meet at a weathered signpost. A gallows stands here, a rotting corpse "
         "swinging gently in the breeze. The signs point in various directions: 'Barovia' to the north, "
         "'Vallaki' to the west, 'Castle Ravenloft' to the east, and 'Tser Pool' to the south. "
-        "Crows watch from nearby branches.",
+        "A trail leads southeast into the dark woods. Crows watch from nearby branches.",
     )
 
     woods: Room = Room(
@@ -308,7 +308,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Dense forest surrounds you. The trees here are ancient and twisted, their bark "
         "blackened as if by fire. Mist curls between the trunks, and the silence is oppressive. "
         "Occasionally, you catch glimpses of movement - wolves perhaps, or something worse. "
-        "A clearing is visible to the west. The crossroads lies to the north.",
+        "A clearing is visible to the west. The crossroads lies to the northwest, and a dark "
+        "hollow opens to the south.",
     )
 
     clearing: Room = Room(
@@ -360,7 +361,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Stone Bridge",
         "An ancient stone bridge spans a rushing river. The water below is black and swift. "
         "Gargoyle statues crouch at each end, their faces worn smooth by centuries of rain. "
-        "The road to Vallaki continues to the west, while the crossroads lies to the east.",
+        "The road to Vallaki continues to the west, while the crossroads lies to the east. "
+        "An overgrown path leads south toward a ruined manor.",
     )
 
     castlegates: Room = Room(
@@ -388,7 +390,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "A winding path leads up a barren hill toward a decrepit windmill. The sails turn "
         "slowly despite the lack of wind, creaking with each rotation. The smell of baking "
         "drifts down - something sweet, but wrong. A raven watches from a dead tree. "
-        "The clearing lies to the east.",
+        "The clearing lies to the east. The mill entrance beckons.",
     )
 
     mill: Room = Room(
@@ -396,8 +398,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Old Bonegrinder",
         "The ground floor of the windmill is cluttered with old millstones and mysterious "
         "sacks. The smell of baking is stronger here, mixed with something rotten. Flour "
-        "covers everything in a fine layer. Stairs lead up to a kitchen, and a trapdoor "
-        "leads down to a basement.",
+        "covers everything in a fine layer. Stairs lead up to a kitchen, a trapdoor "
+        "leads down to a basement, and the exit is behind you.",
     )
 
     kitchen: Room = Room(
@@ -406,7 +408,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "The smell hits you first - sweetness masking something rotten. Pastries cool on a "
         "wooden table beside a massive oven. The oven is large enough to fit a child. "
         "A closer look at the ingredients reveals they are... wrong. Very wrong. "
-        "Something scratches from within a cabinet. You shouldn't be here.",
+        "Stairs lead down to the mill floor and up to a bedroom. You shouldn't be here.",
     )
 
     bedroom: Room = Room(
@@ -414,15 +416,16 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Hag's Bedroom",
         "A filthy bedroom with a straw mattress and piles of stolen clothes. Strange dolls "
         "made of sticks and bone hang from the ceiling. A cracked mirror shows reflections "
-        "that don't quite match reality. The attic is accessible via a rickety ladder.",
+        "that don't quite match reality. Stairs lead down to the kitchen, and a rickety "
+        "ladder leads up to the attic.",
     )
 
     millattic: Room = Room(
         "millattic",
         "Windmill Attic",
         "Dusty and cramped, the attic contains several wooden crates. Muffled sounds come "
-        "from one of them - crying, perhaps. The floorboards creak ominously. A small window "
-        "offers a view of the bleak landscape below.",
+        "from one of them - crying, perhaps. The floorboards creak ominously. A ladder leads "
+        "back down to the bedroom below.",
     )
 
     millbasement: Room = Room(
@@ -442,7 +445,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "A path choked with dead weeds leads to a ruined manor. The building was once grand - "
         "a dragon statue still stands proud atop the main tower, despite centuries of decay. "
         "Ghostly lights flicker in the windows. The main hall is visible through broken doors "
-        "to the east.",
+        "to the east. The stone bridge lies to the north.",
     )
 
     hall: Room = Room(
@@ -451,7 +454,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "The once-magnificent hall is now open to the elements. A massive dragon skull hangs "
         "above a cold fireplace - not a true dragon, but the sigil of the Order of the Silver "
         "Dragon. Tattered banners bearing the same symbol hang from the walls. Passages lead "
-        "to a chapel to the north and quarters to the south.",
+        "to a chapel to the north, quarters to the south, and the overgrown approach to the west. "
+        "Stone steps descend to a tomb below.",
     )
 
     argchapel: Room = Room(
@@ -467,7 +471,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Knights' Quarters",
         "Rows of beds line the walls, their occupants long dead. Armor stands on wooden racks, "
         "tarnished but intact. Personal effects - letters, tokens, small portraits - speak to "
-        "the knights who once lived here. A tower stair leads up.",
+        "the knights who once lived here. The great hall lies to the north, and a tower stair "
+        "leads up.",
     )
 
     argtower: Room = Room(
@@ -512,7 +517,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "The main street of Vallaki is lined with shops and homes. Colorful decorations hang "
         "everywhere, but the townspeople's smiles look forced. Guards patrol constantly. "
         "A sign points to the Blue Water Inn to the south. St. Andral's Church stands to the "
-        "north. The burgomaster's mansion looms to the west.",
+        "north. The burgomaster's mansion looms to the west, and the town gates lie to the east.",
     )
 
     inn: Room = Room(
@@ -521,7 +526,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "This inn is the most welcoming place you've found in Barovia. A fire crackles in the "
         "hearth, and the smell of cooking food fills the air. The innkeepers, the Martikov family, "
         "seem genuinely kind. A grizzled hunter nurses a drink in the corner. "
-        "Stairs lead up to guest rooms. An attic door is visible in the ceiling.",
+        "The main street lies to the north. A door leads east to the stockyard. Stairs lead up "
+        "to an attic.",
     )
 
     attic: Room = Room(
@@ -545,8 +551,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Burgomaster's Mansion",
         "Baron Vallakovich's mansion is garishly decorated with sun symbols and banners "
         "proclaiming 'ALL WILL BE WELL.' Guards stand rigid at every door. The Baron himself "
-        "paces the main hall, muttering about the upcoming festival. A door leads down to the "
-        "mansion dungeon.",
+        "paces the main hall, muttering about the upcoming festival. The main street lies to "
+        "the east. A door leads down to the mansion dungeon.",
     )
 
     mansiondungeon: Room = Room(
@@ -563,7 +569,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "St. Andral's Church",
         "This church stands as a beacon of hope in Vallaki. Father Lucian tends to his flock "
         "with genuine care. The church is protected by the bones of St. Andral - or it was, "
-        "until they were stolen. Without them, even this sanctuary is not safe.",
+        "until they were stolen. Without them, even this sanctuary is not safe. The main "
+        "street lies to the south.",
     )
 
     camp: Room = Room(
@@ -571,7 +578,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Vistani Camp",
         "A Vistani camp sits outside Vallaki's walls. These wanderers come and go as they "
         "please - the only people in Barovia who can leave. They trade in secrets and dreams, "
-        "and are not above deception. The lake shore is visible to the north.",
+        "and are not above deception. The lake shore is visible to the north. The town gates "
+        "lie to the east.",
     )
 
     lake: Room = Room(
@@ -579,7 +587,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Lake Zarovich",
         "The dark waters of Lake Zarovich lap against a rocky shore. The lake is cold and "
         "deep - some say bottomless. Fishermen tell tales of things seen in the depths, "
-        "shapes that shouldn't exist. A rowboat is tied to a small dock.",
+        "shapes that shouldn't exist. A rowboat is tied to a small dock. The Vistani camp "
+        "lies to the south.",
     )
 
     # ===== CASTLE RAVENLOFT =====
@@ -589,7 +598,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Castle Courtyard",
         "Massive stone walls loom overhead, blocking what little light penetrates Barovia's "
         "eternal gloom. Gargoyles perch on every ledge, their eyes seeming to follow your "
-        "movements. The grand entrance beckons ahead, its doors hanging open in mocking "
+        "movements. The grand entrance beckons to the east, its doors hanging open in mocking "
         "invitation. The howl of wolves echoes from somewhere far below. The gates lie to "
         "the west.",
     )
@@ -600,7 +609,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Dust covers everything in this cavernous hall. Twin staircases sweep upward to a "
         "balcony. Suits of armor stand silent sentinel along the walls, and you can't shake "
         "the feeling they're watching you. A chandelier hangs overhead, its candles burning "
-        "with an eerie blue flame. An invitation card lies on a table.",
+        "with an eerie blue flame. The courtyard lies to the west, the dining hall to the "
+        "north, and stairs lead up into the castle.",
     )
 
     dining: Room = Room(
@@ -608,7 +618,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Dining Hall",
         "A long table is set for a feast that has waited centuries for guests. The food looks "
         "fresh - impossibly so. Candles burn without melting. A figure sits at the head of the "
-        "table, but vanishes when you look directly at it. Strahd's mockery of hospitality.",
+        "table, but vanishes when you look directly at it. Strahd's mockery of hospitality. "
+        "The entrance hall lies to the south, and the spiral staircase to the east.",
     )
 
     stairs: Room = Room(
@@ -625,7 +636,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "This private study is filled with books and maps. Many detail the history of Barovia, "
         "others the nature of vampirism. A portrait of a beautiful woman hangs above the "
         "fireplace - Tatyana, the object of Strahd's eternal obsession. A tome bound in "
-        "black leather sits on the desk.",
+        "black leather sits on the desk. The spiral staircase lies to the south.",
     )
 
     castlecrypt: Room = Room(
@@ -633,7 +644,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Castle Crypt",
         "Rows of stone coffins fill this underground chamber. Many bear the names of Strahd's "
         "victims and servants. The air is cold and still, and the darkness seems to press "
-        "against your light source. Something stirs in the shadows.",
+        "against your light source. Stairs lead up to the castle. Passages lead east to the "
+        "master's tomb and west to the dungeon.",
         is_dark=True,
     )
 
@@ -643,7 +655,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "The heart of Castle Ravenloft. An ornate coffin sits on a raised dais, surrounded by "
         "treasure accumulated over centuries. This is where the Dark Lord rests. The walls are "
         "covered in murals depicting Strahd's life and crimes. A crystal heart pulses with "
-        "red light in an alcove - the Heart of Sorrow, source of his power.",
+        "red light in an alcove - the Heart of Sorrow, source of his power. The crypt lies "
+        "to the west.",
         is_dark=True,
     )
 
@@ -652,7 +665,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Castle Treasury",
         "Gold and jewels are piled carelessly in this chamber - wealth means nothing to an "
         "immortal. Among the treasure lie items of true value: enchanted weapons, magical "
-        "artifacts, and perhaps the legendary Sunsword, bane of vampires.",
+        "artifacts, and perhaps the legendary Sunsword, bane of vampires. The spiral "
+        "staircase lies to the north.",
     )
 
     castledungeon: Room = Room(
@@ -660,7 +674,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Castle Dungeon",
         "The dungeons of Castle Ravenloft have held countless prisoners over the centuries. "
         "Most didn't survive long. Chains hang from the walls, some still bearing bones. "
-        "The screams of the damned echo through these halls.",
+        "The screams of the damned echo through these halls. The crypt lies to the east.",
         is_dark=True,
     )
 
@@ -669,7 +683,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "High Tower",
         "From the highest point of Castle Ravenloft, all of Barovia is visible - a land "
         "trapped in eternal twilight, surrounded by impenetrable mists. Strahd has stood "
-        "here countless times, surveying his prison. The view is beautiful and terrible.",
+        "here countless times, surveying his prison. The view is beautiful and terrible. "
+        "Stairs lead back down into the castle.",
     )
 
     castlechapel: Room = Room(
@@ -677,7 +692,8 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Desecrated Chapel",
         "Once a place of worship, this chapel has been corrupted by Strahd's presence. "
         "Holy symbols have been inverted, the altar stained with old blood. Yet something "
-        "remains - the Icon of Ravenloft, hidden behind the altar, still holds power.",
+        "remains - the Icon of Ravenloft, hidden behind the altar, still holds power. "
+        "The spiral staircase lies to the west, and a dark passage leads north.",
     )
 
     coffin: Room = Room(
@@ -685,7 +701,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Coffin Room",
         "Rows of empty coffins line this hidden chamber - resting places for Strahd's vampire "
         "spawn. Most are empty now, their occupants hunting in the night. But some are "
-        "occupied, waiting for sunset.",
+        "occupied, waiting for sunset. The chapel lies to the south.",
         is_dark=True,
     )
 
@@ -2055,44 +2071,7 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
 
     # === GALLOWS PUZZLE ===
     # Cut the rope to drop the corpse, revealing a key in its fist
-    # Players can interact with "rope", "corpse", or "gallows"
-
-    gallows_rope: StatefulItem = StatefulItem(
-        "rope",
-        "gallows_rope",
-        "A frayed rope suspends a body from the gallows.",
-        weight=5,
-        value=0,
-        takeable=False,
-        state="taut",
-    )
-    gallows_rope.add_state_description(
-        "taut",
-        "A frayed rope suspends a body from the gallows. The corpse clutches something in its fist.",
-    )
-    gallows_rope.add_state_description(
-        "cut", "The severed rope dangles from the gallows beam."
-    )
-    gallows_rope.set_room_id("square")
-    gallows_rope.add_interaction(
-        verb="examine",
-        message="The rope is old but still strong. It creaks as the corpse sways. "
-        "You'd need a blade to cut through it.",
-    )
-    gallows_rope.add_interaction(
-        verb="cut",
-        target_state="cut",
-        message="You slash at the rope with your blade! The corpse drops with a sickening thud. "
-        "Its fist opens upon impact, and a rusted iron key clatters across the cobblestones.",
-        from_state="taut",
-        conditional_fn=has_any_weapon,
-    )
-    gallows_rope.add_interaction(
-        verb="cut",
-        message="You have nothing sharp enough to cut the rope. You need a blade.",
-        from_state="taut",
-    )
-    rooms["square"].add_item(gallows_rope)
+    # Players can interact with "rope", "corpse", "body", etc. via synonyms
 
     gallows_corpse: StatefulItem = StatefulItem(
         "corpse",
@@ -2102,6 +2081,7 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
         value=0,
         takeable=False,
         state="hanging",
+        synonyms=["body", "rope", "remains", "cadaver", "gallows"],
     )
     gallows_corpse.add_state_description(
         "hanging",
@@ -2138,7 +2118,7 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
     )
     rooms["square"].add_item(gallows_corpse)
 
-    # The crypt key - hidden until rope is cut or corpse falls
+    # The crypt key - hidden until corpse falls
     crypt_key: Item = Item(
         "key",
         "crypt_key",
@@ -2152,10 +2132,8 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
         if not room:
             return False
         for item in room.items:
-            # Check if either rope was cut or corpse fell
+            # Check if corpse has fallen
             if hasattr(item, "id"):
-                if item.id == "gallows_rope" and getattr(item, "state", None) == "cut":
-                    return True
                 if (
                     item.id == "gallows_corpse"
                     and getattr(item, "state", None) == "fallen"

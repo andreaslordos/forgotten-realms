@@ -1,6 +1,6 @@
 # backend/models/item.py
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 class Item:
@@ -15,6 +15,7 @@ class Item:
     invisibility_duration_seconds: float
     invisibility_activated_at: Optional[float]
     invisibility_expired: bool
+    synonyms: List[str]
 
     def __init__(
         self,
@@ -27,6 +28,7 @@ class Item:
         emits_light: bool = False,
         grants_invisibility: bool = False,
         invisibility_duration_seconds: float = 0.0,
+        synonyms: Optional[List[str]] = None,
     ) -> None:
         """
         :param name: The name of the item.
@@ -38,6 +40,7 @@ class Item:
         :param emits_light: Whether the item emits light (default: False).
         :param grants_invisibility: Whether item grants invisibility (default: False).
         :param invisibility_duration_seconds: How long invisibility lasts (default: 0).
+        :param synonyms: Alternative names for the item (default: None).
         """
         self.name = name
         self.id = id
@@ -50,6 +53,21 @@ class Item:
         self.invisibility_duration_seconds = invisibility_duration_seconds
         self.invisibility_activated_at: Optional[float] = None
         self.invisibility_expired: bool = False
+        self.synonyms: List[str] = synonyms or []
+
+    def matches_name(self, search_term: str) -> bool:
+        """
+        Check if item matches search term (by name or synonym).
+
+        :param search_term: The term to match against.
+        :return: True if the item name or any synonym contains the search term.
+        """
+        search_lower = search_term.lower()
+        # Check main name
+        if search_lower in self.name.lower():
+            return True
+        # Check synonyms
+        return any(search_lower in syn.lower() for syn in self.synonyms)
 
     def __repr__(self) -> str:
         return f"{self.name} - {self.description} ({self.weight}kg, {self.value}pts)"
@@ -65,6 +83,9 @@ class Item:
             "takeable": self.takeable,
             "emits_light": self.emits_light,
         }
+        # Only include synonyms if item has any
+        if self.synonyms:
+            data["synonyms"] = self.synonyms
         # Only include invisibility fields if item grants invisibility
         if self.grants_invisibility:
             data["grants_invisibility"] = self.grants_invisibility
@@ -88,6 +109,7 @@ class Item:
             invisibility_duration_seconds=data.get(
                 "invisibility_duration_seconds", 0.0
             ),
+            synonyms=data.get("synonyms"),
         )
         # Restore invisibility state if present
         item.invisibility_activated_at = data.get("invisibility_activated_at")

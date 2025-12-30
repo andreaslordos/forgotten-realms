@@ -63,7 +63,7 @@ async def handle_look(
 
     # Look at a specific item in inventory
     for item in player.inventory:
-        if subject and subject.lower() in item.name.lower():
+        if subject and hasattr(item, "matches_name") and item.matches_name(subject):
             return f"{item.description}"
 
     # Look at a specific item in the room
@@ -72,7 +72,7 @@ async def handle_look(
         game_state
     )  # Get visible items including hidden ones
     for item in all_visible_items:
-        if subject and subject.lower() in item.name.lower():
+        if subject and hasattr(item, "matches_name") and item.matches_name(subject):
             return f"{item.name}: {item.description}"
 
     # Look at another player in the room
@@ -239,7 +239,7 @@ async def handle_get(
         # Look for a matching item in the room ONLY
         all_visible_items = current_room.get_items(game_state)
         for item in all_visible_items:
-            if subject and subject.lower() == item.name.lower():
+            if subject and hasattr(item, "matches_name") and item.matches_name(subject):
                 found_item = item
                 break
 

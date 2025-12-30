@@ -28,8 +28,11 @@ class StatefulItem(Item):
         value: int = 0,
         takeable: bool = True,
         state: Optional[str] = None,
+        synonyms: Optional[List[str]] = None,
     ) -> None:
-        super().__init__(name, id, description, weight, value, takeable)
+        super().__init__(
+            name, id, description, weight, value, takeable, synonyms=synonyms
+        )
         self.state = state
         self.state_descriptions = {}
         self.interactions = {}  # Maps verbs to required instruments and effects
@@ -237,6 +240,7 @@ class StatefulItem(Item):
             value=data.get("value", 0),
             takeable=data.get("takeable", True),
             state=data.get("state", None),
+            synonyms=data.get("synonyms"),
         )
         if "state_descriptions" in data:
             item.state_descriptions = data["state_descriptions"]

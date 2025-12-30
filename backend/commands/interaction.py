@@ -79,7 +79,8 @@ async def handle_interaction(
                 for item in current_room.get_items(game_state):
                     if (
                         instrument
-                        and instrument.lower() in item.name.lower()
+                        and hasattr(item, "matches_name")
+                        and item.matches_name(instrument)
                         and hasattr(item, "interactions")
                     ):
                         primary_item = item
@@ -93,7 +94,8 @@ async def handle_interaction(
                     for item in current_room.get_items(game_state):
                         if (
                             subject
-                            and subject.lower() in item.name.lower()
+                            and hasattr(item, "matches_name")
+                            and item.matches_name(subject)
                             and hasattr(item, "interactions")
                         ):
                             primary_item = item
@@ -109,7 +111,8 @@ async def handle_interaction(
                     for item in player.inventory:
                         if (
                             instrument
-                            and instrument.lower() in item.name.lower()
+                            and hasattr(item, "matches_name")
+                            and item.matches_name(instrument)
                             and hasattr(item, "interactions")
                         ):
                             primary_item = item
@@ -121,7 +124,8 @@ async def handle_interaction(
                     for item in player.inventory:
                         if (
                             subject
-                            and subject.lower() in item.name.lower()
+                            and hasattr(item, "matches_name")
+                            and item.matches_name(subject)
                             and hasattr(item, "interactions")
                         ):
                             primary_item = item
@@ -134,7 +138,8 @@ async def handle_interaction(
                 for item in player.inventory:
                     if (
                         subject
-                        and subject.lower() in item.name.lower()
+                        and hasattr(item, "matches_name")
+                        and item.matches_name(subject)
                         and hasattr(item, "interactions")
                     ):
                         primary_item = item
@@ -146,7 +151,8 @@ async def handle_interaction(
                     for item in current_room.get_items(game_state):
                         if (
                             subject
-                            and subject.lower() in item.name.lower()
+                            and hasattr(item, "matches_name")
+                            and item.matches_name(subject)
                             and hasattr(item, "interactions")
                         ):
                             primary_item = item
@@ -162,7 +168,9 @@ async def handle_interaction(
                 and secondary_item_name
             ):
                 for item in player.inventory:
-                    if secondary_item_name.lower() in item.name.lower():
+                    if hasattr(item, "matches_name") and item.matches_name(
+                        secondary_item_name
+                    ):
                         secondary_item = item
                         break
 

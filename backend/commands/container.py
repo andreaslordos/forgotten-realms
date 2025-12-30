@@ -58,7 +58,8 @@ async def handle_put(
         for item in player.inventory:
             if (
                 instrument
-                and instrument.lower() in item.name.lower()
+                and hasattr(item, "matches_name")
+                and item.matches_name(instrument)
                 and isinstance(item, ContainerItem)
             ):
                 container = item
@@ -166,7 +167,7 @@ async def handle_put(
 
     if not item_to_put:
         for item in player.inventory:
-            if subject and subject.lower() in item.name.lower():
+            if subject and hasattr(item, "matches_name") and item.matches_name(subject):
                 item_to_put = item
                 break
 
@@ -259,7 +260,8 @@ async def handle_get_from(
         for item in player.inventory:
             if (
                 instrument
-                and instrument.lower() in item.name.lower()
+                and hasattr(item, "matches_name")
+                and item.matches_name(instrument)
                 and isinstance(item, ContainerItem)
             ):
                 container = item
@@ -326,7 +328,7 @@ async def handle_get_from(
 
     if not item_to_get:
         for item in container.items:
-            if subject and subject.lower() in item.name.lower():
+            if subject and hasattr(item, "matches_name") and item.matches_name(subject):
                 item_to_get = item
                 break
 
@@ -379,7 +381,8 @@ async def handle_open(
         for item in player.inventory:
             if (
                 subject
-                and subject.lower() in item.name.lower()
+                and hasattr(item, "matches_name")
+                and item.matches_name(subject)
                 and isinstance(item, ContainerItem)
             ):
                 container = item
@@ -391,7 +394,8 @@ async def handle_open(
             for item in current_room.get_items(game_state):
                 if (
                     subject
-                    and subject.lower() in item.name.lower()
+                    and hasattr(item, "matches_name")
+                    and item.matches_name(subject)
                     and isinstance(item, ContainerItem)
                 ):
                     container = item
@@ -443,7 +447,8 @@ async def handle_close(
         for item in player.inventory:
             if (
                 subject
-                and subject.lower() in item.name.lower()
+                and hasattr(item, "matches_name")
+                and item.matches_name(subject)
                 and isinstance(item, ContainerItem)
             ):
                 container = item
@@ -455,7 +460,8 @@ async def handle_close(
             for item in current_room.get_items(game_state):
                 if (
                     subject
-                    and subject.lower() in item.name.lower()
+                    and hasattr(item, "matches_name")
+                    and item.matches_name(subject)
                     and isinstance(item, ContainerItem)
                 ):
                     container = item
@@ -506,7 +512,8 @@ async def handle_empty(
         for item in player.inventory:
             if (
                 subject
-                and subject.lower() in item.name.lower()
+                and hasattr(item, "matches_name")
+                and item.matches_name(subject)
                 and isinstance(item, ContainerItem)
             ):
                 container = item
