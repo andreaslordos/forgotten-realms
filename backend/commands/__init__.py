@@ -29,6 +29,7 @@ __all__ = [
     "archmage",
     "rest",
     "player_interaction",
+    "magic",
 ]
 
 logging.basicConfig(
@@ -99,6 +100,7 @@ try:
         communication,
         container,
         interaction,
+        magic,
         player_interaction,
         rest,
         standard,

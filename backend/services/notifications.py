@@ -107,3 +107,33 @@ async def broadcast_logout(player: Any) -> None:
         f"{display_name} the {player.level} has just passed on.",
         exclude_player=[player.name],
     )
+
+
+async def broadcast_item_drop(
+    room_id: str,
+    player_name: str,
+    item_name: str,
+    exclude_players: Optional[List[str]] = None,
+) -> None:
+    """
+    Notify all players in a room that a player has dropped an item.
+
+    Args:
+        room_id (str): The ID of the room where item was dropped
+        player_name (str): The name of the player who dropped the item
+        item_name (str): The name of the item dropped
+        exclude_players (list): List of player names to exclude from broadcast
+    """
+    if exclude_players is None:
+        exclude_players = [player_name]
+    elif player_name not in exclude_players:
+        exclude_players = exclude_players + [player_name]
+
+    logger.debug(
+        f"Broadcasting item drop: {player_name} dropped {item_name} in {room_id}"
+    )
+    await broadcast_room(
+        room_id,
+        f"{player_name} has dropped {item_name}.",
+        exclude_player=exclude_players,
+    )

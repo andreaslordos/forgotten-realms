@@ -159,6 +159,15 @@ async def handle_movement(
     if is_in_combat(player.name):
         return "You can't move while in combat! Use 'flee <direction>' to escape."
 
+    # Check if player is crippled
+    from services.affliction_service import find_player_sid, has_affliction
+
+    player_sid = find_player_sid(player, online_sessions)
+    if player_sid:
+        session = online_sessions.get(player_sid, {})
+        if has_affliction(session, "cripple"):
+            return "You are crippled and cannot move!"
+
     direction = cmd["verb"]
     old_room = game_state.get_room(player.current_room)
 

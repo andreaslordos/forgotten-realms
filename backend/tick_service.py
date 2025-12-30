@@ -98,6 +98,9 @@ class TickService:
             self.sio, self.online_sessions, self.player_manager, self.utils
         )
 
+        # Process affliction expiry
+        await self._process_affliction_expiry()
+
         if not self.online_sessions:
             return
 
@@ -149,6 +152,16 @@ class TickService:
                 self.game_state,
                 self.utils,
             )
+
+    async def _process_affliction_expiry(self) -> None:
+        """Process affliction expiration for all players."""
+        from services.affliction_service import process_affliction_expiry
+
+        await process_affliction_expiry(
+            self.sio,
+            self.online_sessions,
+            self.utils,
+        )
 
     def _get_mob_manager(self) -> Any:
         return getattr(self.utils, "mob_manager", None)

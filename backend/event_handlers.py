@@ -16,6 +16,7 @@ from commands.combat import handle_combat_disconnect, is_in_combat
 from services.notifications import (
     broadcast_arrival,
     broadcast_logout,
+    broadcast_item_drop,
 )
 import re
 from globals import version
@@ -376,6 +377,10 @@ Welcome! By what name shall I call you?
                     for item in list(player.inventory):
                         player.remove_item(item)
                         current_room.add_item(item)
+                        # Broadcast item drop to other players
+                        await broadcast_item_drop(
+                            player.current_room, player.name, item.name
+                        )
                 # game_state.save_rooms()
                 player_manager.save_players()
 

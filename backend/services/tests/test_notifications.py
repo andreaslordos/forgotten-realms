@@ -248,5 +248,59 @@ class BroadcastLogoutTest(BaseAsyncTest):
         self.assertIn("Charlie", call_kwargs["exclude_player"])
 
 
+class BroadcastItemDropTest(BaseAsyncTest):
+    """Test broadcast_item_drop functionality."""
+
+    @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
+    async def test_broadcast_item_drop_sends_message(self, mock_broadcast):
+        """Test broadcast_item_drop broadcasts item drop message."""
+        # Act
+        await notifications.broadcast_item_drop("room1", "Alice", "sword")
+
+        # Assert
+        mock_broadcast.assert_called_once()
+        call_args = mock_broadcast.call_args[0]
+        self.assertEqual(call_args[0], "room1")
+        self.assertIn("Alice", call_args[1])
+        self.assertIn("dropped", call_args[1])
+        self.assertIn("sword", call_args[1])
+
+    @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
+    async def test_broadcast_item_drop_excludes_dropping_player_by_default(
+        self, mock_broadcast
+    ):
+        """Test broadcast_item_drop excludes dropping player by default."""
+        # Act
+        await notifications.broadcast_item_drop("room1", "Alice", "sword")
+
+        # Assert
+        call_kwargs = mock_broadcast.call_args[1]
+        self.assertIn("Alice", call_kwargs["exclude_player"])
+
+    @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
+    async def test_broadcast_item_drop_with_custom_exclusions(self, mock_broadcast):
+        """Test broadcast_item_drop with additional exclusions."""
+        # Act
+        await notifications.broadcast_item_drop(
+            "room1", "Alice", "sword", exclude_players=["Bob"]
+        )
+
+        # Assert
+        call_kwargs = mock_broadcast.call_args[1]
+        # Both Alice and Bob should be excluded
+        self.assertIn("Alice", call_kwargs["exclude_player"])
+        self.assertIn("Bob", call_kwargs["exclude_player"])
+
+    @patch("services.notifications.broadcast_room", new_callable=AsyncMock)
+    async def test_broadcast_item_drop_formats_message_correctly(self, mock_broadcast):
+        """Test broadcast_item_drop formats message correctly."""
+        # Act
+        await notifications.broadcast_item_drop("room1", "Bob", "ancient shield")
+
+        # Assert
+        call_args = mock_broadcast.call_args[0]
+        self.assertEqual(call_args[1], "Bob has dropped ancient shield.")
+
+
 if __name__ == "__main__":
     unittest.main()

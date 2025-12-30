@@ -6,6 +6,7 @@ from commands.executor import build_look_description
 from models.Levels import levels
 from commands.utils import get_player_inventory
 from models.SpecializedRooms import SwampRoom
+from services.notifications import broadcast_item_drop
 
 
 # ===== LOOK COMMAND =====
@@ -19,6 +20,15 @@ async def handle_look(
     utils: Any,
 ) -> str:
     """Handle the 'look' command."""
+    # Check if player is BLIND
+    from services.affliction_service import find_player_sid, has_affliction
+
+    player_sid = find_player_sid(player, online_sessions)
+    if player_sid:
+        session = online_sessions.get(player_sid, {})
+        if has_affliction(session, "blind"):
+            return "You are blinded and cannot see anything!"
+
     # Get the subject (what to look at)
     subject = cmd.get("subject")
     subject_obj = cmd.get("subject_object")
@@ -287,6 +297,8 @@ async def handle_drop(
         else:
             # Standard drop behavior
             current_room.add_item(item)
+            # Broadcast to other players in the room
+            await broadcast_item_drop(player.current_room, player.name, item.name)
             return f"{item.name.capitalize()} dropped."
 
     # Handle "drop all" command

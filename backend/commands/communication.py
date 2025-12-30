@@ -44,6 +44,12 @@ async def handle_shout(
     if not current_sid:
         return "Error: Session not found"
 
+    # Check if player is DUMB (cannot speak)
+    from services.affliction_service import has_affliction
+
+    if has_affliction(online_sessions.get(current_sid, {}), "dumb"):
+        return "You try to shout but no words come out!"
+
     # If no message provided, prompt for one
     if not subject:
         if "pending_comm" not in online_sessions.get(current_sid, {}):
@@ -57,6 +63,10 @@ async def handle_shout(
     if online_sessions and sio and utils:
         for sid, session_data in online_sessions.items():
             if "player" in session_data and sid != current_sid:
+                # Skip players who are DEAF (cannot hear)
+                if has_affliction(session_data, "deaf"):
+                    continue
+
                 # Wake up sleeping players before sending the message
                 if session_data.get("sleeping"):
                     sleeping_player = session_data.get("player")
@@ -116,6 +126,12 @@ async def handle_say(
     if not current_sid:
         return "Error: Session not found"
 
+    # Check if player is DUMB (cannot speak)
+    from services.affliction_service import has_affliction
+
+    if has_affliction(online_sessions.get(current_sid, {}), "dumb"):
+        return "You try to speak but no words come out!"
+
     # Format the message
     room_msg = f'{player.name} the {player.level} says "{subject}"'
 
@@ -128,6 +144,9 @@ async def handle_say(
                 and other_player.current_room == player.current_room
                 and sid != current_sid
             ):
+                # Skip players who are DEAF (cannot hear)
+                if has_affliction(session_data, "deaf"):
+                    continue
                 await utils.send_message(sio, sid, room_msg)
 
     return ""
@@ -169,6 +188,12 @@ async def handle_tell(
     if not current_sid:
         return "Error: Session not found"
 
+    # Check if player is DUMB (cannot speak)
+    from services.affliction_service import has_affliction
+
+    if has_affliction(online_sessions.get(current_sid, {}), "dumb"):
+        return "You try to speak but no words come out!"
+
     if not recipient_name:
         return "Who do you want to tell something to?"
 
@@ -192,6 +217,11 @@ async def handle_tell(
             break
 
     if recipient_sid:
+        # Check if recipient is DEAF (cannot hear)
+        recipient_session = online_sessions.get(recipient_sid, {})
+        if has_affliction(recipient_session, "deaf"):
+            return f"{recipient_name} cannot hear you - they are deafened!"
+
         if sio and utils:
             # Send the private message
             await utils.send_message(

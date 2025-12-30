@@ -8,6 +8,7 @@ from models.Weapon import Weapon
 from models.CombatDialogue import CombatDialogue
 from commands.rest import wake_player
 from models.Item import Item
+from services.notifications import broadcast_item_drop
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -429,6 +430,8 @@ async def handle_flee(
     for item in list(player.inventory):
         player.remove_item(item)
         current_room.add_item(item)
+        # Broadcast item drop to other players in the room
+        await broadcast_item_drop(player.current_room, player.name, item.name)
 
     # End combat using proper identifier (mob.id or player.name)
     opponent_identifier = opponent.id if opponent_is_mob else opponent.name
@@ -969,6 +972,8 @@ async def handle_player_defeat(
     for item in list(defender.inventory):
         defender.remove_item(item)
         current_room.add_item(item)
+        # Broadcast item drop to other players in the room
+        await broadcast_item_drop(old_room, defender.name, item.name)
 
     # Transfer points to attacker
     points_lost = defender.points
@@ -1186,6 +1191,8 @@ async def handle_combat_disconnect(
         for item in list(player.inventory):
             player.remove_item(item)
             current_room.add_item(item)
+            # Broadcast item drop to other players in the room
+            await broadcast_item_drop(player.current_room, player.name, item.name)
 
         # Zero out points and give half to opponent
         points_lost = player.points
@@ -1635,6 +1642,8 @@ async def handle_player_defeat_by_mob(
     for item in list(player.inventory):
         player.remove_item(item)
         current_room.add_item(item)
+        # Broadcast item drop to other players in the room
+        await broadcast_item_drop(old_room, player.name, item.name)
 
     # Notify others in old room
     if online_sessions and sio and utils:
@@ -1696,6 +1705,8 @@ async def handle_non_combat_death(
     for item in list(player.inventory):
         player.remove_item(item)
         current_room.add_item(item)
+        # Broadcast item drop to other players in the room
+        await broadcast_item_drop(old_room, player.name, item.name)
 
     # Notify others in the room
     if online_sessions and sio and utils:

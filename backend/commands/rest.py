@@ -3,6 +3,7 @@
 from commands.registry import command_registry
 from typing import Any, Dict, Optional
 
+from services.affliction_service import has_affliction
 from services.notifications import broadcast_room
 import logging
 
@@ -24,8 +25,27 @@ async def handle_sleep(
     utils: Any,
 ) -> str:
     """
-    Handle the sleep command, putting the player to sleep for healing.
+    Handle the sleep command.
+
+    If a target is provided, cast the SLEEP spell on them.
+    Otherwise, go to sleep for healing.
     """
+    # If a target is specified, this is the SLEEP spell (magic)
+    target = cmd.get("subject")
+    if target:
+        from commands.magic import handle_sleep_spell
+
+        return await handle_sleep_spell(
+            cmd,
+            player,
+            game_state,
+            player_manager,
+            online_sessions,
+            sio,
+            utils,
+        )
+
+    # No target - this is rest/healing sleep
     # Check if player is already sleeping
     for sid, session in online_sessions.items():
         if session.get("player") == player and session.get("sleeping"):
@@ -232,6 +252,10 @@ async def process_sleeping_players(
     for sid, session in list(online_sessions.items()):
         player = session.get("player")
         if not player or not session.get("sleeping"):
+            continue
+
+        # Skip healing/wake logic for magic sleep - let affliction expiry handle it
+        if has_affliction(session, "magic_sleep"):
             continue
 
         # Increment the sleep counter
