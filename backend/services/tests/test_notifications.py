@@ -4,9 +4,11 @@ Comprehensive tests for notifications module.
 Tests cover:
 - set_context initialization
 - broadcast_room functionality
+- broadcast_all functionality
 - broadcast_arrival
 - broadcast_departure
 - broadcast_logout
+- broadcast_item_drop
 """
 
 import sys
@@ -246,6 +248,100 @@ class BroadcastLogoutTest(BaseAsyncTest):
         # Assert
         call_kwargs = mock_broadcast.call_args[1]
         self.assertIn("Charlie", call_kwargs["exclude_player"])
+
+
+class BroadcastAllTest(BaseAsyncTest):
+    """Test broadcast_all functionality."""
+
+    async def test_broadcast_all_sends_to_all_players(self):
+        """Test broadcast_all sends message to all online players."""
+        # Arrange
+        player1 = create_mock_player(name="Alice", location="room1")
+        player1.current_room = "room1"
+        player2 = create_mock_player(name="Bob", location="room2")
+        player2.current_room = "room2"
+
+        mock_sessions = {"sid1": {"player": player1}, "sid2": {"player": player2}}
+        mock_send = AsyncMock()
+
+        notifications.set_context(mock_sessions, mock_send)
+
+        # Act
+        await notifications.broadcast_all("Thunder rolls across the land!")
+
+        # Assert
+        self.assertEqual(mock_send.call_count, 2)
+
+    async def test_broadcast_all_excludes_specified_players(self):
+        """Test broadcast_all excludes specified players."""
+        # Arrange
+        player1 = create_mock_player(name="Alice", location="room1")
+        player1.current_room = "room1"
+        player2 = create_mock_player(name="Bob", location="room2")
+        player2.current_room = "room2"
+
+        mock_sessions = {"sid1": {"player": player1}, "sid2": {"player": player2}}
+        mock_send = AsyncMock()
+
+        notifications.set_context(mock_sessions, mock_send)
+
+        # Act
+        await notifications.broadcast_all("Thunder rolls!", exclude_players=["Alice"])
+
+        # Assert
+        self.assertEqual(mock_send.call_count, 1)
+        call_args = mock_send.call_args[0]
+        self.assertEqual(call_args[0], "sid2")
+
+    async def test_broadcast_all_skips_sleeping_players(self):
+        """Test broadcast_all skips sleeping players."""
+        # Arrange
+        player1 = create_mock_player(name="Alice", location="room1")
+        player1.current_room = "room1"
+
+        mock_sessions = {"sid1": {"player": player1, "sleeping": True}}
+        mock_send = AsyncMock()
+
+        notifications.set_context(mock_sessions, mock_send)
+
+        # Act
+        await notifications.broadcast_all("Thunder rolls!")
+
+        # Assert
+        mock_send.assert_not_called()
+
+    async def test_broadcast_all_handles_uninitialized_context(self):
+        """Test broadcast_all handles uninitialized context gracefully."""
+        # Arrange
+        notifications.SESSIONS = None
+        notifications.send_msg = None
+
+        # Act
+        await notifications.broadcast_all("Thunder rolls!")
+
+        # Assert - should not crash
+
+    async def test_broadcast_all_skips_unauthenticated_sessions(self):
+        """Test broadcast_all skips sessions without players."""
+        # Arrange
+        player1 = create_mock_player(name="Alice", location="room1")
+        player1.current_room = "room1"
+
+        mock_sessions = {
+            "sid1": {"player": player1},
+            "sid2": {},  # Unauthenticated session
+        }
+        mock_send = AsyncMock()
+
+        notifications.set_context(mock_sessions, mock_send)
+
+        # Act
+        await notifications.broadcast_all("Thunder rolls!")
+
+        # Assert
+        self.assertEqual(mock_send.call_count, 1)
+        call_args = mock_send.call_args[0]
+        self.assertEqual(call_args[0], "sid1")
 
 
 class BroadcastItemDropTest(BaseAsyncTest):

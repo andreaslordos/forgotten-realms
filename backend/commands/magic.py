@@ -27,7 +27,7 @@ from services.affliction_service import (
     find_player_sid,
     has_affliction,
 )
-from services.notifications import broadcast_item_drop
+from services.notifications import broadcast_all, broadcast_item_drop
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -1300,6 +1300,12 @@ async def handle_fod(
         return "You cannot use the Finger of Death on yourself!"
 
     # FOD always succeeds for Archmages, no resistance
+
+    # Broadcast the thunder of the Finger of Death to all players
+    await broadcast_all(
+        "You hear the crackling thunder of the Finger of Death!",
+        exclude_players=[player.name, target.name],
+    )
 
     if is_mob:
         # Kill mob instantly

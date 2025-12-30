@@ -137,3 +137,34 @@ async def broadcast_item_drop(
         f"{player_name} has dropped {item_name}.",
         exclude_player=exclude_players,
     )
+
+
+async def broadcast_all(
+    message: str,
+    exclude_players: Optional[List[str]] = None,
+) -> None:
+    """
+    Broadcast a message to all online players in the game.
+
+    Args:
+        message (str): The message to broadcast
+        exclude_players (list): List of player names to exclude from broadcast
+    """
+    global SESSIONS, send_msg
+    if not SESSIONS or not send_msg:
+        logger.warning("Attempted to broadcast_all but context not initialized")
+        return
+
+    if exclude_players is None:
+        exclude_players = []
+
+    for sid, session_data in SESSIONS.items():
+        other_player: Any = session_data.get("player")
+        if not other_player:
+            continue  # Skip sessions that haven't authenticated.
+
+        # Skip if player is excluded or is sleeping
+        if other_player.name in exclude_players or session_data.get("sleeping", False):
+            continue
+
+        await send_msg(sid, message)
