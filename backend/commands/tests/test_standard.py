@@ -644,6 +644,117 @@ class HandleGetTest(unittest.IsolatedAsyncioTestCase):
 
         self.current_room.remove_hidden_item.assert_called_once_with("secret_1")
 
+    async def test_handle_get_all_inventory_full(self):
+        """Test 'get all' returns capacity error when inventory is full."""
+        item = Item(name="key", id="key_1", description="A key", takeable=True)
+        self.current_room.add_item(item)
+        self.current_room.get_items.return_value = [item]
+        self.player.add_item = Mock(
+            return_value=(False, "You are carrying too many items.")
+        )
+
+        cmd = {"verb": "get", "subject": "all"}
+
+        result = await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertEqual(result, "You are carrying too many items.")
+
+    async def test_handle_get_all_item_too_heavy(self):
+        """Test 'get all' returns weight error when item is too heavy."""
+        item = Item(name="boulder", id="boulder_1", description="Heavy", takeable=True)
+        self.current_room.add_item(item)
+        self.current_room.get_items.return_value = [item]
+        self.player.add_item = Mock(
+            return_value=(False, "This item is too heavy to carry.")
+        )
+
+        cmd = {"verb": "get", "subject": "all"}
+
+        result = await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertEqual(result, "This item is too heavy to carry.")
+
+    async def test_handle_get_all_empty_room(self):
+        """Test 'get all' returns 'Nothing to take' when room is empty."""
+        self.current_room.get_items.return_value = []
+
+        cmd = {"verb": "get", "subject": "all"}
+
+        result = await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertEqual(result, "Nothing to take.")
+
+    async def test_handle_get_treasure_inventory_full(self):
+        """Test 'get treasure' returns capacity error when inventory is full."""
+        item = Item(
+            name="gold coin", id="coin_1", description="A coin", takeable=True, value=10
+        )
+        self.current_room.add_item(item)
+        self.current_room.get_items.return_value = [item]
+        self.player.add_item = Mock(
+            return_value=(False, "You are carrying too many items.")
+        )
+
+        cmd = {"verb": "get", "subject": "treasure"}
+
+        result = await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertEqual(result, "You are carrying too many items.")
+
+    async def test_handle_get_treasure_no_treasure(self):
+        """Test 'get treasure' returns message when no treasure in room."""
+        item = Item(
+            name="stick", id="stick_1", description="A stick", takeable=True, value=0
+        )
+        self.current_room.add_item(item)
+        self.current_room.get_items.return_value = [item]
+
+        cmd = {"verb": "get", "subject": "treasure"}
+
+        result = await handle_get(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertEqual(result, "No treasure to take.")
+
 
 class HandleDropTest(unittest.IsolatedAsyncioTestCase):
     """Test handle_drop functionality."""

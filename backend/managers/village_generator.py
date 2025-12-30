@@ -1456,7 +1456,7 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
     # Then the pedestal can be opened to reveal the sunsword
 
     dial1: StatefulItem = StatefulItem(
-        "dial",
+        "first dial",
         "dial1",
         "The first dial shows a moon symbol.",
         weight=100,
@@ -1489,7 +1489,7 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
     rooms["treasury"].add_item(dial1)
 
     dial2: StatefulItem = StatefulItem(
-        "dial",
+        "second dial",
         "dial2",
         "The second dial shows a sun symbol.",
         weight=100,
@@ -1522,7 +1522,7 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
     rooms["treasury"].add_item(dial2)
 
     dial3: StatefulItem = StatefulItem(
-        "dial",
+        "third dial",
         "dial3",
         "The third dial shows a star symbol.",
         weight=100,
@@ -1779,9 +1779,14 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
     )
     stones.add_interaction(
         verb="touch",
-        message="The stones remain silent. They are not aligned correctly. "
-        "A note you read mentioned something about their arrangement...",
+        message="As you touch the misaligned stones, ancient magic surges through them!\n"
+        "Lightning arcs between the stones, striking you with devastating force!\n"
+        "The last thing you see is the stones' carvings glowing with malevolent light...",
         from_state="dormant",
+        kills_player=True,
+        damage_message="As you touch the misaligned stones, ancient magic surges through them!\n"
+        "Lightning arcs between the stones, striking you with devastating force!\n"
+        "The last thing you see is the stones' carvings glowing with malevolent light...",
     )
     rooms["clearing"].add_item(stones)
 

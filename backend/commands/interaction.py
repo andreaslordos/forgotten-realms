@@ -1,16 +1,146 @@
 # backend/commands/interaction.py
 
 from commands.registry import command_registry
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from commands.executor import build_look_description
 import logging
 import traceback
 from services.notifications import broadcast_room
+from commands.combat import active_combats
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+
+def _find_player_sid(
+    player: Any, online_sessions: Dict[str, Dict[str, Any]]
+) -> Optional[str]:
+    """Find the session ID for a player."""
+    for sid, session in online_sessions.items():
+        if session.get("player") == player:
+            return sid
+    return None
+
+
+async def _handle_trap_death(
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+    death_message: Optional[str],
+    item_name: str,
+) -> str:
+    """
+    Handle instant death from a trap.
+
+    Similar to Finger of Death spell: drop all items, put player in limbo,
+    prompt for respawn.
+    """
+    player_sid = _find_player_sid(player, online_sessions)
+    current_room = game_state.get_room(player.current_room)
+
+    # Drop all items
+    if current_room:
+        for item in list(player.inventory):
+            player.remove_item(item)
+            current_room.add_item(item)
+
+    # End any combat the player is in
+    if player.name in active_combats:
+        del active_combats[player.name]
+
+    # Also check if player was being targeted in combat
+    for combatant, target in list(active_combats.items()):
+        if target == player.name:
+            del active_combats[combatant]
+
+    # Broadcast death to other players in room
+    if current_room:
+        await broadcast_room(
+            current_room.room_id,
+            f"{player.name} triggers a deadly trap and falls dead!",
+            exclude_player=[player.name],
+        )
+
+    # Set up permadeath state
+    if player_sid and player_sid in online_sessions:
+        online_sessions[player_sid]["awaiting_respawn"] = True
+        online_sessions[player_sid]["combat_death"] = True
+
+        # Build death message for player
+        if death_message:
+            full_message = f"{death_message}\n\n"
+        else:
+            full_message = f"The {item_name} triggers a deadly trap!\n\n"
+
+        full_message += (
+            "All your items have been dropped.\n\n"
+            "Persona reset.\nWould you like to play again?"
+        )
+
+        await utils.send_message(sio, player_sid, full_message)
+
+    # Put player in limbo
+    player.current_room = None
+    player_manager.save_players()
+
+    return ""  # Empty string since we've already sent the message
+
+
+async def _handle_trap_damage(
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+    damage: int,
+    damage_message: Optional[str],
+    item_name: str,
+) -> Optional[str]:
+    """
+    Handle damage from a trap.
+
+    Reduces player stamina. If stamina reaches 0, triggers death.
+    Returns death message if player died, None if they survived.
+    """
+    player_sid = _find_player_sid(player, online_sessions)
+
+    # Apply damage
+    player.stamina -= damage
+
+    # Check for death
+    if player.stamina <= 0:
+        player.stamina = 0
+        # Player died from damage - call death handler
+        result = await _handle_trap_death(
+            player,
+            game_state,
+            player_manager,
+            online_sessions,
+            sio,
+            utils,
+            damage_message,
+            item_name,
+        )
+        return result
+
+    # Player survived - send damage message and update stats
+    if player_sid:
+        if damage_message:
+            await utils.send_message(sio, player_sid, damage_message)
+        else:
+            await utils.send_message(
+                sio, player_sid, f"The {item_name} hurts you! (-{damage} stamina)"
+            )
+        await utils.send_stats_update(sio, player_sid, player)
+
+    player_manager.save_players()
+    return None  # Player survived
 
 
 async def handle_interaction(
@@ -235,6 +365,40 @@ async def handle_interaction(
                 return f"You can't {verb} the {primary_item.name} right now."
 
         # All conditions met, perform the interaction
+
+        # Handle trap damage/death FIRST (before any other effects)
+        if valid_interaction.get("kills_player", False):
+            # Instant death trap - handle similar to Finger of Death spell
+            result = await _handle_trap_death(
+                player,
+                game_state,
+                player_manager,
+                online_sessions,
+                sio,
+                utils,
+                valid_interaction.get("damage_message")
+                or valid_interaction.get("message"),
+                primary_item.name,
+            )
+            return result
+
+        if valid_interaction.get("damage") is not None:
+            damage_amount = valid_interaction["damage"]
+            damage_result = await _handle_trap_damage(
+                player,
+                game_state,
+                player_manager,
+                online_sessions,
+                sio,
+                utils,
+                damage_amount,
+                valid_interaction.get("damage_message"),
+                primary_item.name,
+            )
+            if damage_result:
+                # Player died from damage
+                return damage_result
+            # Player survived - continue with normal interaction effects
 
         # First, handle state change
         if "target_state" in valid_interaction and valid_interaction["target_state"]:

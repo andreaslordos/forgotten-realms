@@ -176,6 +176,7 @@ async def handle_get(
     # Handle "get all" command
     if subject and subject.lower() == "all":
         picked_up = []
+        failure_reason = None
         all_visible_items = current_room.get_items(game_state)
         for item in list(all_visible_items):
             # Skip non-takeable items
@@ -189,19 +190,25 @@ async def handle_get(
                 if hasattr(item, "id") and item.id in current_room.hidden_items:
                     current_room.remove_hidden_item(item.id)
                 picked_up.append(item.name)
+            else:
+                # Track the first failure reason to report to user
+                if failure_reason is None:
+                    failure_reason = str(message)
 
         # Save player state
         player_manager.save_players()
 
-        return (
-            "\n".join(f"{item} taken." for item in picked_up)
-            if picked_up
-            else "Nothing taken."
-        )
+        if picked_up:
+            return "\n".join(f"{item} taken." for item in picked_up)
+        elif failure_reason:
+            return failure_reason
+        else:
+            return "Nothing to take."
 
     # Handle "get treasure" command
     if subject and subject.lower() in ["treasure", "t"]:
         picked_up = []
+        failure_reason = None
         all_visible_items = current_room.get_items(game_state)
         for item in list(all_visible_items):
             # Skip non-takeable items
@@ -216,15 +223,20 @@ async def handle_get(
                     if hasattr(item, "id") and item.id in current_room.hidden_items:
                         current_room.remove_hidden_item(item.id)
                     picked_up.append(item.name)
+                else:
+                    # Track the first failure reason to report to user
+                    if failure_reason is None:
+                        failure_reason = str(message)
 
         # Save player state
         player_manager.save_players()
 
-        return (
-            "\n".join(f"{item} taken." for item in picked_up)
-            if picked_up
-            else "Nothing taken."
-        )
+        if picked_up:
+            return "\n".join(f"{item} taken." for item in picked_up)
+        elif failure_reason:
+            return failure_reason
+        else:
+            return "No treasure to take."
 
     # Handle getting a specific item - prefer the bound object if available
     found_item = subject_obj

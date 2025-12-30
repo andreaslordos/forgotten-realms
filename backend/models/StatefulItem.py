@@ -81,6 +81,9 @@ class StatefulItem(Item):
         drop_instrument: bool = False,
         reciprocal_exit: Optional[Tuple[str, str, str]] = None,
         remove_item: bool = False,
+        damage: Optional[int] = None,
+        kills_player: bool = False,
+        damage_message: Optional[str] = None,
     ) -> None:
         """
         Register an interaction for this item.
@@ -97,6 +100,10 @@ class StatefulItem(Item):
             consume_instrument (bool, optional): Whether to consume (delete) the instrument after use
             drop_instrument (bool, optional): Whether to force dropping the instrument after use
             reciprocal_exit (tuple, optional): (room_id, direction, target_room_id) for return path
+            remove_item (bool, optional): Remove the item from the room after interaction
+            damage (int, optional): Amount of stamina damage to deal to player
+            kills_player (bool, optional): If True, instantly kills the player (trap)
+            damage_message (str, optional): Custom message when damage/death occurs
         """
         verb = verb.lower()
 
@@ -128,6 +135,12 @@ class StatefulItem(Item):
             interaction["reciprocal_exit"] = reciprocal_exit
         if remove_item:
             interaction["remove_item"] = True
+        if damage is not None:
+            interaction["damage"] = damage
+        if kills_player:
+            interaction["kills_player"] = True
+        if damage_message is not None:
+            interaction["damage_message"] = damage_message
 
         # Add the interaction to the list
         self.interactions[verb].append(interaction)

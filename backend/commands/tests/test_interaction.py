@@ -1224,6 +1224,330 @@ class InteractionNameSearchTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(stateful_item.state, "unlocked")
 
 
+class InteractionTrapTest(unittest.IsolatedAsyncioTestCase):
+    """Test trap functionality (damage and kills_player)."""
+
+    def setUp(self):
+        """Set up mocks for tests."""
+        self.player = Mock()
+        self.player.name = "TestPlayer"
+        self.player.current_room = "test_room"
+        self.player.inventory = []
+        self.player.stamina = 100
+        self.player.remove_item = Mock()
+
+        self.game_state = Mock()
+        self.player_manager = Mock()
+        self.player_manager.save_players = Mock()
+        self.sio = AsyncMock()
+        self.utils = Mock()
+        self.utils.send_message = AsyncMock()
+        self.utils.send_stats_update = AsyncMock()
+
+        self.current_room = Mock()
+        self.current_room.room_id = "test_room"
+        self.current_room.items = []
+        self.current_room.exits = {}
+        self.current_room.get_items = Mock(return_value=[])
+        self.current_room.add_item = Mock()
+        self.current_room.remove_item = Mock()
+        self.game_state.get_room.return_value = self.current_room
+
+    async def test_handle_interaction_kills_player_instant_death(self):
+        """Test interaction with kills_player=True causes instant death."""
+        # Arrange
+        sid = "test_sid"
+        self.online_sessions = {sid: {"player": self.player}}
+
+        trap = StatefulItem(
+            name="spike trap",
+            id="trap_1",
+            description="A deadly spike trap",
+            state=None,
+        )
+        trap.add_interaction(
+            verb="touch",
+            message="Spikes shoot up from the floor!",
+            kills_player=True,
+        )
+        self.current_room.items = [trap]
+        self.current_room.get_items.return_value = [trap]
+
+        cmd = {"verb": "touch", "subject": "trap", "subject_object": trap}
+
+        # Act
+        with patch("commands.interaction.broadcast_room", new_callable=AsyncMock):
+            await handle_interaction(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert
+        self.assertIsNone(self.player.current_room)  # Player in limbo
+        self.assertTrue(self.online_sessions[sid]["awaiting_respawn"])
+        self.assertTrue(self.online_sessions[sid]["combat_death"])
+        self.player_manager.save_players.assert_called()
+
+    async def test_handle_interaction_kills_player_drops_all_items(self):
+        """Test kills_player drops all items to the room."""
+        # Arrange
+        sid = "test_sid"
+        self.online_sessions = {sid: {"player": self.player}}
+
+        sword = Item(name="sword", id="sword_1", description="A sword")
+        shield = Item(name="shield", id="shield_1", description="A shield")
+        self.player.inventory = [sword, shield]
+
+        trap = StatefulItem(
+            name="spike trap",
+            id="trap_1",
+            description="A deadly spike trap",
+            state=None,
+        )
+        trap.add_interaction(
+            verb="touch",
+            message="Spikes shoot up!",
+            kills_player=True,
+        )
+        self.current_room.items = [trap]
+        self.current_room.get_items.return_value = [trap]
+
+        cmd = {"verb": "touch", "subject": "trap", "subject_object": trap}
+
+        # Act
+        with patch("commands.interaction.broadcast_room", new_callable=AsyncMock):
+            await handle_interaction(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert - items should be added to room
+        self.assertEqual(self.current_room.add_item.call_count, 2)
+
+    async def test_handle_interaction_damage_reduces_stamina(self):
+        """Test interaction with damage reduces player stamina."""
+        # Arrange
+        sid = "test_sid"
+        self.online_sessions = {sid: {"player": self.player}}
+        self.player.stamina = 100
+
+        trap = StatefulItem(
+            name="fire trap",
+            id="trap_1",
+            description="A fire trap",
+            state=None,
+        )
+        trap.add_interaction(
+            verb="touch",
+            message="Fire burns you!",
+            damage=25,
+        )
+        self.current_room.items = [trap]
+        self.current_room.get_items.return_value = [trap]
+
+        cmd = {"verb": "touch", "subject": "trap", "subject_object": trap}
+
+        # Act
+        with patch("commands.interaction.broadcast_room", new_callable=AsyncMock):
+            await handle_interaction(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert
+        self.assertEqual(self.player.stamina, 75)
+        self.utils.send_stats_update.assert_called()
+
+    async def test_handle_interaction_damage_kills_at_zero_stamina(self):
+        """Test damage interaction kills player when stamina reaches 0."""
+        # Arrange
+        sid = "test_sid"
+        self.online_sessions = {sid: {"player": self.player}}
+        self.player.stamina = 20  # Low stamina
+
+        trap = StatefulItem(
+            name="fire trap",
+            id="trap_1",
+            description="A fire trap",
+            state=None,
+        )
+        trap.add_interaction(
+            verb="touch",
+            message="Fire burns you!",
+            damage=25,  # More damage than stamina
+        )
+        self.current_room.items = [trap]
+        self.current_room.get_items.return_value = [trap]
+
+        cmd = {"verb": "touch", "subject": "trap", "subject_object": trap}
+
+        # Act
+        with patch("commands.interaction.broadcast_room", new_callable=AsyncMock):
+            await handle_interaction(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert - player should be dead
+        self.assertIsNone(self.player.current_room)
+        self.assertTrue(self.online_sessions[sid]["awaiting_respawn"])
+        self.assertEqual(self.player.stamina, 0)
+
+    async def test_handle_interaction_damage_message_custom(self):
+        """Test custom damage_message is used when provided."""
+        # Arrange
+        sid = "test_sid"
+        self.online_sessions = {sid: {"player": self.player}}
+        self.player.stamina = 100
+
+        trap = StatefulItem(
+            name="shock trap",
+            id="trap_1",
+            description="A shock trap",
+            state=None,
+        )
+        trap.add_interaction(
+            verb="touch",
+            message="Zap!",
+            damage=10,
+            damage_message="Lightning courses through your body!",
+        )
+        self.current_room.items = [trap]
+        self.current_room.get_items.return_value = [trap]
+
+        cmd = {"verb": "touch", "subject": "trap", "subject_object": trap}
+
+        # Act
+        with patch("commands.interaction.broadcast_room", new_callable=AsyncMock):
+            await handle_interaction(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert
+        self.utils.send_message.assert_called()
+        call_args = self.utils.send_message.call_args[0]
+        self.assertIn("Lightning courses through your body!", call_args[2])
+
+    async def test_handle_interaction_kills_player_sends_death_message(self):
+        """Test kills_player sends appropriate death message."""
+        # Arrange
+        sid = "test_sid"
+        self.online_sessions = {sid: {"player": self.player}}
+
+        trap = StatefulItem(
+            name="pit trap",
+            id="trap_1",
+            description="A pit trap",
+            state=None,
+        )
+        trap.add_interaction(
+            verb="touch",
+            message="You fall into the pit!",
+            kills_player=True,
+            damage_message="You plummet into the darkness below...",
+        )
+        self.current_room.items = [trap]
+        self.current_room.get_items.return_value = [trap]
+
+        cmd = {"verb": "touch", "subject": "trap", "subject_object": trap}
+
+        # Act
+        with patch("commands.interaction.broadcast_room", new_callable=AsyncMock):
+            await handle_interaction(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert
+        self.utils.send_message.assert_called()
+        call_args = self.utils.send_message.call_args[0]
+        self.assertIn("plummet", call_args[2])
+        self.assertIn("Persona reset", call_args[2])
+
+    async def test_handle_interaction_trap_with_conditional(self):
+        """Test trap only triggers when conditional_fn passes."""
+        # Arrange
+        sid = "test_sid"
+        self.online_sessions = {sid: {"player": self.player}}
+
+        trap = StatefulItem(
+            name="stones",
+            id="stones_1",
+            description="Standing stones",
+            state="dormant",
+        )
+        trap.add_state_description("dormant", "Ancient stones")
+        trap.add_state_description("awakened", "Awakened stones")
+
+        # First interaction: success path (aligned)
+        trap.add_interaction(
+            verb="touch",
+            target_state="awakened",
+            message="The stones resonate in harmony!",
+            from_state="dormant",
+            conditional_fn=lambda p, gs: True,  # Aligned
+        )
+        # Second interaction: trap path (not aligned)
+        trap.add_interaction(
+            verb="touch",
+            message="Lightning strikes you down!",
+            from_state="dormant",
+            kills_player=True,
+        )
+        self.current_room.items = [trap]
+        self.current_room.get_items.return_value = [trap]
+
+        cmd = {"verb": "touch", "subject": "stones", "subject_object": trap}
+
+        # Act - with aligned stones (condition passes)
+        with patch("commands.interaction.broadcast_room", new_callable=AsyncMock):
+            result = await handle_interaction(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert - should succeed, not die
+        self.assertEqual(trap.state, "awakened")
+        self.assertIn("harmony", result)
+        self.assertIsNotNone(self.player.current_room)  # Not in limbo
+
+
 class RegisterInteractionVerbsTest(unittest.TestCase):
     """Test register_interaction_verbs functionality."""
 
