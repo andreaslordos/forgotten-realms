@@ -527,6 +527,7 @@ common_interaction_verbs = [
     "kneel",
     "bow",
     "search",
+    "restore",
 ]
 
 
