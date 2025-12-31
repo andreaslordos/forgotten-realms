@@ -135,7 +135,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Village priest
         "priest": {
             "name": "priest",
-            "description": "Father Donavich kneels in prayer, his robes tattered and stained.",
+            "description": "The village priest, Father Donavich, kneels in prayer, his robes tattered and stained.",
             "strength": 12,
             "dexterity": 10,
             "max_stamina": 40,
@@ -153,7 +153,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Zombie - moderate threat in graveyard
         "zombie": {
             "name": "zombie",
-            "description": "A shambling corpse lurches toward you, rotting flesh hanging from its bones.",
+            "description": "A zombie lurches toward you, rotting flesh hanging from its shambling corpse.",
             "strength": 25,
             "dexterity": 8,
             "max_stamina": 70,

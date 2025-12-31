@@ -47,6 +47,30 @@ async def handle_look(
 
     # If we have a bound object, use it directly
     if subject_obj:
+        # Check for custom "examine" or "look" interaction first
+        if hasattr(subject_obj, "interactions") and isinstance(
+            subject_obj.interactions, dict
+        ):
+            verb = cmd.get("verb", "look")
+            # Check for examine interaction, then look interaction
+            for interaction_verb in [verb, "examine", "look"]:
+                if interaction_verb in subject_obj.interactions:
+                    interactions = subject_obj.interactions[interaction_verb]
+                    if not isinstance(interactions, list):
+                        interactions = [interactions]
+                    for interaction in interactions:
+                        if isinstance(interaction, dict) and "message" in interaction:
+                            # Check state requirement if present
+                            if "from_state" in interaction:
+                                from_state = interaction["from_state"]
+                                if (
+                                    from_state is not None
+                                    and from_state != subject_obj.state
+                                ):
+                                    continue
+                            return str(interaction["message"])
+                    break
+
         # Check if it's in inventory
         if subject_obj in player.inventory:
             return f"{subject_obj.description}"
@@ -64,6 +88,28 @@ async def handle_look(
     # Look at a specific item in inventory
     for item in player.inventory:
         if subject and hasattr(item, "matches_name") and item.matches_name(subject):
+            # Check for custom interaction first
+            if hasattr(item, "interactions") and isinstance(item.interactions, dict):
+                verb = cmd.get("verb", "look")
+                for interaction_verb in [verb, "examine", "look"]:
+                    if interaction_verb in item.interactions:
+                        interactions = item.interactions[interaction_verb]
+                        if not isinstance(interactions, list):
+                            interactions = [interactions]
+                        for interaction in interactions:
+                            if (
+                                isinstance(interaction, dict)
+                                and "message" in interaction
+                            ):
+                                if "from_state" in interaction:
+                                    from_state = interaction["from_state"]
+                                    if (
+                                        from_state is not None
+                                        and from_state != item.state
+                                    ):
+                                        continue
+                                return str(interaction["message"])
+                        break
             return f"{item.description}"
 
     # Look at a specific item in the room
@@ -73,6 +119,28 @@ async def handle_look(
     )  # Get visible items including hidden ones
     for item in all_visible_items:
         if subject and hasattr(item, "matches_name") and item.matches_name(subject):
+            # Check for custom interaction first
+            if hasattr(item, "interactions") and isinstance(item.interactions, dict):
+                verb = cmd.get("verb", "look")
+                for interaction_verb in [verb, "examine", "look"]:
+                    if interaction_verb in item.interactions:
+                        interactions = item.interactions[interaction_verb]
+                        if not isinstance(interactions, list):
+                            interactions = [interactions]
+                        for interaction in interactions:
+                            if (
+                                isinstance(interaction, dict)
+                                and "message" in interaction
+                            ):
+                                if "from_state" in interaction:
+                                    from_state = interaction["from_state"]
+                                    if (
+                                        from_state is not None
+                                        and from_state != item.state
+                                    ):
+                                        continue
+                                return str(interaction["message"])
+                        break
             return f"{item.name}: {item.description}"
 
     # Look at another player in the room

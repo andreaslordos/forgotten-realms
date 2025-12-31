@@ -31,6 +31,7 @@ from commands.standard import (
 )
 from models.Item import Item
 from models.Room import Room
+from models.StatefulItem import StatefulItem
 
 
 class HandleLookTest(unittest.IsolatedAsyncioTestCase):
@@ -217,6 +218,231 @@ class HandleLookTest(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertIn("don't see", result.lower())
+
+
+class HandleLookInteractionTest(unittest.IsolatedAsyncioTestCase):
+    """Test handle_look with custom interactions."""
+
+    def setUp(self):
+        """Set up mocks for tests."""
+        self.player = Mock()
+        self.player.name = "TestPlayer"
+        self.player.current_room = "test_room"
+        self.player.inventory = []
+        self.player.visited = set()
+
+        self.game_state = Mock()
+        self.player_manager = Mock()
+        self.online_sessions = {}
+        self.sio = AsyncMock()
+        self.utils = Mock()
+        self.utils.mob_manager = None
+
+        self.current_room = Room(
+            room_id="test_room",
+            name="Test Room",
+            description="A test room.",
+            exits={"north": "north_room"},
+        )
+        self.game_state.get_room.return_value = self.current_room
+
+    async def test_handle_look_shows_examine_interaction_for_room_item(self):
+        """Test look shows custom examine interaction message for item in room."""
+        # Arrange
+        pedestal = StatefulItem(
+            name="pedestal",
+            id="pedestal_1",
+            description="An ornate stone pedestal.",
+            takeable=False,
+        )
+        pedestal.add_interaction(
+            verb="examine",
+            message="Three dials are set into the pedestal's base.",
+        )
+        self.current_room.add_item(pedestal)
+        self.current_room.get_items = Mock(return_value=[pedestal])
+
+        cmd = {"verb": "examine", "subject": "pedestal", "subject_object": pedestal}
+
+        # Act
+        result = await handle_look(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert - should show interaction message, not default description
+        self.assertIn("Three dials", result)
+        self.assertNotIn("ornate stone pedestal", result)
+
+    async def test_handle_look_shows_look_interaction_for_room_item(self):
+        """Test look shows custom look interaction message for item in room."""
+        # Arrange
+        statue = StatefulItem(
+            name="statue",
+            id="statue_1",
+            description="A stone statue.",
+            takeable=False,
+        )
+        statue.add_interaction(
+            verb="look",
+            message="The statue's eyes seem to follow you.",
+        )
+        self.current_room.add_item(statue)
+        self.current_room.get_items = Mock(return_value=[statue])
+
+        cmd = {"verb": "look", "subject": "statue", "subject_object": statue}
+
+        # Act
+        result = await handle_look(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertIn("eyes seem to follow you", result)
+        self.assertNotIn("stone statue", result)
+
+    async def test_handle_look_shows_examine_interaction_for_inventory_item(self):
+        """Test look shows custom examine interaction for item in inventory."""
+        # Arrange
+        scroll = StatefulItem(
+            name="scroll",
+            id="scroll_1",
+            description="A rolled up scroll.",
+        )
+        scroll.add_interaction(
+            verb="examine",
+            message="Ancient runes cover the scroll's surface.",
+        )
+        self.player.inventory = [scroll]
+
+        cmd = {"verb": "examine", "subject": "scroll", "subject_object": scroll}
+
+        # Act
+        result = await handle_look(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertIn("Ancient runes", result)
+        self.assertNotIn("rolled up scroll", result)
+
+    async def test_handle_look_falls_back_to_description_without_interaction(self):
+        """Test look falls back to description when no interaction defined."""
+        # Arrange
+        item = StatefulItem(
+            name="rock",
+            id="rock_1",
+            description="Just a plain rock.",
+            takeable=False,
+        )
+        # No interaction added
+        self.current_room.add_item(item)
+        self.current_room.get_items = Mock(return_value=[item])
+
+        cmd = {"verb": "look", "subject": "rock", "subject_object": item}
+
+        # Act
+        result = await handle_look(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert - should show default description
+        self.assertIn("plain rock", result)
+
+    async def test_handle_look_respects_from_state_on_interaction(self):
+        """Test look respects from_state condition on interactions."""
+        # Arrange
+        lever = StatefulItem(
+            name="lever",
+            id="lever_1",
+            description="A rusty lever.",
+            state="down",
+        )
+        lever.add_interaction(
+            verb="examine",
+            from_state="up",
+            message="The lever is pulled up, revealing a hidden mechanism.",
+        )
+        lever.add_interaction(
+            verb="examine",
+            from_state="down",
+            message="The lever points downward.",
+        )
+        self.current_room.add_item(lever)
+        self.current_room.get_items = Mock(return_value=[lever])
+
+        cmd = {"verb": "examine", "subject": "lever", "subject_object": lever}
+
+        # Act
+        result = await handle_look(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert - should show "down" state message since lever is in "down" state
+        self.assertIn("points downward", result)
+        self.assertNotIn("hidden mechanism", result)
+
+    async def test_handle_look_name_search_shows_interaction(self):
+        """Test look by name search also checks for custom interactions."""
+        # Arrange
+        altar = StatefulItem(
+            name="stone altar",
+            id="altar_1",
+            description="A weathered altar.",
+            takeable=False,
+        )
+        altar.add_interaction(
+            verb="examine",
+            message="Blood stains mark the altar's surface.",
+        )
+        self.current_room.add_item(altar)
+        self.current_room.get_items = Mock(return_value=[altar])
+
+        # No subject_object, just subject string - simulates name search
+        cmd = {"verb": "examine", "subject": "altar"}
+
+        # Act
+        result = await handle_look(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertIn("Blood stains", result)
 
 
 class HandleInventoryTest(unittest.IsolatedAsyncioTestCase):

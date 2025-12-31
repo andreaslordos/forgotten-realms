@@ -261,6 +261,37 @@ async def handle_visible(
     return "You shimmer back into view. You are now visible."
 
 
+async def handle_godmode(
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
+    """
+    Secret cheat code that grants 100,000 points.
+    Usage: godmodeplz
+    """
+    # Find player's session for stats update
+    player_sid = None
+    for sid, session in online_sessions.items():
+        if session.get("player") == player:
+            player_sid = sid
+            break
+
+    # Grant the points
+    player.add_points(100000, player_manager)
+    player_manager.save_players()
+
+    # Send stats update
+    if player_sid and utils:
+        await utils.send_stats_update(sio, player_sid, player)
+
+    return "A divine force surges through you. You feel immensely powerful!"
+
+
 # Register Archmage commands
 command_registry.register(
     "set", handle_set_points, "Set points for a player (Archmage only)."
@@ -278,3 +309,6 @@ command_registry.register(
     "visible", handle_visible, "Become visible again (Archmage only)."
 )
 command_registry.register_alias("vis", "visible")
+
+# Secret cheat code - not listed in help
+command_registry.register("godmodeplz", handle_godmode, hidden=True)

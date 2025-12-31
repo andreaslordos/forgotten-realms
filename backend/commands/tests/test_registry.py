@@ -414,6 +414,87 @@ class CommandRegistryRegisterAliasesTest(unittest.TestCase):
         self.assertEqual(mock_vocab.add_abbreviation.call_count, initial_calls)
 
 
+class CommandRegistryHiddenCommandTest(unittest.TestCase):
+    """Test CommandRegistry hidden command functionality."""
+
+    @patch("commands.registry.vocabulary_manager")
+    def test_register_stores_hidden_flag_when_true(self, mock_vocab):
+        """Test register stores hidden=True flag."""
+        # Arrange
+        registry = CommandRegistry()
+        handler = Mock()
+
+        # Act
+        registry.register("secretcmd", handler, "Secret command", hidden=True)
+
+        # Assert
+        self.assertIn("secretcmd", registry.commands)
+        self.assertTrue(registry.commands["secretcmd"]["hidden"])
+
+    @patch("commands.registry.vocabulary_manager")
+    def test_register_stores_hidden_flag_when_false(self, mock_vocab):
+        """Test register stores hidden=False flag by default."""
+        # Arrange
+        registry = CommandRegistry()
+        handler = Mock()
+
+        # Act
+        registry.register("normalcmd", handler, "Normal command")
+
+        # Assert
+        self.assertIn("normalcmd", registry.commands)
+        self.assertFalse(registry.commands["normalcmd"]["hidden"])
+
+    @patch("commands.registry.vocabulary_manager")
+    def test_get_help_excludes_hidden_commands_from_listing(self, mock_vocab):
+        """Test get_help excludes hidden commands from all-commands listing."""
+        # Arrange
+        mock_vocab.expand_word.side_effect = lambda x: x
+        registry = CommandRegistry()
+        registry.register("look", Mock(), "Look around")
+        registry.register("secretcmd", Mock(), "Secret command", hidden=True)
+        registry.register("attack", Mock(), "Attack someone")
+
+        # Act
+        result = registry.get_help()
+
+        # Assert
+        self.assertIn("look:", result)
+        self.assertIn("attack:", result)
+        self.assertNotIn("secretcmd", result)
+
+    @patch("commands.registry.vocabulary_manager")
+    def test_get_help_shows_help_for_hidden_command_when_asked_directly(
+        self, mock_vocab
+    ):
+        """Test get_help shows help for hidden command when queried directly."""
+        # Arrange
+        mock_vocab.expand_word.side_effect = lambda x: x
+        registry = CommandRegistry()
+        registry.register("secretcmd", Mock(), "Secret command help", hidden=True)
+
+        # Act
+        result = registry.get_help("secretcmd")
+
+        # Assert
+        self.assertEqual(result, "Secret command help")
+
+    @patch("commands.registry.vocabulary_manager")
+    def test_get_handler_works_for_hidden_commands(self, mock_vocab):
+        """Test get_handler returns handler for hidden commands."""
+        # Arrange
+        mock_vocab.expand_word.side_effect = lambda x: x
+        registry = CommandRegistry()
+        handler = Mock()
+        registry.register("secretcmd", handler, hidden=True)
+
+        # Act
+        result = registry.get_handler("secretcmd")
+
+        # Assert
+        self.assertEqual(result, handler)
+
+
 class GlobalCommandRegistryTest(unittest.TestCase):
     """Test the global command_registry instance."""
 

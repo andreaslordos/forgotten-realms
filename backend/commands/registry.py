@@ -45,7 +45,11 @@ class CommandRegistry:
             vocabulary_manager.add_direction(direction)
 
     def register(
-        self, verb: str, handler: Callable[..., Any], help_text: Optional[str] = None
+        self,
+        verb: str,
+        handler: Callable[..., Any],
+        help_text: Optional[str] = None,
+        hidden: bool = False,
     ) -> None:
         """
         Register a command handler.
@@ -54,12 +58,14 @@ class CommandRegistry:
             verb: The command verb
             handler: The function to handle the command
             help_text: Optional help text for the command
+            hidden: If True, command won't appear in help listings
         """
         verb_lower = verb.lower()
 
         self.commands[verb_lower] = {
             "handler": handler,
             "help_text": help_text or f"No help available for '{verb}'.",
+            "hidden": hidden,
         }
 
         # Add to vocabulary
@@ -107,10 +113,11 @@ class CommandRegistry:
                 return help_text_value
             return f"No help available for '{verb}'."
 
-        # Return help for all commands
+        # Return help for all commands (excluding hidden ones)
         help_text = "Available commands:\n\n"
         for v, info in sorted(self.commands.items()):
-            help_text += f"{v}: {info['help_text']}\n"
+            if not info.get("hidden", False):
+                help_text += f"{v}: {info['help_text']}\n"
         return help_text
 
     def register_alias(self, alias: str, target_verb: str) -> None:

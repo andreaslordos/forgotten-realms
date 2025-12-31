@@ -22,6 +22,7 @@ from commands.archmage import (
     handle_reset,
     handle_invisible,
     handle_visible,
+    handle_godmode,
 )
 
 
@@ -743,6 +744,131 @@ class HandleVisibleSessionTest(AsyncTestCase):
         # Assert
         self.assertEqual(result, "You shimmer back into view. You are now visible.")
         self.assertFalse(self.online_sessions[archmage_sid]["invisible"])
+
+
+class HandleGodmodeTest(AsyncTestCase):
+    """Test handle_godmode secret cheat command."""
+
+    async def test_handle_godmode_grants_100000_points(self) -> None:
+        """Test handle_godmode grants exactly 100,000 points."""
+        # Arrange
+        cmd = {"verb": "godmodeplz", "original": "godmodeplz"}
+        player_sid = "player_sid"
+        self.online_sessions[player_sid] = {"player": self.normal_player}
+        self.normal_player.add_points = Mock()
+
+        # Act
+        result = await handle_godmode(
+            cmd,
+            self.normal_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
+        )
+
+        # Assert
+        self.normal_player.add_points.assert_called_once_with(
+            100000, self.mock_player_manager
+        )
+        self.assertIn("divine force", result)
+        self.assertIn("powerful", result)
+
+    async def test_handle_godmode_saves_player(self) -> None:
+        """Test handle_godmode saves player after granting points."""
+        # Arrange
+        cmd = {"verb": "godmodeplz", "original": "godmodeplz"}
+        player_sid = "player_sid"
+        self.online_sessions[player_sid] = {"player": self.normal_player}
+        self.normal_player.add_points = Mock()
+
+        # Act
+        await handle_godmode(
+            cmd,
+            self.normal_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
+        )
+
+        # Assert
+        self.mock_player_manager.save_players.assert_called_once()
+
+    async def test_handle_godmode_sends_stats_update(self) -> None:
+        """Test handle_godmode sends stats update to player."""
+        # Arrange
+        cmd = {"verb": "godmodeplz", "original": "godmodeplz"}
+        player_sid = "player_sid"
+        self.online_sessions[player_sid] = {"player": self.normal_player}
+        self.normal_player.add_points = Mock()
+
+        # Act
+        await handle_godmode(
+            cmd,
+            self.normal_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
+        )
+
+        # Assert
+        self.mock_utils.send_stats_update.assert_called_once_with(
+            self.mock_sio, player_sid, self.normal_player
+        )
+
+    async def test_handle_godmode_works_for_any_player(self) -> None:
+        """Test handle_godmode works for non-Archmage players."""
+        # Arrange
+        cmd = {"verb": "godmodeplz", "original": "godmodeplz"}
+        player_sid = "player_sid"
+        self.online_sessions[player_sid] = {"player": self.normal_player}
+        self.normal_player.add_points = Mock()
+
+        # Act
+        result = await handle_godmode(
+            cmd,
+            self.normal_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
+        )
+
+        # Assert - should NOT deny access like other archmage commands
+        self.assertNotIn("do not have the authority", result)
+        self.normal_player.add_points.assert_called_once()
+
+    async def test_handle_godmode_handles_missing_session(self) -> None:
+        """Test handle_godmode handles case when player has no session."""
+        # Arrange
+        cmd = {"verb": "godmodeplz", "original": "godmodeplz"}
+        # No session added for normal_player
+        self.normal_player.add_points = Mock()
+
+        # Act
+        result = await handle_godmode(
+            cmd,
+            self.normal_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
+        )
+
+        # Assert - should still grant points even without session
+        self.normal_player.add_points.assert_called_once_with(
+            100000, self.mock_player_manager
+        )
+        # Stats update should not be called since no session
+        self.mock_utils.send_stats_update.assert_not_called()
+        self.assertIn("divine force", result)
 
 
 if __name__ == "__main__":
