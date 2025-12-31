@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from models.StatefulItem import StatefulItem
 from models.Item import Item
 
@@ -11,6 +11,8 @@ class ContainerItem(StatefulItem):
     items: List[Item]
     no_removal: bool
     no_removal_message: Optional[str]
+    no_removal_condition: Optional[Callable[[Any], Tuple[bool, Optional[str]]]]
+    on_item_added: Optional[Callable[[Any, "ContainerItem", Item], Optional[str]]]
 
     def __init__(
         self,
@@ -44,6 +46,10 @@ class ContainerItem(StatefulItem):
         self.items = []  # List to hold contained items
         self.no_removal = no_removal
         self.no_removal_message = no_removal_message
+        # Dynamic removal check: callable(game_state) -> (blocked, message)
+        self.no_removal_condition = None
+        # Callback when item added: callable(game_state, container, item) -> Optional[str]
+        self.on_item_added = None
         self.update_weight()  # Set the initial total weight (base_weight + contained items)
         self.update_description()  # Set the initial description
 

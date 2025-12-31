@@ -156,16 +156,24 @@ def compute_swamp_paths(rooms: Dict[str, Room]) -> None:
             continue
 
         # Set the swamp direction for this room (direction toward lake)
+        # Only set if direction leads to another outdoor room (for continuous swamp nav)
         if direction_to_lake and getattr(current, "is_outdoor", False):
-            current.swamp_direction = direction_to_lake
+            # Verify the direction leads to an outdoor room
+            next_room_id = current.exits.get(direction_to_lake)
+            next_room = rooms.get(next_room_id) if next_room_id else None
+            if next_room and getattr(next_room, "is_outdoor", False):
+                current.swamp_direction = direction_to_lake
 
-        # Explore neighbors
+        # Explore neighbors - only follow outdoor-to-outdoor paths
+        # (skip "in"/"out" as they are shortcuts, not navigable paths)
         for direction, neighbor_id in current.exits.items():
+            if direction in ("in", "out"):
+                continue
             if neighbor_id not in visited:
-                visited.add(neighbor_id)
                 neighbor = rooms.get(neighbor_id)
+                # Only explore outdoor neighbors for swamp path computation
                 if neighbor and getattr(neighbor, "is_outdoor", False):
-                    # The direction from neighbor to current leads toward lake
+                    visited.add(neighbor_id)
                     direction_toward_lake = opposites.get(direction, direction)
                     queue.append((neighbor_id, direction_toward_lake))
 

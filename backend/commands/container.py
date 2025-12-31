@@ -129,6 +129,12 @@ async def handle_put(
             if container.add_item(item):
                 player.remove_item(item)
                 messages.append(f"{item.name} now inside the {container.name}.")
+                # Call on_item_added callback if defined
+                on_item_added = getattr(container, "on_item_added", None)
+                if callable(on_item_added):
+                    extra_msg = on_item_added(game_state, container, item)
+                    if extra_msg:
+                        messages.append(extra_msg)
             else:
                 # If it doesn't fit, provide feedback
                 if len(container.items) >= container.capacity_limit:
@@ -172,6 +178,12 @@ async def handle_put(
             if container.add_item(item):
                 player.remove_item(item)
                 messages.append(f"{item.name} now inside the {container.name}.")
+                # Call on_item_added callback if defined
+                on_item_added = getattr(container, "on_item_added", None)
+                if callable(on_item_added):
+                    extra_msg = on_item_added(game_state, container, item)
+                    if extra_msg:
+                        messages.append(extra_msg)
             else:
                 # If it doesn't fit, provide feedback
                 if len(container.items) >= container.capacity_limit:
@@ -218,6 +230,14 @@ async def handle_put(
     if container.add_item(item_to_put):
         player.remove_item(item_to_put)
         player_manager.save_players()  # Save player state after changing inventory
+        # Call on_item_added callback if defined
+        on_item_added = getattr(container, "on_item_added", None)
+        if callable(on_item_added):
+            extra_msg = on_item_added(game_state, container, item_to_put)
+            if extra_msg:
+                return (
+                    f"{item_to_put.name} now inside the {container.name}.\n{extra_msg}"
+                )
         return f"{item_to_put.name} now inside the {container.name}."
     else:
         # If add_item returned False, the container is full or item is too heavy
@@ -329,8 +349,13 @@ async def handle_get_from(
     if container.state != "open":
         return f"The {container.name} is closed. You need to open it first."
 
-    # Check if the container forbids item removal
-    if getattr(container, "no_removal", False):
+    # Check if the container forbids item removal (dynamic condition first, then static)
+    no_removal_condition = getattr(container, "no_removal_condition", None)
+    if callable(no_removal_condition):
+        blocked, message = no_removal_condition(game_state)
+        if blocked:
+            return message or f"You cannot take items from the {container.name}."
+    elif getattr(container, "no_removal", False):
         message = getattr(container, "no_removal_message", None)
         return message or f"You cannot take items from the {container.name}."
 
@@ -582,8 +607,13 @@ async def handle_empty(
     if not container:
         return f"You don't see '{subject}'!"
 
-    # Check if the container forbids item removal
-    if getattr(container, "no_removal", False):
+    # Check if the container forbids item removal (dynamic condition first, then static)
+    no_removal_condition = getattr(container, "no_removal_condition", None)
+    if callable(no_removal_condition):
+        blocked, message = no_removal_condition(game_state)
+        if blocked:
+            return message or f"You cannot take items from the {container.name}."
+    elif getattr(container, "no_removal", False):
         message = getattr(container, "no_removal_message", None)
         return message or f"You cannot take items from the {container.name}."
 

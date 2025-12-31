@@ -536,6 +536,13 @@ common_interaction_verbs = [
     "spin",
     "pray",
     "enter",
+    "activate",
+    "bail",
+    "climb",
+    "dig",
+    "pick",
+    "talk",
+    "uncover",
 ]
 
 

@@ -18,6 +18,7 @@ from models.Item import Item
 from models.StatefulItem import StatefulItem
 from models.ContainerItem import ContainerItem
 from models.Weapon import Weapon
+from models.SpecializedRooms import SwampRoom
 from .level_base import LevelGenerator
 
 
@@ -115,7 +116,7 @@ class Level1Village(LevelGenerator):
             "Crooked headstones jut from the muddy earth. A weathered angel statue "
             "watches over them, one wing broken. Fresh flowers mark a grave labeled "
             "'Kolyan Indirovich'. An iron gate leads to a family crypt. The church "
-            "stands east.",
+            "stands east, a ruined shrine to the south. A fetid bog lies to the west.",
             is_outdoor=True,
         )
 
@@ -244,7 +245,8 @@ class Level1Village(LevelGenerator):
             "Burned Ruin",
             "This building burned long ago. Only charred timbers and stone foundation "
             "remain. A child's toy lies miraculously unburned among the debris. The "
-            "smell of old smoke clings to everything. The road lies south.",
+            "smell of old smoke clings to everything. The road lies east, a ruined "
+            "shrine to the southwest.",
             is_outdoor=True,
         )
 
@@ -253,7 +255,8 @@ class Level1Village(LevelGenerator):
             "Ruined Shrine",
             "A small roadside shrine, long abandoned. The idol has been smashed, "
             "leaving only fragments. Someone left fresh offerings despite the "
-            "destruction - a crust of bread, a wilted flower. The road lies east.",
+            "destruction - a crust of bread, a wilted flower. The graveyard lies "
+            "north, a burned ruin to the northeast.",
             is_outdoor=True,
         )
 
@@ -273,6 +276,30 @@ class Level1Village(LevelGenerator):
             "roof has collapsed and stairs are treacherous. A guard's logbook lies "
             "open, pages blank for years. A brass spyglass rests on the windowsill. "
             "Stairs lead down to the gatehouse.",
+        )
+
+        # =====================================================================
+        # SWAMP - Treasure drop point
+        # =====================================================================
+
+        lake = SwampRoom(
+            "lake",
+            "Murky Bog",
+            "A fetid bog lies at the edge of the village, shrouded in thick mist. "
+            "Dark water bubbles sluggishly between gnarled roots and rotting logs. "
+            "The smell of decay hangs heavy in the air. Local legend says treasures "
+            "dropped here are claimed by the spirits below - and rewarded. The village "
+            "lies to the east.",
+            treasure_destination="underlake",
+            awards_points=True,
+        )
+
+        # Inaccessible room where treasure goes (no exits, players can't reach it)
+        underlake = Room(
+            "underlake",
+            "Beneath the Bog",
+            "The murky depths beneath the bog. Treasures claimed by the spirits rest "
+            "here, never to be seen again by mortal eyes.",
         )
 
         # =====================================================================
@@ -309,6 +336,9 @@ class Level1Village(LevelGenerator):
             "chapel_ruins": chapel_ruins,
             "cellar_tunnel": cellar_tunnel,
             "watchtower": watchtower,
+            # Swamp
+            "lake": lake,
+            "underlake": underlake,
         }
 
         return self._rooms
@@ -374,10 +404,16 @@ class Level1Village(LevelGenerator):
             "east": "church",
             "in": "crypt",
             "south": "chapel_ruins",
+            "west": "lake",
         }
 
         self._rooms["crypt"].exits = {
             "out": "graveyard",
+        }
+
+        self._rooms["lake"].exits = {
+            "out": "square",
+            "east": "graveyard",
         }
 
         # =====================================================================
@@ -454,10 +490,12 @@ class Level1Village(LevelGenerator):
 
         self._rooms["burnt"].exits = {
             "east": "road",
+            "southwest": "chapel_ruins",
         }
 
         self._rooms["chapel_ruins"].exits = {
             "north": "graveyard",
+            "northeast": "burnt",
         }
 
     def add_items(self) -> None:
@@ -816,8 +854,8 @@ class Level1Village(LevelGenerator):
             capacity_limit=10,
             capacity_weight=20,
             takeable=False,
-            no_removal=True,
-            no_removal_message="The priest glares at you sternly. 'Those offerings belong to the Morning Lord, not to your pockets!'",
+            # no_removal callbacks are set in configure_npc_interactions()
+            # where we have access to mob_manager to check if priest is alive
         )
         donation_box.synonyms = ["box", "offering box", "wooden box"]
         donation_box.add_interaction(
@@ -1592,6 +1630,78 @@ class Level1Village(LevelGenerator):
                     "effect_fn": priest_blessing,
                 }
             }
+
+        # Donation box - dynamic no_removal based on priest being alive
+        # and grants blessing when bones are placed in it
+        church = self._rooms.get("church")
+        donation_box = None
+        if church:
+            for item in church.items:
+                if getattr(item, "id", None) == "donation_box":
+                    donation_box = item
+                    break
+
+        if donation_box:
+            # Track if blessing already granted via donation box
+            donation_blessing_granted = {"value": False}
+
+            def check_priest_alive(game_state: Any) -> tuple[bool, str | None]:
+                """Check if priest is alive - if so, block removal."""
+                # Find priest in church
+                for mob in mob_manager.get_mobs_in_room("church"):
+                    if mob.name.lower() == "priest":
+                        # Priest is alive (dead mobs excluded from get_mobs_in_room)
+                        return (
+                            True,
+                            "The priest glares at you sternly. "
+                            "'Those offerings belong to the Morning Lord, "
+                            "not to your pockets!'",
+                        )
+                # Priest is dead or not present
+                return (False, None)
+
+            def on_bones_donated(
+                game_state: Any, container: Any, item: Any
+            ) -> str | None:
+                """Grant blessing when bones are placed in donation box."""
+                if item.id != "holy_bones" and "bone" not in item.name.lower():
+                    return None
+
+                # Only grant once
+                if donation_blessing_granted["value"]:
+                    return None
+                donation_blessing_granted["value"] = True
+
+                # Open the mist barrier (same effect as priest blessing)
+                gatehouse = game_state.get_room("gatehouse")
+                if gatehouse:
+                    gatehouse.exits["south"] = "road_south"
+
+                # Check if priest is alive for appropriate message
+                priest_alive = False
+                for mob in mob_manager.get_mobs_in_room("church"):
+                    if mob.name.lower() == "priest":
+                        priest_alive = True
+                        break
+
+                if priest_alive:
+                    return (
+                        "\nFather Donavich sees the bones and gasps.\n\n"
+                        "'The bones of St. Andral! The church is protected once more!'\n\n"
+                        "He makes the sign of the Morning Lord over you.\n\n"
+                        "'May his light guide you through the mists. "
+                        "Go south from the gatehouse - the darkness will part before you.'"
+                    )
+                else:
+                    return (
+                        "\nAs the holy bones settle into the donation box, "
+                        "a warm light briefly fills the church.\n\n"
+                        "Though the priest is gone, St. Andral's blessing flows through you.\n\n"
+                        "You sense the mists to the south will no longer bar your way."
+                    )
+
+            donation_box.no_removal_condition = check_priest_alive
+            donation_box.on_item_added = on_bones_donated
 
         # Barkeep - give coin for hints
         barkeep = find_mob_by_name("barkeep")

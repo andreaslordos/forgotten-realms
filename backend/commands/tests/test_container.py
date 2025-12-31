@@ -1186,6 +1186,312 @@ class NoRemovalContainerTest(AsyncTestCase):
         )
 
 
+class NoRemovalConditionTest(AsyncTestCase):
+    """Test dynamic no_removal_condition callback functionality."""
+
+    def setUp(self):
+        """Set up test fixtures with a container using no_removal_condition."""
+        super().setUp()
+        # Create a container with dynamic removal check
+        self.guarded_box = ContainerItem(
+            "guarded box",
+            "guarded_box",
+            "A box guarded by magic.",
+            weight=5,
+            value=0,
+            capacity_limit=10,
+            capacity_weight=20,
+            takeable=False,
+        )
+        self.guarded_box.set_state("open")
+        self.room.add_item(self.guarded_box)
+
+        # Track whether guard is "alive"
+        self.guard_alive = True
+
+    async def test_no_removal_condition_blocks_when_true(self):
+        """Test that no_removal_condition blocks removal when it returns True."""
+        # Arrange
+        self.guarded_box.add_item(self.item1)
+
+        def check_guard(game_state):
+            if self.guard_alive:
+                return (True, "The guard blocks you!")
+            return (False, None)
+
+        self.guarded_box.no_removal_condition = check_guard
+
+        cmd = {"verb": "get", "subject": "gem", "instrument": "guarded box"}
+
+        # Act
+        result = await handle_get_from(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertIn("guard blocks", result)
+        self.assertIn(self.item1, self.guarded_box.items)
+        self.assertNotIn(self.item1, self.player.inventory)
+
+    async def test_no_removal_condition_allows_when_false(self):
+        """Test that no_removal_condition allows removal when it returns False."""
+        # Arrange
+        self.guarded_box.add_item(self.item1)
+        self.guard_alive = False  # Guard is dead
+
+        def check_guard(game_state):
+            if self.guard_alive:
+                return (True, "The guard blocks you!")
+            return (False, None)
+
+        self.guarded_box.no_removal_condition = check_guard
+
+        cmd = {"verb": "get", "subject": "gem", "instrument": "guarded box"}
+
+        # Act
+        result = await handle_get_from(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertIn("removed from", result)
+        self.assertNotIn(self.item1, self.guarded_box.items)
+        self.assertIn(self.item1, self.player.inventory)
+
+    async def test_no_removal_condition_blocks_empty_command(self):
+        """Test that no_removal_condition blocks the empty command."""
+        # Arrange - put container in player inventory for empty command
+        self.room.items.remove(self.guarded_box)
+        self.guarded_box.takeable = True
+        self.player.add_item(self.guarded_box)
+        self.guarded_box.add_item(self.item1)
+
+        def check_guard(game_state):
+            return (True, "Magic prevents emptying!")
+
+        self.guarded_box.no_removal_condition = check_guard
+
+        cmd = {"verb": "empty", "subject": "guarded box"}
+
+        # Act
+        result = await handle_empty(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertIn("Magic prevents", result)
+        self.assertIn(self.item1, self.guarded_box.items)
+
+    async def test_no_removal_condition_takes_precedence_over_static(self):
+        """Test that no_removal_condition is checked before static no_removal."""
+        # Arrange - set both static no_removal AND condition
+        self.guarded_box.no_removal = True
+        self.guarded_box.no_removal_message = "Static message"
+        self.guarded_box.add_item(self.item1)
+
+        # Condition returns False (allows), should override static True
+        def allow_removal(game_state):
+            return (False, None)
+
+        self.guarded_box.no_removal_condition = allow_removal
+
+        cmd = {"verb": "get", "subject": "gem", "instrument": "guarded box"}
+
+        # Act
+        result = await handle_get_from(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert - should be allowed despite static no_removal=True
+        self.assertIn("removed from", result)
+        self.assertIn(self.item1, self.player.inventory)
+
+
+class OnItemAddedCallbackTest(AsyncTestCase):
+    """Test on_item_added callback functionality."""
+
+    def setUp(self):
+        """Set up test fixtures with a container using on_item_added."""
+        super().setUp()
+        # Create a container with callback
+        self.magic_box = ContainerItem(
+            "magic box",
+            "magic_box",
+            "A box that reacts to certain items.",
+            weight=5,
+            value=0,
+            capacity_limit=10,
+            capacity_weight=20,
+            takeable=False,
+        )
+        self.magic_box.set_state("open")
+        self.room.add_item(self.magic_box)
+
+        # Track callback invocations
+        self.callback_invoked = False
+        self.callback_item = None
+
+    async def test_on_item_added_callback_invoked(self):
+        """Test that on_item_added callback is invoked when item is added."""
+        # Arrange
+        self.player.add_item(self.item1)
+
+        def on_added(game_state, container, item):
+            self.callback_invoked = True
+            self.callback_item = item
+            return "Magic sparkles!"
+
+        self.magic_box.on_item_added = on_added
+
+        cmd = {"verb": "put", "subject": "gem", "instrument": "magic box"}
+
+        # Act
+        result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertTrue(self.callback_invoked)
+        self.assertEqual(self.callback_item, self.item1)
+        self.assertIn("Magic sparkles!", result)
+        self.assertIn("now inside", result)
+
+    async def test_on_item_added_callback_returns_none(self):
+        """Test that on_item_added returning None doesn't add extra message."""
+        # Arrange
+        self.player.add_item(self.item1)
+
+        def on_added(game_state, container, item):
+            self.callback_invoked = True
+            return None  # No extra message
+
+        self.magic_box.on_item_added = on_added
+
+        cmd = {"verb": "put", "subject": "gem", "instrument": "magic box"}
+
+        # Act
+        result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertTrue(self.callback_invoked)
+        self.assertIn("now inside", result)
+        self.assertNotIn("\n", result)  # No extra newline from callback
+
+    async def test_on_item_added_callback_for_specific_item(self):
+        """Test callback that only reacts to specific items."""
+        # Arrange
+        self.player.add_item(self.item1)  # gem
+        self.player.add_item(self.item2)  # coin
+
+        def on_added(game_state, container, item):
+            if "gem" in item.name.lower():
+                return "The gem glows brightly!"
+            return None
+
+        self.magic_box.on_item_added = on_added
+
+        # Act - put gem
+        cmd = {"verb": "put", "subject": "gem", "instrument": "magic box"}
+        result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert - gem triggers special message
+        self.assertIn("gem glows brightly", result)
+
+        # Act - put coin
+        cmd = {"verb": "put", "subject": "coin", "instrument": "magic box"}
+        result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert - coin doesn't trigger special message
+        self.assertIn("now inside", result)
+        self.assertNotIn("glows", result)
+
+    async def test_on_item_added_invoked_for_put_all(self):
+        """Test that on_item_added is called for each item when using 'put all'."""
+        # Arrange
+        self.player.add_item(self.item1)
+        self.player.add_item(self.item2)
+
+        added_items = []
+
+        def on_added(game_state, container, item):
+            added_items.append(item.name)
+            return f"{item.name} accepted!"
+
+        self.magic_box.on_item_added = on_added
+
+        cmd = {"verb": "put", "subject": "all", "instrument": "magic box"}
+
+        # Act
+        result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertEqual(len(added_items), 2)
+        self.assertIn("Gem accepted!", result)
+        self.assertIn("Coin accepted!", result)
+
+
 class PutFallbackToInteractionTest(AsyncTestCase):
     """Test put command fallback to interaction system for StatefulItems."""
 
