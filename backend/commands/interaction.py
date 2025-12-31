@@ -530,6 +530,12 @@ common_interaction_verbs = [
     "release",
     "raise",
     "lower",
+    "ring",
+    "repair",
+    "lift",
+    "spin",
+    "pray",
+    "enter",
 ]
 
 
