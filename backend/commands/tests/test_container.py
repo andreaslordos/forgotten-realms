@@ -1211,7 +1211,7 @@ class PutFallbackToInteractionTest(AsyncTestCase):
             from_state="empty",
             target_state="lit",
             message="You place a torch in the bracket.",
-            required_instrument="torch",
+            required_instrument="torch_1",
         )
         self.bracket.set_room_id("test_room")
         self.room.add_item(self.bracket)

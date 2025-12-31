@@ -933,7 +933,7 @@ class Level1Village(LevelGenerator):
         unfinished_letter = StatefulItem(
             name="letter",
             id="unfinished_letter",
-            description="A half-finished letter lies here'",
+            description="A half-finished letter lies here.",
             state="default",
             weight=0,
             value=10,
@@ -1237,7 +1237,7 @@ class Level1Village(LevelGenerator):
             target_state="open",
             message="With Bildrath out of the way, you use the key to unlock the display case. "
             "The glass door swings open, revealing the valuable merchandise!",
-            required_instrument="key",
+            required_instrument="cellar_key",
             conditional_fn=bildrath_is_dead,
         )
         # If Bildrath is dead but no key
@@ -1253,7 +1253,7 @@ class Level1Village(LevelGenerator):
             target_state="open",
             message="With Bildrath out of the way, you use the key to unlock the display case. "
             "The glass door swings open, revealing the valuable merchandise!",
-            required_instrument="key",
+            required_instrument="cellar_key",
             conditional_fn=bildrath_is_dead,
         )
         display_case.add_interaction(

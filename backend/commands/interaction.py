@@ -355,8 +355,9 @@ async def handle_interaction(
             if not secondary_item:
                 return f"You can't {verb} the {primary_item.name}."
 
-            # Check if it's the right type of instrument
-            if required_instrument.lower() not in secondary_item.name.lower():
+            # Check if it's the right type of instrument (by id)
+            item_id = getattr(secondary_item, "id", "").lower()
+            if item_id != required_instrument.lower():
                 return f"You can't {verb} the {primary_item.name} with that."
 
         # Note: conditional_fn is checked during interaction selection above

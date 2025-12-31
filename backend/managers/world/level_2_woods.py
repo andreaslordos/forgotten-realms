@@ -1264,7 +1264,7 @@ class Level2Woods(LevelGenerator):
         )
         ghostly_knight.add_interaction(
             verb="give",
-            required_instrument="medallion",
+            required_instrument="knight_medallion",
             from_state="blocking",
             target_state="appeased",
             message=(

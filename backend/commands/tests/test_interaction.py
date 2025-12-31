@@ -288,7 +288,7 @@ class InteractionInstrumentTest(unittest.IsolatedAsyncioTestCase):
             verb="unlock",
             from_state="locked",
             target_state="unlocked",
-            required_instrument="key",
+            required_instrument="key_1",
             message="You unlock the door with the key.",
         )
         self.current_room.items = [stateful_item]
@@ -325,7 +325,7 @@ class InteractionInstrumentTest(unittest.IsolatedAsyncioTestCase):
         )
         stateful_item.add_interaction(
             verb="chop",
-            required_instrument="axe",
+            required_instrument="axe_1",
             consume_instrument=True,
             message="You chop down the tree. The axe breaks.",
         )
@@ -367,7 +367,7 @@ class InteractionInstrumentTest(unittest.IsolatedAsyncioTestCase):
             verb="light",
             from_state="unlit",
             target_state="lit",
-            required_instrument="torch",
+            required_instrument="torch_1",
             drop_instrument=True,
             message="You light the candle with the torch.",
         )
@@ -1203,7 +1203,7 @@ class InteractionNameSearchTest(unittest.IsolatedAsyncioTestCase):
             verb="unlock",
             from_state="locked",
             target_state="unlocked",
-            required_instrument="key",
+            required_instrument="key_1",
             message="You unlock the lock.",
         )
         self.current_room.items = [stateful_item]
