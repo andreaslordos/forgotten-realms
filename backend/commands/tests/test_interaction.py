@@ -1290,7 +1290,7 @@ class InteractionTrapTest(unittest.IsolatedAsyncioTestCase):
         # Assert
         self.assertIsNone(self.player.current_room)  # Player in limbo
         self.assertTrue(self.online_sessions[sid]["awaiting_respawn"])
-        self.assertTrue(self.online_sessions[sid]["combat_death"])
+        self.assertFalse(self.online_sessions[sid]["combat_death"])  # Trap = non-combat
         self.player_manager.save_players.assert_called()
 
     async def test_handle_interaction_kills_player_drops_all_items(self):
@@ -1493,7 +1493,9 @@ class InteractionTrapTest(unittest.IsolatedAsyncioTestCase):
         self.utils.send_message.assert_called()
         call_args = self.utils.send_message.call_args[0]
         self.assertIn("plummet", call_args[2])
-        self.assertIn("Persona reset", call_args[2])
+        self.assertIn(
+            "Persona updated", call_args[2]
+        )  # Trap = non-combat, keeps points
 
     async def test_handle_interaction_trap_with_conditional(self):
         """Test trap only triggers when conditional_fn passes."""

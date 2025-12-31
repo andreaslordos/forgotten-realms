@@ -66,10 +66,10 @@ async def _handle_trap_death(
             exclude_player=[player.name],
         )
 
-    # Set up permadeath state
+    # Set up non-combat death state (keeps points, just drops items)
     if player_sid and player_sid in online_sessions:
         online_sessions[player_sid]["awaiting_respawn"] = True
-        online_sessions[player_sid]["combat_death"] = True
+        online_sessions[player_sid]["combat_death"] = False  # Non-combat = keep points
 
         # Build death message for player
         if death_message:
@@ -79,7 +79,7 @@ async def _handle_trap_death(
 
         full_message += (
             "All your items have been dropped.\n\n"
-            "Persona reset.\nWould you like to play again?"
+            "Persona updated.\nWould you like to play again?"
         )
 
         await utils.send_message(sio, player_sid, full_message)
