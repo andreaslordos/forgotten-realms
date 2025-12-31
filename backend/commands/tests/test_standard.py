@@ -380,6 +380,89 @@ class HandleExitsTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("North Room", result)
         self.assertNotIn("too dark", result)
 
+    async def test_handle_exits_shows_swamp_for_outdoor_room(self):
+        """Test exits shows swamp as virtual exit for outdoor rooms."""
+        self.current_room.is_outdoor = True
+        self.current_room.swamp_direction = "south"
+        self.current_room.exits = {"south": "south_room", "north": "north_room"}
+
+        # Mock destination rooms
+        south_room = Mock()
+        south_room.name = "South Room"
+        north_room = Mock()
+        north_room.name = "North Room"
+        self.game_state.get_room.side_effect = lambda room_id: {
+            "test_room": self.current_room,
+            "south_room": south_room,
+            "north_room": north_room,
+        }.get(room_id)
+
+        cmd = {"verb": "exits"}
+
+        result = await handle_exits(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("swamp", result)
+        self.assertIn("South Room", result)
+
+    async def test_handle_exits_no_swamp_for_indoor_room(self):
+        """Test exits does not show swamp for indoor rooms."""
+        self.current_room.is_outdoor = False
+        self.current_room.exits = {"north": "north_room"}
+
+        north_room = Mock()
+        north_room.name = "North Room"
+        self.game_state.get_room.side_effect = lambda room_id: (
+            self.current_room if room_id == "test_room" else north_room
+        )
+
+        cmd = {"verb": "exits"}
+
+        result = await handle_exits(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertNotIn("swamp", result)
+
+    async def test_handle_exits_no_swamp_at_lake(self):
+        """Test exits does not show swamp when already at lake."""
+        lake_room = Room(
+            room_id="lake",
+            name="Lake Zarovich",
+            description="A dark lake",
+            exits={"south": "camp"},
+            is_outdoor=True,
+        )
+        self.player.current_room = "lake"
+        self.game_state.get_room.return_value = lake_room
+
+        cmd = {"verb": "exits"}
+
+        result = await handle_exits(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertNotIn("swamp", result)
+
 
 class HandleGetTest(unittest.IsolatedAsyncioTestCase):
     """Test handle_get functionality."""

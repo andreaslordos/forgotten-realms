@@ -314,7 +314,6 @@ class VocabularyManager:
                 "in",
                 "out",
                 "jump",
-                "swamp",
             }
         )
 

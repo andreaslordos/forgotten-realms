@@ -127,8 +127,20 @@ async def handle_exits(
         return "No exits from here."
     if not room_is_visible(current_room, online_sessions, game_state):
         return "It's too dark to see any exits."
+
+    # Check for swamp direction (virtual exit for outdoor rooms)
+    swamp_dir = getattr(current_room, "swamp_direction", None)
+    has_swamp = (
+        getattr(current_room, "is_outdoor", False)
+        and current_room.room_id != "lake"
+        and swamp_dir is not None
+    )
+
     # Determine the maximum length of the direction strings
-    max_length = max(len(direction) for direction in current_room.exits)
+    all_directions = list(current_room.exits.keys())
+    if has_swamp:
+        all_directions.append("swamp")
+    max_length = max(len(direction) for direction in all_directions)
 
     exit_list = []
     for direction, dest_room_id in current_room.exits.items():
@@ -136,6 +148,12 @@ async def handle_exits(
         dest_name = dest_room.name if dest_room else "Unknown"
         # Format with left-aligned direction so all room names start in the same column
         exit_list.append(f"{direction:<{max_length}}       {dest_name}")
+
+    # Add swamp as a virtual exit for outdoor rooms
+    if has_swamp and swamp_dir:
+        next_room = game_state.get_room(current_room.exits.get(swamp_dir, ""))
+        next_name = next_room.name if next_room else "Unknown"
+        exit_list.append(f"{'swamp':<{max_length}}       {next_name}")
 
     return "\n".join(sorted(exit_list))
 

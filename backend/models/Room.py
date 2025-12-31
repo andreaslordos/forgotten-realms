@@ -16,6 +16,8 @@ class Room:
     ]  # Dict[str, Tuple["Item", Callable[["GameState"], bool]]]
     exits: Dict[str, str]
     is_dark: bool
+    is_outdoor: bool
+    swamp_direction: Optional[str]
 
     def __init__(
         self,
@@ -24,6 +26,7 @@ class Room:
         description: str,
         exits: Optional[Dict[str, str]] = None,
         is_dark: bool = False,
+        is_outdoor: bool = False,
     ) -> None:
         self.room_id = room_id
         self.name = name
@@ -32,6 +35,8 @@ class Room:
         self.hidden_items = {}  # Maps item_id to (item, condition_func) pairs
         self.exits = exits if exits is not None else {}
         self.is_dark = is_dark  # Whether room requires light source to see
+        self.is_outdoor = is_outdoor  # Whether room is outdoors (for swamp command)
+        self.swamp_direction: Optional[str] = None  # Precomputed direction to swamp
 
     def add_item(self, item: Any) -> None:  # item: "Item"
         """Add a visible item to the room."""
@@ -91,6 +96,8 @@ class Room:
             },
             "exits": self.exits,
             "is_dark": self.is_dark,
+            "is_outdoor": self.is_outdoor,
+            "swamp_direction": self.swamp_direction,
         }
 
     @staticmethod
@@ -102,7 +109,9 @@ class Room:
             data["description"],
             exits=data.get("exits", {}),
             is_dark=data.get("is_dark", False),
+            is_outdoor=data.get("is_outdoor", False),
         )
+        room.swamp_direction = data.get("swamp_direction")
         # room.items = [Item.from_dict(item_data) for item_data in data.get("items", [])]
         # Note: condition functions can't be easily serialized, so they'd need to be re-attached
         # after loading by custom code in the game initialization

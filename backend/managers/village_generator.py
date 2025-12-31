@@ -117,6 +117,9 @@ def generate_valley_of_barovia(mob_manager: Optional[Any] = None) -> Dict[str, R
     # Connect rooms with exits
     connect_exits(rooms)
 
+    # Precompute paths to the swamp for outdoor rooms
+    compute_swamp_paths(rooms)
+
     # Add stateful items to rooms
     add_stateful_items(rooms)
 
@@ -202,6 +205,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "like hollow eyes. The smell of fear hangs heavier than the fog. A crumbling church offers "
         "faint hope to the north. The tavern's dim light flickers to the east. A dirt road leads "
         "south toward the woods, and the burgomaster's manor looms to the west.",
+        is_outdoor=True,
     )
 
     tavern: Room = Room(
@@ -272,6 +276,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "disturbance - dirt mounded fresh, stones overturned. The mist clings especially thick here, "
         "and you swear you can see shapes moving within it. An iron gate leads to a family crypt. "
         "The church stands to the east.",
+        is_outdoor=True,
     )
 
     crypt: Room = Room(
@@ -292,6 +297,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "their bare branches reaching like grasping fingers. Mist pools in every hollow. "
         "The village lies to the north, while the road continues south toward a crossroads. "
         "Wolf howls echo in the distance.",
+        is_outdoor=True,
     )
 
     crossroads: Room = Room(
@@ -301,6 +307,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "swinging gently in the breeze. The signs point in various directions: 'Barovia' to the north, "
         "'Vallaki' to the west, 'Castle Ravenloft' to the east, and 'Tser Pool' to the south. "
         "A trail leads southeast into the dark woods. Crows watch from nearby branches.",
+        is_outdoor=True,
     )
 
     woods: Room = Room(
@@ -311,6 +318,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Occasionally, you catch glimpses of movement - wolves perhaps, or something worse. "
         "A clearing is visible to the west. The crossroads lies to the northwest, and a dark "
         "hollow opens to the south.",
+        is_outdoor=True,
     )
 
     clearing: Room = Room(
@@ -319,6 +327,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "A small clearing in the endless forest. Three ancient standing stones form a circle "
         "at the center, each carved with faded symbols. Wolf tracks crisscross the muddy ground. "
         "A path leads toward a windmill on a distant hill to the west. The dark woods continue east.",
+        is_outdoor=True,
     )
 
     barrow: Room = Room(
@@ -337,6 +346,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "their painted sides a stark contrast to the dreary landscape. Cooking fires burn, and "
         "the sound of music drifts from somewhere. A worn path leads to a fortune teller's wagon. "
         "The crossroads lies to the north.",
+        is_outdoor=True,
     )
 
     wagon: Room = Room(
@@ -355,6 +365,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "what little light exists, and the mist here has a cloying quality. Something rustles "
         "in the undergrowth. The forest path continues to the north.",
         is_dark=True,
+        is_outdoor=True,
     )
 
     bridge: Room = Room(
@@ -364,6 +375,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "Gargoyle statues crouch at each end, their faces worn smooth by centuries of rain. "
         "The road to Vallaki continues to the west, while the crossroads lies to the east. "
         "An overgrown path leads south toward a ruined manor.",
+        is_outdoor=True,
     )
 
     castlegates: Room = Room(
@@ -373,6 +385,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "crumbling bridge leads to the castle itself, its spires stabbing at the grey sky. "
         "The gates seem to invite you in. Or perhaps... they're ensuring you can't leave. "
         "The crossroads lies to the west. The castle courtyard beckons to the east.",
+        is_outdoor=True,
     )
 
     mists: Room = Room(
@@ -381,6 +394,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "The mists here are so thick you can barely see your hand before your face. They "
         "seem almost solid, pressing against you, turning you back. No matter which direction "
         "you try, you always end up back where you started. There is no escape from Barovia.",
+        is_outdoor=True,
     )
 
     # ===== OLD BONEGRINDER =====
@@ -392,6 +406,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "slowly despite the lack of wind, creaking with each rotation. The smell of baking "
         "drifts down - something sweet, but wrong. A raven watches from a dead tree. "
         "The clearing lies to the east. The mill entrance beckons.",
+        is_outdoor=True,
     )
 
     mill: Room = Room(
@@ -447,6 +462,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "a dragon statue still stands proud atop the main tower, despite centuries of decay. "
         "Ghostly lights flicker in the windows. The main hall is visible through broken doors "
         "to the east. The stone bridge lies to the north.",
+        is_outdoor=True,
     )
 
     hall: Room = Room(
@@ -510,6 +526,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "checking for signs of vampirism. Posters proclaim the 'Festival of the Blazing Sun' - "
         "apparently, mandatory happiness is enforced here. The main street leads west into town. "
         "The bridge and road to Barovia lie to the east.",
+        is_outdoor=True,
     )
 
     street: Room = Room(
@@ -519,6 +536,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "everywhere, but the townspeople's smiles look forced. Guards patrol constantly. "
         "A sign points to the Blue Water Inn to the south. St. Andral's Church stands to the "
         "north. The burgomaster's mansion looms to the west, and the town gates lie to the east.",
+        is_outdoor=True,
     )
 
     inn: Room = Room(
@@ -545,6 +563,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "A grim stockyard where wolf heads are displayed on spikes - the Baron's trophies. "
         "An executioner's block stands in the center, stained dark with old blood. The smell "
         "of death lingers. This is where the Baron's 'justice' is carried out.",
+        is_outdoor=True,
     )
 
     mansion: Room = Room(
@@ -581,6 +600,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "please - the only people in Barovia who can leave. They trade in secrets and dreams, "
         "and are not above deception. The lake shore is visible to the north. The town gates "
         "lie to the east.",
+        is_outdoor=True,
     )
 
     lake: SwampRoom = SwampRoom(
@@ -604,6 +624,7 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         "movements. The grand entrance beckons to the east, its doors hanging open in mocking "
         "invitation. The howl of wolves echoes from somewhere far below. The gates lie to "
         "the west.",
+        is_outdoor=True,
     )
 
     entrance: Room = Room(
@@ -950,6 +971,7 @@ def connect_exits(rooms: Dict[str, Room]) -> None:
     rooms["towngate"].exits = {
         "east": "bridge",
         "west": "street",
+        "southwest": "camp",
     }
 
     rooms["street"].exits = {
@@ -988,7 +1010,7 @@ def connect_exits(rooms: Dict[str, Room]) -> None:
 
     rooms["camp"].exits = {
         "north": "lake",
-        "east": "towngate",
+        "northeast": "towngate",
     }
 
     rooms["lake"].exits = {
@@ -1057,6 +1079,55 @@ def connect_exits(rooms: Dict[str, Room]) -> None:
     rooms["coffin"].exits = {
         "south": "castlechapel",
     }
+
+
+def compute_swamp_paths(rooms: Dict[str, Room]) -> None:
+    """Precompute shortest path direction to the lake for all outdoor rooms.
+
+    Uses BFS starting from the lake and working outward. For each outdoor
+    room, stores the direction to move to get one step closer to the lake.
+    """
+    import logging
+    from collections import deque
+    from typing import List, Tuple
+
+    logger = logging.getLogger(__name__)
+    logger.info("Computing swamp paths from lake...")
+
+    target = "lake"
+
+    # Guard clause: if lake doesn't exist, nothing to compute
+    if target not in rooms:
+        logger.warning("Lake room not found, skipping swamp path computation.")
+        return
+
+    # Build reverse adjacency: for each room, which rooms lead TO it and via what direction
+    reverse_adj: Dict[str, List[Tuple[str, str]]] = {rid: [] for rid in rooms}
+    for room_id, room in rooms.items():
+        for direction, dest_id in room.exits.items():
+            if dest_id in reverse_adj:
+                reverse_adj[dest_id].append((room_id, direction))
+
+    # BFS from target outward
+    visited: set[str] = {target}
+    queue: deque[str] = deque([target])
+    outdoor_count = 0
+
+    while queue:
+        current = queue.popleft()
+        # For each room that has an exit leading to current
+        for source_id, direction in reverse_adj[current]:
+            if source_id not in visited:
+                visited.add(source_id)
+                source_room = rooms[source_id]
+                # Only set swamp_direction for outdoor rooms
+                if getattr(source_room, "is_outdoor", False):
+                    source_room.swamp_direction = direction
+                    outdoor_count += 1
+                    logger.debug(f"  {source_id}: swamp_direction = {direction}")
+                queue.append(source_id)
+
+    logger.info(f"Swamp paths computed for {outdoor_count} outdoor rooms.")
 
 
 def add_container_items(rooms: Dict[str, Room]) -> None:

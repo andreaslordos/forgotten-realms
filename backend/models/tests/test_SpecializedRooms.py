@@ -48,6 +48,13 @@ class SwampRoomInitializationTest(unittest.TestCase):
         )
         self.assertTrue(swamp.awards_points)
 
+    def test_swamp_room_is_outdoor_by_default(self):
+        """Test SwampRoom sets is_outdoor to True by default."""
+        swamp = SwampRoom(
+            room_id="swamp1", name="The Swamp", description="A murky swamp"
+        )
+        self.assertTrue(swamp.is_outdoor)
+
 
 class SwampRoomTreasureDropTest(unittest.TestCase):
     """Test SwampRoom.handle_treasure_drop functionality."""

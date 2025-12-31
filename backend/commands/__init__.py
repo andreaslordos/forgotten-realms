@@ -30,6 +30,7 @@ __all__ = [
     "rest",
     "player_interaction",
     "magic",
+    "pathfinding",
 ]
 
 logging.basicConfig(
@@ -101,6 +102,7 @@ try:
         container,
         interaction,
         magic,
+        pathfinding,
         player_interaction,
         rest,
         standard,

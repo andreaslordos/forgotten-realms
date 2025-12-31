@@ -359,5 +359,93 @@ class RoomDarknessTest(unittest.TestCase):
         self.assertEqual(reconstructed.is_dark, original.is_dark)
 
 
+class RoomOutdoorTest(unittest.TestCase):
+    """Test room outdoor and swamp direction properties."""
+
+    def test___init___defaults_is_outdoor_to_false(self):
+        """Test room defaults to indoor."""
+        room = Room("room1", "Test Room", "A test room")
+
+        self.assertFalse(room.is_outdoor)
+
+    def test___init___accepts_is_outdoor_parameter(self):
+        """Test creating an outdoor room."""
+        room = Room("square", "Village Square", "A square", is_outdoor=True)
+
+        self.assertTrue(room.is_outdoor)
+
+    def test___init___defaults_swamp_direction_to_none(self):
+        """Test swamp_direction defaults to None."""
+        room = Room("room1", "Test Room", "A test room")
+
+        self.assertIsNone(room.swamp_direction)
+
+    def test_swamp_direction_can_be_set(self):
+        """Test swamp_direction can be assigned."""
+        room = Room("square", "Village Square", "A square", is_outdoor=True)
+        room.swamp_direction = "south"
+
+        self.assertEqual(room.swamp_direction, "south")
+
+    def test_to_dict_includes_is_outdoor(self):
+        """Test serialization includes is_outdoor property."""
+        room = Room("square", "Village Square", "A square", is_outdoor=True)
+        room_dict = room.to_dict()
+
+        self.assertIn("is_outdoor", room_dict)
+        self.assertTrue(room_dict["is_outdoor"])
+
+    def test_to_dict_includes_swamp_direction(self):
+        """Test serialization includes swamp_direction property."""
+        room = Room("square", "Village Square", "A square", is_outdoor=True)
+        room.swamp_direction = "south"
+        room_dict = room.to_dict()
+
+        self.assertIn("swamp_direction", room_dict)
+        self.assertEqual(room_dict["swamp_direction"], "south")
+
+    def test_from_dict_restores_is_outdoor(self):
+        """Test deserialization restores is_outdoor property."""
+        data = {
+            "room_id": "square",
+            "name": "Village Square",
+            "description": "A square",
+            "exits": {},
+            "items": [],
+            "is_outdoor": True,
+        }
+
+        room = Room.from_dict(data)
+
+        self.assertTrue(room.is_outdoor)
+
+    def test_from_dict_restores_swamp_direction(self):
+        """Test deserialization restores swamp_direction property."""
+        data = {
+            "room_id": "square",
+            "name": "Village Square",
+            "description": "A square",
+            "exits": {},
+            "items": [],
+            "is_outdoor": True,
+            "swamp_direction": "south",
+        }
+
+        room = Room.from_dict(data)
+
+        self.assertEqual(room.swamp_direction, "south")
+
+    def test_to_dict_from_dict_round_trip_with_outdoor_properties(self):
+        """Test serialization cycle preserves outdoor properties."""
+        original = Room("square", "Village Square", "A square", is_outdoor=True)
+        original.swamp_direction = "south"
+
+        serialized = original.to_dict()
+        reconstructed = Room.from_dict(serialized)
+
+        self.assertEqual(reconstructed.is_outdoor, original.is_outdoor)
+        self.assertEqual(reconstructed.swamp_direction, original.swamp_direction)
+
+
 if __name__ == "__main__":
     unittest.main()

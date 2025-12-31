@@ -32,7 +32,7 @@ class SwampRoom(Room):
             treasure_destination (str): Room ID where treasure gets moved when dropped
             awards_points (bool): Whether dropping treasure here rewards points
         """
-        super().__init__(room_id, name, description, exits)
+        super().__init__(room_id, name, description, exits, is_outdoor=True)
         self.treasure_destination = treasure_destination
         self.awards_points = awards_points
 

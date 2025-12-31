@@ -1330,15 +1330,16 @@ class HandleAfflictionSpellsTest(unittest.IsolatedAsyncioTestCase):
             "commands.magic.find_player_by_name", return_value=(self.target, "sid1")
         ):
             with patch("commands.magic.find_player_sid", return_value="caster_sid"):
-                result = await handle_deafen(
-                    cmd,
-                    self.player,
-                    self.game_state,
-                    self.player_manager,
-                    online_sessions,
-                    self.sio,
-                    self.utils,
-                )
+                with patch("commands.magic.roll_resistance", return_value=False):
+                    result = await handle_deafen(
+                        cmd,
+                        self.player,
+                        self.game_state,
+                        self.player_manager,
+                        online_sessions,
+                        self.sio,
+                        self.utils,
+                    )
 
         self.assertIn("deafen", result.lower())
         self.assertIn("deaf", online_sessions["sid1"]["afflictions"])
