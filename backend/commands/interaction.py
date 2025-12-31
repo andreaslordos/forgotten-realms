@@ -528,6 +528,9 @@ common_interaction_verbs = [
     "bow",
     "search",
     "restore",
+    "untie",
+    "free",
+    "release",
 ]
 
 

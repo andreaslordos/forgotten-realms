@@ -8,6 +8,79 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
+async def handle_give_to_mob(
+    mob: Any,
+    item: Any,
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Any],
+    sio: Any,
+    utils: Any,
+) -> str:
+    """
+    Handle giving an item to a mob/NPC.
+    NPCs can have an 'accepts_item' dict mapping item names to responses.
+    """
+    # Check if mob has accepts_item property
+    accepts = getattr(mob, "accepts_item", None)
+
+    if not accepts:
+        return f"{mob.name} doesn't want anything from you."
+
+    # Check if the item matches what the mob accepts (case-insensitive)
+    item_name_lower = item.name.lower()
+    matched_item = None
+    response_data = None
+
+    for accepted_name, data in accepts.items():
+        if accepted_name.lower() == item_name_lower:
+            matched_item = accepted_name
+            response_data = data
+            break
+        # Also check if accepted_name is in item's synonyms
+        if hasattr(item, "synonyms") and item.synonyms:
+            for syn in item.synonyms:
+                if accepted_name.lower() == syn.lower():
+                    matched_item = accepted_name
+                    response_data = data
+                    break
+
+    if not matched_item or not response_data:
+        return f"{mob.name} doesn't want the {item.name}."
+
+    # Check if one-time interaction has already happened
+    if response_data.get("one_time") and response_data.get("triggered"):
+        return f"{mob.name} has already received what they needed."
+
+    # Remove the item from player's inventory
+    player.remove_item(item)
+    player_manager.save_players()
+
+    # Mark as triggered if one-time
+    if response_data.get("one_time"):
+        response_data["triggered"] = True
+
+    # Execute effect function if present
+    effect_fn = response_data.get("effect_fn")
+    if effect_fn:
+        await effect_fn(player, game_state, player_manager, online_sessions, sio, utils)
+
+    # Notify others in the room
+    notify_msg = f"{player.name} gives the {item.name} to {mob.name}."
+    for sid, session_data in online_sessions.items():
+        other_player = session_data.get("player")
+        if (
+            other_player
+            and other_player.current_room == player.current_room
+            and other_player != player
+        ):
+            await utils.send_message(sio, sid, notify_msg)
+
+    # Return the response message
+    return str(response_data.get("message", f"You give the {item.name} to {mob.name}."))
+
+
 async def handle_give(
     cmd: Dict[str, Any],
     player: Any,
@@ -70,11 +143,20 @@ async def handle_give(
     if not item:
         return f"You don't have '{item_name}' in your inventory."
 
-    # Check if target is a mobile (can't give items to mobs)
+    # Check if target is a mobile - handle NPC interactions
     from models.Mobile import Mobile
 
     if target_obj and isinstance(target_obj, Mobile):
-        return f"{target_obj.name} cannot accept items."
+        return await handle_give_to_mob(
+            target_obj,
+            item,
+            player,
+            game_state,
+            player_manager,
+            online_sessions,
+            sio,
+            utils,
+        )
 
     # Find the target player - prefer bound object
     target_player = None

@@ -311,8 +311,8 @@ class GiveCommandTest(AsyncTestCase):
             self.utils,
         )
 
-        # Should reject giving to mobile
-        self.assertIn("cannot accept items", result)
+        # Should reject giving to mobile (that doesn't accept items)
+        self.assertIn("doesn't want anything from you", result)
         # Item should still be with player
         self.assertIn(self.item1, self.player.inventory)
 

@@ -203,6 +203,7 @@ def spawn_initial_mobs(mob_manager: Any, rooms: Dict[str, Room]) -> None:
     spawn_mob_in_room("vistani", "pool")
     spawn_mob_in_room("seer", "wagon")
     spawn_mob_in_room("bats", "hollow")
+    spawn_mob_in_room("specter", "barrow")  # Difficulty progression mob
 
     # Old Bonegrinder - hags
     spawn_mob_in_room("hag", "mill")
@@ -219,13 +220,318 @@ def spawn_initial_mobs(mob_manager: Any, rooms: Dict[str, Room]) -> None:
     spawn_mob_in_room("baron", "mansion")
     spawn_mob_in_room("wereraven", "attic")
     spawn_mob_in_room("hunter", "inn")
+    spawn_mob_in_room("prisoner", "mansiondungeon")
 
     # Castle Ravenloft - the deadliest encounters
     spawn_mob_in_room("gargoyle", "courtyard")
-    spawn_mob_in_room("wraith", "dungeon")
+    spawn_mob_in_room("wraith", "castledungeon")
     spawn_mob_in_room("consort", "dining")
     spawn_mob_in_room("strahd", "tomb")
     spawn_mob_in_room("skeleton", "castlecrypt")
+    spawn_mob_in_room("spawn", "castlechapel")
+    spawn_mob_in_room("spawn", "coffin")
+
+    # Configure NPC interactions
+    configure_npc_interactions(mob_manager, rooms)
+
+
+def configure_npc_interactions(mob_manager: Any, rooms: Dict[str, Room]) -> None:
+    """Configure accepts_item interactions for NPCs."""
+
+    def find_mob_by_name(name: str) -> Any:
+        """Find a mob by its name."""
+        for mob_id, mob in mob_manager.mobs.items():
+            if mob.name.lower() == name.lower():
+                return mob
+        return None
+
+    # === SEER (wagon) - Give wine for better fortune reading ===
+    seer = find_mob_by_name("seer")
+    if seer:
+        seer.accepts_item = {
+            "wine": {
+                "message": (
+                    "The seer's milky eyes light up as she takes the wine.\n\n"
+                    "'Ah, a gift freely given! The mists part for generosity...'\n\n"
+                    "She drinks deeply, then fixes you with an unseeing gaze:\n\n"
+                    "'I see your path clearly now. The Dark Lord fears three things:\n"
+                    "The light of the sun made manifest, the bones of the saint,\n"
+                    "and the dragon's beacon rekindled. Seek these, and you may prevail.'"
+                ),
+                "one_time": True,
+                "triggered": False,
+            }
+        }
+
+    # === PRIEST (church) - Give bones to unlock blessing ===
+    priest = find_mob_by_name("priest")
+    if priest:
+
+        async def priest_blessing(
+            player: Any,
+            game_state: Any,
+            player_manager: Any,
+            online_sessions: Any,
+            sio: Any,
+            utils: Any,
+        ) -> None:
+            """Grant player a blessing and cure afflictions."""
+            # Find player's session
+            player_sid = None
+            for sid, session in online_sessions.items():
+                if session.get("player") == player:
+                    player_sid = sid
+                    break
+            if player_sid:
+                session = online_sessions.get(player_sid, {})
+                # Clear afflictions
+                session["afflictions"] = {}
+
+        priest.accepts_item = {
+            "bones": {
+                "message": (
+                    "Father Donavich gasps as you hand him the holy bones.\n\n"
+                    "'The bones of St. Andral! You've found them! The church is "
+                    "protected once more!'\n\n"
+                    "He clasps your hands, tears in his eyes.\n\n"
+                    "'Bless you, brave soul. May the Morning Lord's light guide you. "
+                    "I grant you his blessing - you are cleansed of all afflictions.'"
+                ),
+                "one_time": True,
+                "triggered": False,
+                "effect_fn": priest_blessing,
+            }
+        }
+
+    # === BARKEEP (tavern) - Give coin for hints ===
+    barkeep = find_mob_by_name("barkeep")
+    if barkeep:
+        barkeep.accepts_item = {
+            "coin": {
+                "message": (
+                    "The barkeep palms the coin and leans in conspiratorially.\n\n"
+                    "'You want to know about the Devil? I've heard things...'\n\n"
+                    "'They say his heart isn't in his chest - it's in a crystal, "
+                    "hidden in his castle. Destroy that, and he can be hurt.'\n\n"
+                    "'And there's a sword, a blade of pure sunlight, locked away "
+                    "in his treasury. The dials must be set right: sun, star, moon.'"
+                ),
+                "one_time": True,
+                "triggered": False,
+            }
+        }
+
+    # === RAVEN (millpath) - Give food to reveal wereraven ===
+    raven = find_mob_by_name("raven")
+    if raven:
+        raven.accepts_item = {
+            "bone": {
+                "message": (
+                    "The raven hops down and pecks at the bone. Then, before your "
+                    "eyes, it transforms!\n\n"
+                    "A dark-haired man now stands before you, sharp-featured and keen-eyed.\n\n"
+                    "'You have a kind heart,' he says. 'We Keepers of the Feather "
+                    "watch over Barovia. The hags at the mill - they steal children. "
+                    "Free them if you can, but beware: the hag's true name is her "
+                    "weakness. Say it in her kitchen, and she weakens.'\n\n"
+                    "He transforms back into a raven and flies away."
+                ),
+                "one_time": True,
+                "triggered": False,
+            },
+            "meat": {
+                "message": (
+                    "The raven hops down and pecks at the meat. Then, before your "
+                    "eyes, it transforms!\n\n"
+                    "A dark-haired man now stands before you, sharp-featured and keen-eyed.\n\n"
+                    "'You have a kind heart,' he says. 'We Keepers of the Feather "
+                    "watch over Barovia. The hags at the mill - they steal children. "
+                    "Free them if you can, but beware: the hag's true name is her "
+                    "weakness. Say it in her kitchen, and she weakens.'\n\n"
+                    "He transforms back into a raven and flies away."
+                ),
+                "one_time": True,
+                "triggered": False,
+            },
+        }
+
+    # === HUNTER (inn) - Give fang to get silver weapon ===
+    hunter = find_mob_by_name("hunter")
+    if hunter:
+
+        async def give_silver_dagger(
+            player: Any,
+            game_state: Any,
+            player_manager: Any,
+            online_sessions: Any,
+            sio: Any,
+            utils: Any,
+        ) -> None:
+            """Give player a silver dagger."""
+            from models.Weapon import Weapon
+
+            silver_dagger = Weapon(
+                name="silver dagger",
+                id="silver_dagger",
+                description="A dagger of pure silver, deadly to creatures of the night.",
+                weight=1,
+                value=50,
+                takeable=True,
+                damage=8,
+                min_level="Neophyte",
+                min_strength=0,
+                min_dexterity=5,
+            )
+            player.add_item(silver_dagger)
+            player_manager.save_players()
+
+        hunter.accepts_item = {
+            "fang": {
+                "message": (
+                    "The hunter examines the fang, then nods with respect.\n\n"
+                    "'A vampire fang. You've faced the spawn and survived. "
+                    "That takes courage - or foolishness.'\n\n"
+                    "He reaches into his pack and pulls out a gleaming blade.\n\n"
+                    "'Take this silver dagger. Against the undead, silver cuts "
+                    "deeper than steel. You'll need it if you're going to the castle.'"
+                ),
+                "one_time": True,
+                "triggered": False,
+                "effect_fn": give_silver_dagger,
+            }
+        }
+
+    # === WOLF (woods) - Give meat/bone to calm ===
+    wolf = find_mob_by_name("wolf")
+    if wolf:
+
+        async def calm_wolf(
+            player: Any,
+            game_state: Any,
+            player_manager: Any,
+            online_sessions: Any,
+            sio: Any,
+            utils: Any,
+        ) -> None:
+            """Make the wolf non-aggressive."""
+            wolf_mob = find_mob_by_name("wolf")
+            if wolf_mob:
+                wolf_mob.aggressive = False
+                wolf_mob.target_player = None
+
+        wolf.accepts_item = {
+            "meat": {
+                "message": (
+                    "You toss the meat to the wolf. It sniffs cautiously, then "
+                    "devours it hungrily.\n\n"
+                    "The wolf's posture relaxes. Its snarl fades to a curious "
+                    "expression. It seems you've earned a measure of trust - "
+                    "for now, at least."
+                ),
+                "one_time": True,
+                "triggered": False,
+                "effect_fn": calm_wolf,
+            },
+            "bone": {
+                "message": (
+                    "You offer the bone to the wolf. It snatches it from your "
+                    "hand and begins gnawing contentedly.\n\n"
+                    "The wolf's aggressive stance softens. It regards you with "
+                    "something almost like gratitude. Perhaps not all creatures "
+                    "in Barovia are beyond redemption."
+                ),
+                "one_time": True,
+                "triggered": False,
+                "effect_fn": calm_wolf,
+            },
+        }
+
+    # === PRISONER (mansiondungeon) - Untie for information ===
+    prisoner = find_mob_by_name("prisoner")
+    if prisoner:
+        # Add untie/free interaction to the prisoner
+        prisoner.add_interaction(
+            verb="untie",
+            target_state="freed",
+            message=(
+                "You work at the heavy chains binding the prisoner. After much effort, "
+                "they come loose.\n\n"
+                "The prisoner slumps to the ground, gasping.\n\n"
+                "'Thank you... thank you...' he whispers. 'The Baron - he's mad. He tortures "
+                "anyone who doesn't smile at his festivals. There's a secret vault behind "
+                "the dungeon wall - third stone from the door. His darkest crimes are recorded "
+                "there. Expose him, and Vallaki might be free.'\n\n"
+                "The prisoner limps away into the shadows."
+            ),
+            from_state="alive",
+        )
+        prisoner.add_interaction(
+            verb="free",
+            target_state="freed",
+            message=(
+                "You work at the heavy chains binding the prisoner. After much effort, "
+                "they come loose.\n\n"
+                "The prisoner slumps to the ground, gasping.\n\n"
+                "'Thank you... thank you...' he whispers. 'The Baron - he's mad. He tortures "
+                "anyone who doesn't smile at his festivals. There's a secret vault behind "
+                "the dungeon wall - third stone from the door. His darkest crimes are recorded "
+                "there. Expose him, and Vallaki might be free.'\n\n"
+                "The prisoner limps away into the shadows."
+            ),
+            from_state="alive",
+        )
+        prisoner.add_interaction(
+            verb="release",
+            target_state="freed",
+            message=(
+                "You work at the heavy chains binding the prisoner. After much effort, "
+                "they come loose.\n\n"
+                "The prisoner slumps to the ground, gasping.\n\n"
+                "'Thank you... thank you...' he whispers. 'The Baron - he's mad. He tortures "
+                "anyone who doesn't smile at his festivals. There's a secret vault behind "
+                "the dungeon wall - third stone from the door. His darkest crimes are recorded "
+                "there. Expose him, and Vallaki might be free.'\n\n"
+                "The prisoner limps away into the shadows."
+            ),
+            from_state="alive",
+        )
+        prisoner.add_state_description(
+            "freed", "The chains lie empty. The prisoner has escaped into the night."
+        )
+
+    # === GARGOYLE (courtyard) - Give coin to pass safely ===
+    gargoyle = find_mob_by_name("gargoyle")
+    if gargoyle:
+
+        async def calm_gargoyle(
+            player: Any,
+            game_state: Any,
+            player_manager: Any,
+            online_sessions: Any,
+            sio: Any,
+            utils: Any,
+        ) -> None:
+            """Make the gargoyle non-aggressive."""
+            gargoyle_mob = find_mob_by_name("gargoyle")
+            if gargoyle_mob:
+                gargoyle_mob.aggressive = False
+                gargoyle_mob.target_player = None
+
+        gargoyle.accepts_item = {
+            "coin": {
+                "message": (
+                    "The gargoyle's stone eyes fix on the coin. A gravelly voice "
+                    "rumbles from within:\n\n"
+                    "'Tribute... accepted.'\n\n"
+                    "It plucks the coin from your palm and freezes back into "
+                    "apparent stone. But this time, its gaze doesn't follow you. "
+                    "You may pass unharmed."
+                ),
+                "one_time": True,
+                "triggered": False,
+                "effect_fn": calm_gargoyle,
+            }
+        }
 
 
 def generate_rooms(rooms: Dict[str, Room]) -> None:
@@ -1337,6 +1643,7 @@ def add_container_items(rooms: Dict[str, Room]) -> None:
         value=0,
         takeable=False,
         state="locked",
+        synonyms=["iron cage", "bars", "prison", "cell", "children cage"],
     )
     cage.add_state_description(
         "locked",
@@ -1398,6 +1705,7 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
         value=0,
         takeable=False,
         state="flat",
+        synonyms=["carpet", "mat", "tapestry", "worn rug"],
     )
     rug.add_state_description("flat", "A worn rug lies near the back wall.")
     rug.add_state_description(
@@ -1429,6 +1737,7 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
         value=0,
         takeable=False,
         state="closed",
+        synonyms=["grille", "grid", "iron grate", "trapdoor", "floor grate"],
     )
     grate.add_state_description(
         "closed", "An iron grate is set into the floor near the altar."
@@ -1453,40 +1762,16 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
     )
     rooms["church"].add_item(grate)
 
-    # Altar in Argynvostholt chapel
-    altar: StatefulItem = StatefulItem(
-        "altar",
-        "arg_altar",
-        "An overturned altar lies broken on the floor.",
-        weight=500,
-        value=0,
-        takeable=False,
-        state="fallen",
-    )
-    altar.add_state_description(
-        "fallen", "An overturned altar lies broken on the floor."
-    )
-    altar.add_state_description(
-        "restored", "The altar has been restored to its rightful position."
-    )
-    altar.set_room_id("argchapel")
-    altar.add_interaction(
-        verb="restore",
-        target_state="restored",
-        message="With great effort, you right the altar. A faint glow emanates from it.",
-        from_state="fallen",
-    )
-    rooms["argchapel"].add_item(altar)
-
     # === DRAGON'S BEACON PUZZLE ===
     # === ARGYNVOSTHOLT ALTAR (argchapel) ===
     # Must restore the altar before the beacon can be lit
     # Creates a 3-step chain: altar -> skull -> light
 
     arg_altar: StatefulItem = StatefulItem(
-        "altar",
+        "ruined altar",
         "arg_altar",
         "A ruined altar lies at the front of the chapel.",
+        synonyms=["altar", "dragon altar", "knights altar"],
         weight=500,
         value=0,
         takeable=False,
@@ -1538,6 +1823,7 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
         value=0,
         takeable=False,
         state="unlit",
+        synonyms=["brazier", "torch holder", "fire", "dragon beacon"],
     )
     beacon.add_state_description(
         "unlit",
@@ -1647,6 +1933,7 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
         value=0,
         takeable=False,
         state="solid",
+        synonyms=["panel", "secret wall", "hidden wall", "stone wall"],
     )
     wall.add_state_description(
         "solid", "The stone wall here looks slightly different from the rest."
@@ -1893,6 +2180,53 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
     )
     rooms["treasury"].add_item(pedestal)
 
+    # === CASTLE TREASURE ITEMS ===
+    # Treasury contains gold and jewels (matches room description)
+    gold_pile: Item = Item(
+        "gold",
+        "treasury_gold",
+        "A pile of gold coins, accumulated over centuries of Strahd's rule.",
+        weight=10,
+        value=150,
+        takeable=True,
+        synonyms=["gold pile", "coins", "gold coins", "pile"],
+    )
+    rooms["treasury"].add_item(gold_pile)
+
+    jeweled_chalice: Item = Item(
+        "chalice",
+        "treasury_chalice",
+        "A jewel-encrusted golden chalice, stained dark with old blood.",
+        weight=3,
+        value=100,
+        takeable=True,
+        synonyms=["cup", "goblet", "jeweled chalice", "golden chalice"],
+    )
+    rooms["treasury"].add_item(jeweled_chalice)
+
+    # Tomb contains ancient treasures
+    ancient_crown: Item = Item(
+        "crown",
+        "tomb_crown",
+        "An ancient crown of tarnished silver, once worn by a forgotten king of Barovia.",
+        weight=2,
+        value=200,
+        takeable=True,
+        synonyms=["ancient crown", "silver crown", "king's crown"],
+    )
+    rooms["tomb"].add_item(ancient_crown)
+
+    strahds_ring: Item = Item(
+        "ring",
+        "strahds_ring",
+        "A heavy signet ring bearing the von Zarovich crest. It radiates dark power.",
+        weight=1,
+        value=150,
+        takeable=True,
+        synonyms=["signet ring", "strahd's ring", "von zarovich ring"],
+    )
+    rooms["tomb"].add_item(strahds_ring)
+
     # === STANDING STONES PUZZLE ===
     # Three stones in the clearing that must be aligned correctly to reveal the barrow
     # Solution: eaststone=sunrise, weststone=sunset, northstone=noon
@@ -1906,6 +2240,7 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
         value=0,
         takeable=False,
         state="dark",
+        synonyms=["east stone", "eastern stone", "eastern", "east"],
     )
     eaststone.add_state_description("dark", "The eastern stone is dark and dormant.")
     eaststone.add_state_description(
@@ -1952,6 +2287,7 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
         value=0,
         takeable=False,
         state="dark",
+        synonyms=["west stone", "western stone", "western", "west"],
     )
     weststone.add_state_description("dark", "The western stone is dark and dormant.")
     weststone.add_state_description(
@@ -1998,6 +2334,7 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
         value=0,
         takeable=False,
         state="dark",
+        synonyms=["north stone", "northern stone", "northern", "north"],
     )
     northstone.add_state_description("dark", "The northern stone is dark and dormant.")
     northstone.add_state_description(
@@ -2046,6 +2383,7 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
         value=0,
         takeable=False,
         state="dormant",
+        synonyms=["circle", "standing stones", "stone circle", "standing"],
     )
     stones.add_state_description(
         "dormant",
@@ -2095,6 +2433,7 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
         value=0,
         takeable=False,
         state="closed",
+        synonyms=["furnace", "stove", "iron oven", "cooker"],
     )
     oven.add_state_description(
         "closed",
@@ -2383,9 +2722,10 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
     # Must speak "andral" to break the seal - only works if visited Vallaki church
 
     chapel_altar: StatefulItem = StatefulItem(
-        "altar",
+        "sealed altar",
         "maze_altar",
         "A small altar stands before a shimmering barrier of light.",
+        synonyms=["altar", "maze altar", "barrier altar"],
         weight=300,
         value=0,
         takeable=False,
@@ -2778,7 +3118,7 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
     amulet: Item = Item(
         "amulet",
         "barrow_amulet",
-        "An ancient silver amulet that glows faintly with protective magic.",
+        "An ancient silver barrow amulet that glows faintly with protective magic.",
         weight=1,
         value=75,
     )
@@ -2797,7 +3137,7 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
     cryptkeeper_amulet: Item = Item(
         "amulet",
         "cryptkeeper_amulet",
-        "A bone amulet inscribed with protective runes. It pulses with ancient power.",
+        "The cryptkeeper's bone amulet, inscribed with protective runes. It pulses with ancient power.",
         weight=1,
         value=100,
     )
@@ -2865,7 +3205,7 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
     stone: Item = Item(
         "stone",
         "heartstone",
-        "A smooth grey stone that pulses with inner warmth.",
+        "A smooth grey heartstone that pulses with inner warmth.",
         weight=1,
         value=50,
     )
@@ -2988,7 +3328,7 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
         value=0,
         takeable=False,
         state="set",
-        synonyms=["wall", "brick", "block"],
+        synonyms=["wall", "brick", "block", "third stone", "loose"],
     )
     loose_stone.add_state_description(
         "set", "The dungeon walls are made of rough stone blocks."
@@ -3084,13 +3424,13 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
     pastry: StatefulItem = StatefulItem(
         "pastry",
         "dream_pastry",
-        "A sweet-smelling pastry that looks delicious.",
+        "A sweet-smelling dream pastry that looks delicious.",
         weight=1,
         value=5,
         state="uneaten",
     )
     pastry.add_state_description(
-        "uneaten", "A sweet-smelling pastry that looks delicious."
+        "uneaten", "A sweet-smelling dream pastry that looks delicious."
     )
     pastry.add_interaction(
         verb="eat",
@@ -3184,6 +3524,94 @@ def add_weapons(rooms: Dict[str, Room]) -> None:
         damage=14,
     )
     rooms["stockyard"].add_item(axe)
+
+    # === CONTENT POLISH ITEMS ===
+
+    # Execution block in stockyard (flavor/lore)
+    execution_block: StatefulItem = StatefulItem(
+        "block",
+        "execution_block",
+        "A heavy wooden block stained dark with old blood sits in the center of the stockyard.",
+        weight=500,
+        value=0,
+        takeable=False,
+        state="present",
+        synonyms=["execution block", "chopping block", "wooden block"],
+    )
+    execution_block.add_interaction(
+        verb="examine",
+        message=(
+            "The execution block is deeply scarred from countless blows. "
+            "Dried blood has soaked into the grain of the wood over the years. "
+            "A plaque reads: 'For the unhappy. For the ungrateful. For those "
+            "who will not SMILE.'\n\n"
+            "An executioner's axe leans against the wall nearby."
+        ),
+    )
+    rooms["stockyard"].add_item(execution_block)
+
+    # Notice board in inn with quest hints
+    notice_board: StatefulItem = StatefulItem(
+        "board",
+        "notice_board",
+        "A wooden notice board hangs on the wall, covered with weathered papers.",
+        weight=50,
+        value=0,
+        takeable=False,
+        state="present",
+        synonyms=["notice board", "bulletin board", "papers", "notices"],
+    )
+    notice_board.add_interaction(
+        verb="read",
+        message=(
+            "Several notices are pinned to the board:\n\n"
+            "LOST: Bones of St. Andral. Last seen in church undercroft. "
+            "Reward offered for safe return to Father Lucian.\n\n"
+            "WARNING: Children missing near Old Bonegrinder. Avoid the mill!\n\n"
+            "WANTED: Information on the Argynvostholt ruins. "
+            "Speak to the Vistani seer if you dare.\n\n"
+            "NOTICE: The Baron's Festival of the Blazing Sun is MANDATORY. "
+            "All citizens WILL be happy. SMILES ARE REQUIRED."
+        ),
+    )
+    notice_board.add_interaction(
+        verb="examine",
+        message=(
+            "Several notices are pinned to the board:\n\n"
+            "LOST: Bones of St. Andral. Last seen in church undercroft. "
+            "Reward offered for safe return to Father Lucian.\n\n"
+            "WARNING: Children missing near Old Bonegrinder. Avoid the mill!\n\n"
+            "WANTED: Information on the Argynvostholt ruins. "
+            "Speak to the Vistani seer if you dare.\n\n"
+            "NOTICE: The Baron's Festival of the Blazing Sun is MANDATORY. "
+            "All citizens WILL be happy. SMILES ARE REQUIRED."
+        ),
+    )
+    rooms["inn"].add_item(notice_board)
+
+    # Hint note about cage in bedroom (hag's bedroom)
+    doll_note: StatefulItem = StatefulItem(
+        "note",
+        "doll_note",
+        "A crumpled note lies among the broken dolls.",
+        weight=1,
+        value=0,
+        takeable=True,
+        state="unread",
+        synonyms=["crumpled note", "doll note", "paper"],
+    )
+    doll_note.add_interaction(
+        verb="read",
+        message=(
+            "The note is written in a childish scrawl:\n\n"
+            "'Mommy locks us in the cage upstairs. She says we're special. "
+            "The bars are too strong - we tried to bend them. "
+            "Only the executioner's blade could break them, "
+            "but the axe is far away in the town.'\n\n"
+            "The rest of the note is too smeared with tears to read."
+        ),
+    )
+    rooms["bedroom"].add_item(doll_note)
 
     # Sunsword in castle treasury - hidden until pedestal is unlocked
     sunsword: Weapon = Weapon(

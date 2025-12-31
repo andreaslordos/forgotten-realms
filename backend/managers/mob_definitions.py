@@ -115,7 +115,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Barkeep at Blood of the Vine
         "barkeep": {
             "name": "barkeep",
-            "description": "A weary barkeep polishes a glass, staring at nothing.",
+            "description": "The barkeep wearily polishes a glass, staring at nothing.",
             "strength": 15,
             "dexterity": 12,
             "max_stamina": 50,
@@ -174,7 +174,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Ghoul - dangerous in crypt
         "ghoul": {
             "name": "ghoul",
-            "description": "A hunched creature with elongated claws and hungry eyes crouches in the shadows.",
+            "description": "A ghoul crouches in the shadows, its hunched form bristling with elongated claws, hungry eyes fixed on you.",
             "strength": 35,
             "dexterity": 25,
             "max_stamina": 80,
@@ -237,7 +237,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Madam Eva - fortune teller
         "seer": {
             "name": "seer",
-            "description": "An ancient woman with milky eyes sits before a deck of worn cards.",
+            "description": "Madam Eva, an ancient seer with milky eyes, sits before a deck of worn cards.",
             "strength": 8,
             "dexterity": 10,
             "max_stamina": 30,
@@ -274,7 +274,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Morgantha the hag - BOSS
         "hag": {
             "name": "hag",
-            "description": "A hideous crone with grey-green skin and needle teeth grins at you with malevolent glee.",
+            "description": "The hag Morgantha, a hideous crone with grey-green skin and needle teeth, grins at you with malevolent glee.",
             "strength": 50,
             "dexterity": 35,
             "max_stamina": 150,
@@ -296,7 +296,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Hag daughter
         "daughter": {
             "name": "daughter",
-            "description": "A younger hag with stringy hair and a cruel smile lurks nearby.",
+            "description": "Morgantha's daughter, a younger hag with stringy hair and a cruel smile, lurks nearby.",
             "strength": 40,
             "dexterity": 30,
             "max_stamina": 100,
@@ -317,7 +317,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Wereraven spy
         "raven": {
             "name": "raven",
-            "description": "A large raven with unusually intelligent eyes watches from a perch.",
+            "description": "A large raven with unusually intelligent eyes watches from a perch. Something about this bird seems... unnatural.",
             "strength": 15,
             "dexterity": 40,
             "max_stamina": 40,
@@ -336,7 +336,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Undead knight revenant
         "revenant": {
             "name": "revenant",
-            "description": "A spectral knight in tarnished armor stands eternal vigil, sword at ready.",
+            "description": "A spectral revenant in tarnished armor stands eternal vigil, sword at ready.",
             "strength": 55,
             "dexterity": 30,
             "max_stamina": 140,
@@ -357,7 +357,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Weeping phantom
         "phantom": {
             "name": "phantom",
-            "description": "A translucent figure drifts past, weeping silently for losses long past.",
+            "description": "A translucent phantom drifts past, weeping silently for losses long past.",
             "strength": 20,
             "dexterity": 45,
             "max_stamina": 50,
@@ -377,7 +377,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Hostile specter
         "specter": {
             "name": "specter",
-            "description": "A hateful spirit wreathed in darkness shrieks with rage at the living.",
+            "description": "A specter, a hateful spirit wreathed in darkness, shrieks with rage at the living.",
             "strength": 35,
             "dexterity": 40,
             "max_stamina": 70,
@@ -441,7 +441,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Wereraven ally
         "wereraven": {
             "name": "wereraven",
-            "description": "A dark-haired man with sharp features nods knowingly at you.",
+            "description": "A dark-haired man called Muriel nods knowingly at you, his sharp features almost bird-like.",
             "strength": 35,
             "dexterity": 40,
             "max_stamina": 90,
@@ -459,7 +459,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Vampire spawn
         "spawn": {
             "name": "spawn",
-            "description": "A pale figure with red-rimmed eyes and bared fangs hisses at you.",
+            "description": "A vampire spawn, pale with red-rimmed eyes and bared fangs, hisses at you.",
             "strength": 45,
             "dexterity": 38,
             "max_stamina": 100,
@@ -521,7 +521,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Dungeon wraith
         "wraith": {
             "name": "wraith",
-            "description": "A creature of pure darkness and hatred floats toward you, radiating cold.",
+            "description": "A wraith, a creature of pure darkness and hatred, floats toward you radiating cold.",
             "strength": 45,
             "dexterity": 45,
             "max_stamina": 90,
@@ -541,7 +541,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Vampire consort
         "consort": {
             "name": "consort",
-            "description": "A beautiful vampire in decayed finery smiles, revealing gleaming fangs.",
+            "description": "A vampire consort in decayed finery smiles beautifully, revealing gleaming fangs.",
             "strength": 55,
             "dexterity": 45,
             "max_stamina": 130,
@@ -604,5 +604,23 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": True,
             "point_value": 25,
             "pronouns": "it",
+        },
+        # Prisoner in the Baron's dungeon
+        "prisoner": {
+            "name": "prisoner",
+            "description": "A gaunt prisoner in tattered rags is bound to the wall with heavy chains.",
+            "strength": 10,
+            "dexterity": 10,
+            "max_stamina": 30,
+            "damage": 0,
+            "aggressive": False,
+            "aggro_delay_min": 0,
+            "aggro_delay_max": 0,
+            "patrol_rooms": [],
+            "movement_interval": 0,
+            "loot_table": [],
+            "instant_death": False,
+            "point_value": 0,
+            "pronouns": "he",
         },
     }
