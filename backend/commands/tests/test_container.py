@@ -742,5 +742,284 @@ class ContainerObjectBindingTest(AsyncTestCase):
         self.assertEqual(self.bag.state, "open")
 
 
+class RoomContainerTest(AsyncTestCase):
+    """Test container operations with containers in the room (not in inventory)."""
+
+    async def test_put_item_in_room_container(self):
+        """Test putting an item into a container that's in the room."""
+        # Container is in room, not inventory
+        self.room.add_item(self.bag)
+        self.player.add_item(self.item1)
+
+        cmd = {"verb": "put", "subject": "gem", "instrument": "bag"}
+
+        result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("Gem now inside", result)
+        self.assertIn(self.item1, self.bag.items)
+        self.assertNotIn(self.item1, self.player.inventory)
+
+    async def test_put_all_in_room_container(self):
+        """Test putting all items into a room container."""
+        self.room.add_item(self.bag)
+        self.player.add_item(self.item1)
+        self.player.add_item(self.item2)
+
+        cmd = {"verb": "put", "subject": "all", "instrument": "bag"}
+
+        result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("Gem now inside", result)
+        self.assertIn("Coin now inside", result)
+        self.assertEqual(len(self.bag.items), 2)
+
+    async def test_put_treasure_in_room_container(self):
+        """Test putting treasure into a room container."""
+        self.room.add_item(self.bag)
+        self.player.add_item(self.item1)  # value 50
+        self.player.add_item(self.item3)  # value 0 (not treasure)
+
+        cmd = {"verb": "put", "subject": "treasure", "instrument": "bag"}
+
+        result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("Gem", result)
+        self.assertIn(self.item1, self.bag.items)
+        self.assertIn(self.item3, self.player.inventory)  # Rock not moved
+
+    async def test_put_closed_room_container_fails(self):
+        """Test putting item into closed room container fails."""
+        self.bag.set_state("closed")
+        self.room.add_item(self.bag)
+        self.player.add_item(self.item1)
+
+        cmd = {"verb": "put", "subject": "gem", "instrument": "bag"}
+
+        result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("closed", result.lower())
+        self.assertNotIn(self.item1, self.bag.items)
+
+    async def test_put_no_container_found(self):
+        """Test put when container doesn't exist anywhere."""
+        self.player.add_item(self.item1)
+
+        cmd = {"verb": "put", "subject": "gem", "instrument": "chest"}
+
+        result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("don't see a container", result)
+
+    async def test_get_item_from_room_container(self):
+        """Test getting an item from a container in the room."""
+        self.bag.add_item(self.item1)
+        self.room.add_item(self.bag)
+
+        cmd = {"verb": "get", "subject": "gem", "instrument": "bag"}
+
+        result = await handle_get_from(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("removed from", result)
+        self.assertIn(self.item1, self.player.inventory)
+        self.assertNotIn(self.item1, self.bag.items)
+
+    async def test_get_all_from_room_container(self):
+        """Test getting all items from a room container."""
+        self.bag.add_item(self.item1)
+        self.bag.add_item(self.item2)
+        self.room.add_item(self.bag)
+
+        cmd = {"verb": "get", "subject": "all", "instrument": "bag"}
+
+        result = await handle_get_from(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("Gem removed", result)
+        self.assertIn("Coin removed", result)
+        self.assertEqual(len(self.bag.items), 0)
+
+    async def test_get_treasure_from_room_container(self):
+        """Test getting treasure from a room container."""
+        self.bag.add_item(self.item1)  # value 50
+        self.bag.add_item(self.item3)  # value 0 (not treasure)
+        self.room.add_item(self.bag)
+
+        cmd = {"verb": "get", "subject": "treasure", "instrument": "bag"}
+
+        result = await handle_get_from(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("Gem", result)
+        self.assertIn(self.item1, self.player.inventory)
+        self.assertIn(self.item3, self.bag.items)  # Rock remains
+
+    async def test_get_from_closed_room_container_fails(self):
+        """Test getting from closed room container fails."""
+        self.bag.add_item(self.item1)
+        self.bag.set_state("closed")
+        self.room.add_item(self.bag)
+
+        cmd = {"verb": "get", "subject": "gem", "instrument": "bag"}
+
+        result = await handle_get_from(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("closed", result.lower())
+
+    async def test_inventory_container_takes_priority(self):
+        """Test that inventory container is used before room container."""
+        # Create two bags - one in inventory, one in room
+        inventory_bag = ContainerItem(
+            "Bag", "bag_inv", "Inventory bag", weight=2, capacity_limit=5
+        )
+        inventory_bag.set_state("open")
+
+        room_bag = ContainerItem(
+            "Bag", "bag_room", "Room bag", weight=2, capacity_limit=5
+        )
+        room_bag.set_state("open")
+
+        self.player.add_item(inventory_bag)
+        self.player.add_item(self.item1)
+        self.room.add_item(room_bag)
+
+        cmd = {"verb": "put", "subject": "gem", "instrument": "bag"}
+
+        await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Item should be in inventory bag, not room bag
+        self.assertIn(self.item1, inventory_bag.items)
+        self.assertNotIn(self.item1, room_bag.items)
+
+    async def test_put_with_bound_room_container(self):
+        """Test put with pre-bound room container object."""
+        self.room.add_item(self.bag)
+        self.player.add_item(self.item1)
+
+        cmd = {
+            "verb": "put",
+            "subject": "gem",
+            "subject_object": self.item1,
+            "instrument": "bag",
+            "instrument_object": self.bag,
+        }
+
+        result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("now inside", result)
+        self.assertIn(self.item1, self.bag.items)
+
+    async def test_get_with_bound_room_container(self):
+        """Test get with pre-bound room container object."""
+        self.bag.add_item(self.item1)
+        self.room.add_item(self.bag)
+
+        cmd = {
+            "verb": "get",
+            "subject": "gem",
+            "subject_object": self.item1,
+            "instrument": "bag",
+            "instrument_object": self.bag,
+        }
+
+        result = await handle_get_from(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("removed from", result)
+        self.assertIn(self.item1, self.player.inventory)
+
+
 if __name__ == "__main__":
     unittest.main()

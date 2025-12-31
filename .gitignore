@@ -65,6 +65,11 @@ docker-compose.*.yml
 *.tmp
 
 # -----------------------
+# Backups
+# -----------------------
+backend/managers/backup_pre_level_redesign/
+
+# -----------------------
 # Other
 # -----------------------
 # Local IDE configs, etc.

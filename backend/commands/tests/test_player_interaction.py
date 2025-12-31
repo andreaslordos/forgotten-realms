@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from commands.player_interaction import handle_give, handle_steal
+from commands.player_interaction import handle_give, handle_steal, handle_give_to_mob
 from models.Player import Player
 from models.Item import Item
 from models.Room import Room
@@ -758,6 +758,416 @@ class PlayerInteractionEdgeCasesTest(AsyncTestCase):
             )
 
         self.assertIn("stolen", result)
+
+
+class GiveToMobTest(AsyncTestCase):
+    """Test handle_give_to_mob functionality."""
+
+    async def test_give_to_mob_without_accepts_item(self):
+        """Test giving item to mob that doesn't accept items."""
+        self.player.add_item(self.item1)
+
+        mob = Mobile(
+            name="Guard",
+            id="guard_1",
+            description="A stoic guard",
+            current_room="test_room",
+        )
+
+        result = await handle_give_to_mob(
+            mob,
+            self.item1,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("doesn't want anything from you", result)
+        self.assertIn(self.item1, self.player.inventory)
+
+    async def test_give_to_mob_wrong_item(self):
+        """Test giving wrong item to mob."""
+        self.player.add_item(self.item1)
+
+        mob = Mobile(
+            name="Beggar",
+            id="beggar_1",
+            description="A hungry beggar",
+            current_room="test_room",
+        )
+        mob.accepts_item = {"bread": {"message": "Thank you for the bread!"}}
+
+        result = await handle_give_to_mob(
+            mob,
+            self.item1,  # Sword, not bread
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("doesn't want the Sword", result)
+
+    async def test_give_to_mob_accepts_item(self):
+        """Test giving correct item to mob."""
+        bread = Item("Bread", "bread_1", "A loaf of bread", weight=1, value=5)
+        self.player.add_item(bread)
+
+        mob = Mobile(
+            name="Beggar",
+            id="beggar_1",
+            description="A hungry beggar",
+            current_room="test_room",
+        )
+        mob.accepts_item = {"Bread": {"message": "Thank you so much for the bread!"}}
+
+        result = await handle_give_to_mob(
+            mob,
+            bread,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertEqual(result, "Thank you so much for the bread!")
+        self.assertNotIn(bread, self.player.inventory)
+        self.player_manager.save_players.assert_called_once()
+
+    async def test_give_to_mob_matches_by_synonym(self):
+        """Test giving item matched by synonym."""
+        gold = Item("Gold Coin", "gold_1", "A shiny gold coin", weight=0.1, value=100)
+        gold.synonyms = ["coin", "money", "gold"]
+        self.player.add_item(gold)
+
+        mob = Mobile(
+            name="Merchant",
+            id="merchant_1",
+            description="A traveling merchant",
+            current_room="test_room",
+        )
+        mob.accepts_item = {"gold": {"message": "Ah, gold! Thank you!"}}
+
+        result = await handle_give_to_mob(
+            mob,
+            gold,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertEqual(result, "Ah, gold! Thank you!")
+        self.assertNotIn(gold, self.player.inventory)
+
+    async def test_give_to_mob_one_time_already_triggered(self):
+        """Test one-time interaction that's already been triggered."""
+        key = Item("Key", "key_1", "An old key", weight=0.1, value=10)
+        self.player.add_item(key)
+
+        mob = Mobile(
+            name="Elder",
+            id="elder_1",
+            description="The village elder",
+            current_room="test_room",
+        )
+        mob.accepts_item = {
+            "Key": {
+                "message": "The key! At last!",
+                "one_time": True,
+                "triggered": True,  # Already received
+            }
+        }
+
+        result = await handle_give_to_mob(
+            mob,
+            key,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("already received", result)
+        self.assertIn(key, self.player.inventory)
+
+    async def test_give_to_mob_one_time_marks_triggered(self):
+        """Test one-time interaction gets marked as triggered."""
+        key = Item("Key", "key_1", "An old key", weight=0.1, value=10)
+        self.player.add_item(key)
+
+        mob = Mobile(
+            name="Elder",
+            id="elder_1",
+            description="The village elder",
+            current_room="test_room",
+        )
+        response_data = {
+            "message": "The key! At last!",
+            "one_time": True,
+        }
+        mob.accepts_item = {"Key": response_data}
+
+        await handle_give_to_mob(
+            mob,
+            key,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertTrue(response_data["triggered"])
+
+    async def test_give_to_mob_with_effect_function(self):
+        """Test giving item executes effect function."""
+        artifact = Item(
+            "Artifact", "artifact_1", "A magical artifact", weight=2, value=500
+        )
+        self.player.add_item(artifact)
+
+        effect_called = {"called": False}
+
+        async def test_effect(
+            player, game_state, player_manager, online_sessions, sio, utils
+        ):
+            effect_called["called"] = True
+
+        mob = Mobile(
+            name="Wizard",
+            id="wizard_1",
+            description="A wise wizard",
+            current_room="test_room",
+        )
+        mob.accepts_item = {
+            "Artifact": {
+                "message": "The artifact! Its power flows through me!",
+                "effect_fn": test_effect,
+            }
+        }
+
+        await handle_give_to_mob(
+            mob,
+            artifact,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertTrue(effect_called["called"])
+
+    async def test_give_to_mob_notifies_others_in_room(self):
+        """Test giving item notifies other players in room."""
+        bread = Item("Bread", "bread_1", "A loaf of bread", weight=1, value=5)
+        self.player.add_item(bread)
+
+        mob = Mobile(
+            name="Beggar",
+            id="beggar_1",
+            description="A hungry beggar",
+            current_room="test_room",
+        )
+        mob.accepts_item = {"Bread": {"message": "Thank you!"}}
+
+        await handle_give_to_mob(
+            mob,
+            bread,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Bob is in the same room and should be notified
+        self.utils.send_message.assert_called()
+        call_args = self.utils.send_message.call_args[0]
+        self.assertIn("Alice gives the Bread to Beggar", call_args[2])
+
+    async def test_give_to_mob_default_message(self):
+        """Test giving item uses default message when none specified."""
+        coin = Item("Coin", "coin_1", "A gold coin", weight=0.1, value=10)
+        self.player.add_item(coin)
+
+        mob = Mobile(
+            name="Collector",
+            id="collector_1",
+            description="A coin collector",
+            current_room="test_room",
+        )
+        # Note: response_data must be truthy, so use a dict with only one_time=False
+        # rather than empty dict (which is falsy and returns "doesn't want")
+        mob.accepts_item = {
+            "Coin": {"one_time": False}  # No message specified, uses default
+        }
+
+        result = await handle_give_to_mob(
+            mob,
+            coin,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("You give the Coin to Collector", result)
+
+
+class StealBoundObjectsTest(AsyncTestCase):
+    """Test steal command with bound objects."""
+
+    @patch("random.randint")
+    async def test_steal_with_bound_item_object(self, mock_randint):
+        """Test steal using bound item object reference."""
+        mock_randint.return_value = 1
+
+        self.other_player.add_item(self.item1)
+
+        cmd = {
+            "verb": "steal",
+            "subject": "Bob",
+            "subject_object": self.other_player,
+            "instrument": "sword",
+            "instrument_object": self.item1,
+        }
+
+        result = await handle_steal(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("stolen from Bob", result)
+        self.assertIn(self.item1, self.player.inventory)
+
+    @patch("random.randint")
+    async def test_steal_with_bound_target_object(self, mock_randint):
+        """Test steal using bound target player object."""
+        mock_randint.return_value = 1
+
+        self.other_player.add_item(self.item1)
+
+        cmd = {
+            "verb": "steal",
+            "subject": "Bob",
+            "subject_object": self.other_player,
+            "instrument": "sword",
+        }
+
+        result = await handle_steal(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("stolen from Bob", result)
+
+    async def test_steal_bound_target_in_different_room(self):
+        """Test steal fails if bound target is in different room."""
+        self.remote_player.add_item(self.item1)
+
+        cmd = {
+            "verb": "steal",
+            "subject": "Charlie",
+            "subject_object": self.remote_player,  # In different room
+            "instrument": "sword",
+        }
+
+        result = await handle_steal(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("don't see", result)
+
+
+class GiveBoundObjectsTest(AsyncTestCase):
+    """Test give command with bound objects edge cases."""
+
+    async def test_give_bound_target_in_different_room(self):
+        """Test give fails if bound target is in different room."""
+        self.player.add_item(self.item1)
+
+        cmd = {
+            "verb": "give",
+            "instrument": "sword",
+            "instrument_object": self.item1,
+            "subject": "Charlie",
+            "subject_object": self.remote_player,  # In different room
+            "reversed_syntax": True,
+        }
+
+        result = await handle_give(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("don't see", result)
+        self.assertIn(self.item1, self.player.inventory)
+
+    async def test_give_item_matching_partial_name(self):
+        """Test giving item by partial name match."""
+        longsword = Item(
+            "Long Sword", "longsword_1", "A long sword", weight=7, value=75
+        )
+        self.player.add_item(longsword)
+
+        cmd = {
+            "verb": "give",
+            "instrument": "long",  # Partial match
+            "subject": "Bob",
+            "reversed_syntax": True,
+        }
+
+        result = await handle_give(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("given to Bob", result)
+        self.assertIn(longsword, self.other_player.inventory)
 
 
 if __name__ == "__main__":

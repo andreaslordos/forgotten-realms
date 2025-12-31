@@ -29,6 +29,7 @@ class StatefulItem(Item):
         takeable: bool = True,
         state: Optional[str] = None,
         synonyms: Optional[List[str]] = None,
+        room_id: Optional[str] = None,
     ) -> None:
         super().__init__(
             name, id, description, weight, value, takeable, synonyms=synonyms
@@ -36,7 +37,7 @@ class StatefulItem(Item):
         self.state = state
         self.state_descriptions = {}
         self.interactions = {}  # Maps verbs to required instruments and effects
-        self.room_id = None  # Track which room this item is in
+        self.room_id = room_id  # Track which room this item is in
         self.linked_items = []  # IDs of linked items (like other side of a door)
 
         if state:

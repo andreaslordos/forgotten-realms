@@ -348,9 +348,7 @@ async def handle_interaction(
             required_instrument = valid_interaction["required_instrument"]
 
             if not secondary_item:
-                return (
-                    f"You need {required_instrument} to {verb} the {primary_item.name}."
-                )
+                return f"You can't {verb} the {primary_item.name}."
 
             # Check if it's the right type of instrument
             if required_instrument.lower() not in secondary_item.name.lower():

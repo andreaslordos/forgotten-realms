@@ -272,7 +272,7 @@ class InteractionInstrumentTest(unittest.IsolatedAsyncioTestCase):
 
         # State should not change
         self.assertEqual(stateful_item.state, "locked")
-        self.assertIn("need", result.lower())
+        self.assertIn("can't", result.lower())
 
     async def test_handle_interaction_succeeds_with_correct_instrument(self):
         """Test interaction succeeds when correct instrument is provided."""

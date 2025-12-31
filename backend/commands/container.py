@@ -44,7 +44,7 @@ async def handle_put(
     if not instrument and not instrument_obj:
         return "You can only insert items into objects, not anything else."
 
-    # Find the container in player's inventory - prefer the bound object if available
+    # Find the container - check inventory first, then room
     container = (
         instrument_obj
         if (
@@ -65,8 +65,27 @@ async def handle_put(
                 container = item
                 break
 
+    # If not in inventory, check the room
     if not container:
-        return f"You don't have a container called '{instrument}' in your inventory."
+        current_room = game_state.get_room(player.current_room)
+        # Check bound object first
+        if instrument_obj and isinstance(instrument_obj, ContainerItem):
+            if instrument_obj in current_room.get_items(game_state):
+                container = instrument_obj
+        # Then search by name
+        if not container:
+            for item in current_room.get_items(game_state):
+                if (
+                    instrument
+                    and hasattr(item, "matches_name")
+                    and item.matches_name(instrument)
+                    and isinstance(item, ContainerItem)
+                ):
+                    container = item
+                    break
+
+    if not container:
+        return f"You don't see a container called '{instrument}' here."
 
     # Check if the container is open
     if container.state != "open":
@@ -246,7 +265,7 @@ async def handle_get_from(
             steal_cmd, player, game_state, player_manager, online_sessions, sio, utils
         )
 
-    # Find the container in player's inventory - prefer the bound object if available
+    # Find the container - check inventory first, then room
     container = (
         instrument_obj
         if (
@@ -267,8 +286,27 @@ async def handle_get_from(
                 container = item
                 break
 
+    # If not in inventory, check the room
     if not container:
-        return f"You don't have a container called '{instrument}' in your inventory."
+        current_room = game_state.get_room(player.current_room)
+        # Check bound object first
+        if instrument_obj and isinstance(instrument_obj, ContainerItem):
+            if instrument_obj in current_room.get_items(game_state):
+                container = instrument_obj
+        # Then search by name
+        if not container:
+            for item in current_room.get_items(game_state):
+                if (
+                    instrument
+                    and hasattr(item, "matches_name")
+                    and item.matches_name(instrument)
+                    and isinstance(item, ContainerItem)
+                ):
+                    container = item
+                    break
+
+    if not container:
+        return f"You don't see a container called '{instrument}' here."
 
     # Check if the container is open
     if container.state != "open":
