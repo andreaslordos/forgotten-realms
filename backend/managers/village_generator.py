@@ -101,6 +101,42 @@ def treasury_unlocked(player: Any, game_state: Any) -> bool:
     )
 
 
+# ============================================================================
+# MAZE PUZZLE CONDITION FUNCTIONS
+# ============================================================================
+
+
+def player_visited_vallaki_church(player: Any, game_state: Any) -> bool:
+    """Check if player has visited St. Andral's Church in Vallaki."""
+    return "vallakichurch" in getattr(player, "visited", set())
+
+
+def mirrors_aligned(player: Any, game_state: Any) -> bool:
+    """Check if the mirrors in the Hall of Mirrors are correctly touched in sequence."""
+    room = game_state.get_room("maze_mirror")
+    if not room:
+        return False
+    # Check the mirror sequence stored on the room
+    sequence = getattr(room, "mirror_sequence", [])
+    return sequence == ["east", "south", "west", "north"]
+
+
+def altar_restored(player: Any, game_state: Any) -> bool:
+    """Check if the Argynvostholt altar has been restored."""
+    room = game_state.get_room("argchapel")
+    if not room:
+        return False
+    for item in room.items:
+        if hasattr(item, "id") and item.id == "arg_altar":
+            return getattr(item, "state", None) == "restored"
+    return False
+
+
+def altar_restored_and_skull_placed(player: Any, game_state: Any) -> bool:
+    """Check if altar is restored AND skull is placed on beacon."""
+    return altar_restored(player, game_state) and beacon_has_skull(player, game_state)
+
+
 def generate_valley_of_barovia(mob_manager: Optional[Any] = None) -> Dict[str, Room]:
     """
     Generates the Valley of Barovia, a gothic horror world.
@@ -729,6 +765,78 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
         is_dark=True,
     )
 
+    # ===== CRYPTKEEPER'S MAZE =====
+    # A puzzle dungeon beneath the village graveyard
+
+    maze_entry: Room = Room(
+        "maze_entry",
+        "Maze Entrance",
+        "Stone steps descend into an ancient labyrinth. The air is cold and stale, "
+        "untouched for centuries. Faded murals on the walls depict robed figures "
+        "performing strange rituals. An iron gate blocks the passage north. "
+        "Steps lead back up to the crypt.",
+        is_dark=True,
+    )
+
+    maze_pool: Room = Room(
+        "maze_pool",
+        "Flooded Chamber",
+        "A vast chamber stretches before you, its floor covered in dark, still water. "
+        "The ceiling is lost in shadow. Stone pillars rise from the depths, and you "
+        "can barely make out stepping stones crossing to the far side. Without light, "
+        "this place would be a death trap. A drowned corpse floats face-down nearby.",
+        is_dark=True,
+    )
+
+    maze_crossing: Room = Room(
+        "maze_crossing",
+        "Three-Way Crossing",
+        "The maze opens into a junction where three passages meet. The walls here are "
+        "carved with warnings in an ancient script. To the west, you hear a faint "
+        "humming. To the east, the smell of old parchment. The flooded chamber lies "
+        "to the south.",
+    )
+
+    maze_mirror: Room = Room(
+        "maze_mirror",
+        "Hall of Mirrors",
+        "Four large mirrors line the walls of this octagonal chamber - one at each "
+        "cardinal direction. Each mirror shows a different reflection: the eastern "
+        "shows a blazing sun, the southern shows dancing shadows, the western shows "
+        "a pale moon, and the northern shows twinkling stars. A riddle is carved "
+        "into a pedestal at the center.",
+    )
+    # Initialize mirror sequence tracking
+    maze_mirror.mirror_sequence = []  # type: ignore[attr-defined]
+
+    maze_library: Room = Room(
+        "maze_library",
+        "Dusty Archive",
+        "Ancient tomes line the walls of this forgotten library. Dust motes dance in "
+        "the air. A ghostly whisper echoes through the chamber as you enter: "
+        "'Answer my riddle, seeker, or face the wrath of those who failed before you.' "
+        "A tome on a central pedestal glows with faint light. The crossing lies west.",
+    )
+
+    maze_chapel: Room = Room(
+        "maze_chapel",
+        "Sealed Chapel",
+        "A small underground chapel, its altar still intact. Holy symbols of a "
+        "forgotten faith adorn the walls. The air feels heavy with expectation. "
+        "A passage north is blocked by a shimmering barrier of light. Something "
+        "must be spoken to break the seal. The archive lies south.",
+    )
+
+    maze_sanctum: Room = Room(
+        "maze_sanctum",
+        "Cryptkeeper's Sanctum",
+        "You have reached the heart of the maze! This circular chamber was once "
+        "the resting place of the Cryptkeeper, guardian of Barovia's oldest secrets. "
+        "His bones rest peacefully in an ornate sarcophagus. Treasure and relics "
+        "are piled around the room - rewards for those clever enough to reach here.",
+        is_dark=True,
+    )
+
     # Add all rooms to the dictionary
     rooms["square"] = square
     rooms["tavern"] = tavern
@@ -786,6 +894,25 @@ def generate_rooms(rooms: Dict[str, Room]) -> None:
     rooms["tower"] = tower
     rooms["castlechapel"] = castlechapel
     rooms["coffin"] = coffin
+    rooms["maze_entry"] = maze_entry
+    rooms["maze_pool"] = maze_pool
+    rooms["maze_crossing"] = maze_crossing
+    rooms["maze_mirror"] = maze_mirror
+    rooms["maze_library"] = maze_library
+    rooms["maze_chapel"] = maze_chapel
+    rooms["maze_sanctum"] = maze_sanctum
+
+    # Baron's secret vault - hidden behind loose stone in dungeon
+    baron_vault: Room = Room(
+        "baron_vault",
+        "Baron's Secret Vault",
+        "A cramped space behind the dungeon wall. The air is thick with the smell of "
+        "old blood and secrets. Documents are scattered about - records of the Baron's "
+        "'disappeared' citizens, those who refused to smile at his festivals. "
+        "Among the horrors, you see a strongbox and some treasures.",
+        is_dark=True,
+    )
+    rooms["baron_vault"] = baron_vault
 
 
 def connect_exits(rooms: Dict[str, Room]) -> None:
@@ -839,6 +966,7 @@ def connect_exits(rooms: Dict[str, Room]) -> None:
 
     rooms["crypt"].exits = {
         "out": "graveyard",
+        "down": "maze_entry",
     }
 
     # ===== SVALICH WOODS =====
@@ -1080,6 +1208,46 @@ def connect_exits(rooms: Dict[str, Room]) -> None:
         "south": "castlechapel",
     }
 
+    # ===== CRYPTKEEPER'S MAZE =====
+    rooms["maze_entry"].exits = {
+        "up": "crypt",
+        # "north": "maze_pool" - unlocked by maze_gate
+    }
+
+    rooms["maze_pool"].exits = {
+        "south": "maze_entry",
+        "north": "maze_crossing",
+    }
+
+    rooms["maze_crossing"].exits = {
+        "south": "maze_pool",
+        "west": "maze_mirror",
+        "east": "maze_library",
+    }
+
+    rooms["maze_mirror"].exits = {
+        "east": "maze_crossing",
+    }
+
+    rooms["maze_library"].exits = {
+        "west": "maze_crossing",
+        # "north": "maze_chapel" - unlocked by riddle
+    }
+
+    rooms["maze_chapel"].exits = {
+        "south": "maze_library",
+        # "north": "maze_sanctum" - unlocked by saint's name
+    }
+
+    rooms["maze_sanctum"].exits = {
+        "south": "maze_chapel",
+    }
+
+    # Baron's vault - only accessible after solving puzzle
+    rooms["baron_vault"].exits = {
+        "out": "mansiondungeon",
+    }
+
 
 def compute_swamp_paths(rooms: Dict[str, Room]) -> None:
     """Precompute shortest path direction to the lake for all outdoor rooms.
@@ -1311,6 +1479,53 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
     rooms["argchapel"].add_item(altar)
 
     # === DRAGON'S BEACON PUZZLE ===
+    # === ARGYNVOSTHOLT ALTAR (argchapel) ===
+    # Must restore the altar before the beacon can be lit
+    # Creates a 3-step chain: altar -> skull -> light
+
+    arg_altar: StatefulItem = StatefulItem(
+        "altar",
+        "arg_altar",
+        "A ruined altar lies at the front of the chapel.",
+        weight=500,
+        value=0,
+        takeable=False,
+        state="ruined",
+    )
+    arg_altar.add_state_description(
+        "ruined",
+        "The altar lies in ruins - toppled stones and shattered icons. "
+        "It could perhaps be restored by someone who respects the Order.",
+    )
+    arg_altar.add_state_description(
+        "restored",
+        "The altar has been restored to its former glory. "
+        "A silver dragon banner hangs proudly behind it.",
+    )
+    arg_altar.set_room_id("argchapel")
+    arg_altar.add_interaction(
+        verb="restore",
+        target_state="restored",
+        message="You carefully right the fallen stones and reassemble the altar. "
+        "As you work, you feel the approval of the dragon knights watching over you. "
+        "When finished, the altar glows faintly with silver light. "
+        "The chapel feels sanctified once more - perhaps now the beacon can be lit.",
+    )
+    arg_altar.add_interaction(
+        verb="repair",
+        target_state="restored",
+        message="You repair the damaged altar piece by piece. "
+        "With each stone you place, you feel the spirits of the Order grow stronger. "
+        "When complete, a faint silver aura surrounds the restored altar.",
+    )
+    arg_altar.add_interaction(
+        verb="examine",
+        message="The altar was once magnificent - carved with images of a silver dragon "
+        "protecting knights in battle. Now it lies in ruins, desecrated by Strahd's forces. "
+        "It could be restored with care and respect.",
+    )
+    rooms["argchapel"].add_item(arg_altar)
+
     # Return Argynvost's skull to the beacon and light it to honor the knights
     # The skull is found in argtomb (Strahd's castle crypt)
     # Completing this makes the revenant friendly
@@ -1356,7 +1571,16 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
         "You hear armor clanking behind you - the revenant knight bows deeply. "
         "'You have honored our lord,' he intones. 'The Order is in your debt.'",
         from_state="skull_placed",
-        conditional_fn=player_has_light,
+        conditional_fn=altar_restored_and_skull_placed,
+    )
+    beacon.add_interaction(
+        verb="light",
+        message="You touch flame to the brazier, but the fire sputters and dies. "
+        "Something feels incomplete... The chapel altar must first be restored "
+        "before the beacon can accept the dragon's flame.",
+        from_state="skull_placed",
+        conditional_fn=lambda p, gs: not altar_restored(p, gs)
+        and player_has_light(p, gs),
     )
     beacon.add_interaction(
         verb="light",
@@ -1903,6 +2127,328 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
     )
     rooms["kitchen"].add_item(oven)
 
+    # === HAG'S TRUE NAME PUZZLE ===
+    # Saying "Morgantha" in the kitchen weakens the hag
+    # Hints are scattered: wagon (Mor...), bedroom dolls (...gantha), basement note
+
+    async def weaken_hag(
+        player: Any,
+        game_state: Any,
+        player_manager: Any,
+        online_sessions: Any,
+        sio: Any,
+        utils: Any,
+    ) -> None:
+        """Weaken the hag by speaking her true name."""
+        # Mark the hag as weakened - this would affect combat
+        # For now we just set a flag that could be checked
+        mob_manager = getattr(utils, "mob_manager", None)
+        if mob_manager:
+            for mob_id, mob in mob_manager.mobs.items():
+                if getattr(mob, "mob_type", None) == "hag":
+                    mob.damage = max(1, mob.damage // 2)  # Halve damage
+                    setattr(mob, "weakened", True)
+
+    rooms["kitchen"].add_speech_trigger(
+        keyword="morgantha",
+        message="As you speak the hag's true name, a TERRIBLE SHRIEK echoes through the mill!\n\n"
+        "'HOW DO YOU KNOW THAT NAME?!' The hag's voice trembles with fear and rage. "
+        "'No one should know my TRUE NAME! That was sealed away centuries ago!'\n\n"
+        "You feel a shift in the air - the hag's power has been diminished. "
+        "If you face her in combat, she will be significantly weakened!",
+        effect_fn=weaken_hag,
+        one_time=True,
+    )
+
+    # ===== CRYPTKEEPER'S MAZE PUZZLES =====
+
+    # === MAZE GATE (maze_entry) ===
+    # Requires the crypt_key from the gallows corpse puzzle
+    maze_gate: StatefulItem = StatefulItem(
+        "gate",
+        "maze_gate",
+        "A heavy iron gate blocks the passage north.",
+        weight=500,
+        value=0,
+        takeable=False,
+        state="locked",
+    )
+    maze_gate.add_state_description(
+        "locked", "A heavy iron gate blocks the passage north. It is locked tight."
+    )
+    maze_gate.add_state_description(
+        "open", "The iron gate stands open, revealing a dark passage beyond."
+    )
+    maze_gate.set_room_id("maze_entry")
+    maze_gate.add_interaction(
+        verb="unlock",
+        required_instrument="key",
+        target_state="open",
+        message="You insert the rusted key into the lock. It turns with a grinding screech! "
+        "The ancient gate swings open, releasing a gust of stale air from the depths below.",
+        from_state="locked",
+        add_exit=("north", "maze_pool"),
+    )
+    maze_gate.add_interaction(
+        verb="open",
+        message="The gate is locked. You need a key to open it.",
+        from_state="locked",
+    )
+    maze_gate.add_interaction(
+        verb="examine",
+        message="An ancient iron gate, rusted but solid. A heavy lock secures it. "
+        "The key from the gallows might fit...",
+    )
+    rooms["maze_entry"].add_item(maze_gate)
+
+    # === STEPPING STONES (maze_pool) ===
+    # Environmental puzzle - need light to cross safely
+    stepping_stones: StatefulItem = StatefulItem(
+        "stones",
+        "stepping_stones",
+        "Stepping stones cross the flooded chamber.",
+        weight=10000,
+        value=0,
+        takeable=False,
+        state="visible",
+        synonyms=["stone", "stepping", "path"],
+    )
+    stepping_stones.add_state_description(
+        "visible", "Stepping stones cross the flooded chamber. They look slippery."
+    )
+    stepping_stones.set_room_id("maze_pool")
+    stepping_stones.add_interaction(
+        verb="cross",
+        message="With your light source, you carefully pick your way across the stepping stones. "
+        "The water is black and deep - you don't want to know what lurks below. "
+        "But you make it safely to the other side.",
+        conditional_fn=player_has_light,
+    )
+    stepping_stones.add_interaction(
+        verb="cross",
+        message="You step forward into the darkness... and immediately plunge into the icy water! "
+        "Something cold wraps around your ankle and PULLS YOU DOWN! You thrash desperately "
+        "but the water fills your lungs. The last thing you see is pale shapes in the depths...",
+        kills_player=True,
+        damage_message="You step forward into the darkness and plunge into the water. "
+        "Something drags you down into the depths...",
+    )
+    stepping_stones.add_interaction(
+        verb="examine",
+        message="Stone pillars rise from the dark water. Without light, you can barely see them. "
+        "Crossing in darkness would be suicidal.",
+    )
+    rooms["maze_pool"].add_item(stepping_stones)
+
+    # Drowned corpse as a hint
+    drowned_corpse: Item = Item(
+        "corpse",
+        "drowned_corpse",
+        "A waterlogged corpse floats face-down in the water, a torch clutched in its dead hand.",
+        weight=100,
+        value=0,
+        takeable=False,
+    )
+    rooms["maze_pool"].add_item(drowned_corpse)
+
+    # === MIRROR PUZZLE (maze_mirror) ===
+    # Touch mirrors in correct sequence: east, south, west, north
+    # Based on riddle: sun rises east, shadows flee at noon (south),
+    # moon in darkness (west), stars point north
+
+    mirror_riddle: StatefulItem = StatefulItem(
+        "pedestal",
+        "mirror_pedestal",
+        "A stone pedestal stands at the center of the chamber.",
+        weight=200,
+        value=0,
+        takeable=False,
+        state="unread",
+        synonyms=["riddle", "inscription"],
+    )
+    mirror_riddle.add_state_description(
+        "unread", "A stone pedestal stands at the center with a riddle carved into it."
+    )
+    mirror_riddle.add_state_description(
+        "read", "A stone pedestal with a riddle you have read."
+    )
+    mirror_riddle.set_room_id("maze_mirror")
+    mirror_riddle.add_interaction(
+        verb="read",
+        target_state="read",
+        message="The riddle reads:\n\n"
+        "'First the sun rises in the east,\n"
+        "Then at noon the shadows flee,\n"
+        "Moon in darkness claims the west,\n"
+        "Stars point north eternally.'\n\n"
+        "Four mirrors surround you. Perhaps they must be touched in a certain order?",
+    )
+    mirror_riddle.add_interaction(
+        verb="examine",
+        message="A riddle is carved into the pedestal. 'Read' it to see the words.",
+    )
+    rooms["maze_mirror"].add_item(mirror_riddle)
+
+    # Helper function to create mirror touch effect
+    def create_mirror_touch_effect(direction: str, description: str) -> StatefulItem:
+        mirror = StatefulItem(
+            f"{direction} mirror",
+            f"mirror_{direction}",
+            f"The {direction}ern mirror shows {description}.",
+            weight=100,
+            value=0,
+            takeable=False,
+            state="dormant",
+            synonyms=[direction, f"{direction}ern"],
+        )
+        mirror.add_state_description(
+            "dormant", f"The {direction}ern mirror shows {description}."
+        )
+        mirror.add_state_description(
+            "touched", f"The {direction}ern mirror glows faintly."
+        )
+        mirror.set_room_id("maze_mirror")
+        return mirror
+
+    mirror_east = create_mirror_touch_effect("east", "a blazing sun")
+    mirror_south = create_mirror_touch_effect("south", "dancing shadows")
+    mirror_west = create_mirror_touch_effect("west", "a pale moon")
+    mirror_north = create_mirror_touch_effect("north", "twinkling stars")
+
+    rooms["maze_mirror"].add_item(mirror_east)
+    rooms["maze_mirror"].add_item(mirror_south)
+    rooms["maze_mirror"].add_item(mirror_west)
+    rooms["maze_mirror"].add_item(mirror_north)
+
+    # === ARCHIVE RIDDLE (maze_library) ===
+    # The riddle tome and speech trigger for "death"
+
+    archive_tome: StatefulItem = StatefulItem(
+        "tome",
+        "archive_tome",
+        "A glowing tome rests on the central pedestal.",
+        weight=5,
+        value=0,
+        takeable=False,
+        state="unread",
+        synonyms=["book", "pedestal"],
+    )
+    archive_tome.add_state_description(
+        "unread", "A glowing tome rests on the central pedestal."
+    )
+    archive_tome.add_state_description("read", "The tome's riddle echoes in your mind.")
+    archive_tome.set_room_id("maze_library")
+    archive_tome.add_interaction(
+        verb="read",
+        target_state="read",
+        message="The tome's pages glow with ethereal light. A riddle appears:\n\n"
+        "'I am sought by kings and beggars alike,\n"
+        "Yet none who find me wish to stay.\n"
+        "I am feared by the living, welcomed by the suffering,\n"
+        "And Strahd himself cannot keep me at bay.\n"
+        "What am I?'\n\n"
+        "The ghostly voice whispers: 'Speak the answer, if you dare...'",
+    )
+    archive_tome.add_interaction(
+        verb="examine",
+        message="The tome pulses with magic. Reading it might reveal a riddle.",
+    )
+    rooms["maze_library"].add_item(archive_tome)
+
+    # Speech trigger for the riddle answer
+    async def open_chapel_door(
+        player: Any,
+        game_state: Any,
+        player_manager: Any,
+        online_sessions: Any,
+        sio: Any,
+        utils: Any,
+    ) -> None:
+        """Open the passage to the chapel when riddle is answered."""
+        room = game_state.get_room("maze_library")
+        if room and "north" not in room.exits:
+            room.exits["north"] = "maze_chapel"
+
+    rooms["maze_library"].add_speech_trigger(
+        keyword="death",
+        message="As you speak the word, the ghostly voice sighs with profound relief.\n\n"
+        "'Yes... DEATH is the answer we all seek to avoid, yet cannot escape. "
+        "Even Strahd, for all his power, fears the true death that waits beyond his immortality.'\n\n"
+        "A hidden door slides open to the north, revealing a passage to a small chapel.",
+        effect_fn=open_chapel_door,
+        one_time=True,
+    )
+
+    # === CHAPEL SEAL (maze_chapel) ===
+    # Must speak "andral" to break the seal - only works if visited Vallaki church
+
+    chapel_altar: StatefulItem = StatefulItem(
+        "altar",
+        "maze_altar",
+        "A small altar stands before a shimmering barrier of light.",
+        weight=300,
+        value=0,
+        takeable=False,
+        state="sealed",
+    )
+    chapel_altar.add_state_description(
+        "sealed",
+        "A shimmering barrier of light blocks the passage north. "
+        "An inscription reads: 'Speak the name of the saint who protects the faithful.'",
+    )
+    chapel_altar.add_state_description(
+        "unsealed", "The barrier has dissolved. The passage north is open."
+    )
+    chapel_altar.set_room_id("maze_chapel")
+    chapel_altar.add_interaction(
+        verb="examine",
+        message="The altar is carved with protective symbols. An inscription reads:\n"
+        "'Only one who has prayed at the saint's church may speak his name with true faith. "
+        "Speak the name of the saint who protects the faithful of Vallaki.'\n\n"
+        "Perhaps visiting St. Andral's Church would help you learn the name?",
+    )
+    rooms["maze_chapel"].add_item(chapel_altar)
+
+    # Speech trigger for the saint's name
+    async def unseal_sanctum(
+        player: Any,
+        game_state: Any,
+        player_manager: Any,
+        online_sessions: Any,
+        sio: Any,
+        utils: Any,
+    ) -> None:
+        """Unseal the passage to the sanctum."""
+        room = game_state.get_room("maze_chapel")
+        if room and "north" not in room.exits:
+            room.exits["north"] = "maze_sanctum"
+        # Update altar state
+        for item in room.items:
+            if hasattr(item, "id") and item.id == "maze_altar":
+                item.state = "unsealed"
+                break
+
+    rooms["maze_chapel"].add_speech_trigger(
+        keyword="andral",
+        message="As you speak the saint's name, the altar glows with brilliant white light!\n\n"
+        "The shimmering barrier wavers, then dissolves completely. You feel a wave of "
+        "warmth wash over you - the blessing of St. Andral recognizes your faith.\n\n"
+        "The passage to the sanctum is now open!",
+        effect_fn=unseal_sanctum,
+        conditional_fn=player_visited_vallaki_church,
+        one_time=True,
+    )
+
+    # Fallback if player hasn't visited the church
+    rooms["maze_chapel"].add_speech_trigger(
+        keyword="andral",
+        message="You speak the name, but it feels hollow on your tongue. The barrier "
+        "pulses mockingly. Perhaps you must first visit the saint's church and "
+        "pray there before you can speak his name with true faith.",
+        conditional_fn=lambda p, gs: not player_visited_vallaki_church(p, gs),
+        one_time=False,
+    )
+
 
 def add_regular_items(rooms: Dict[str, Room]) -> None:
     """Add regular (non-stateful) items to rooms."""
@@ -2052,6 +2598,9 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
         "'The Artifact - Seek the sun's blade in the castle's golden hoard.\n"
         "The Broken One - An ally awaits in the inn of blue water.\n"
         "The Mists - The lord of this land rests in darkness beneath his throne.'\n\n"
+        "The seer pauses, then adds in a low whisper:\n"
+        "'And beware the hag of the windmill... her name begins with Mor... "
+        "To speak her full name is to weaken her. But I cannot remember more.'\n\n"
         "She nods cryptically. 'The cards have spoken. Heed their wisdom, traveler.'",
         from_state="waiting",
         conditional_fn=seer_paid,
@@ -2244,6 +2793,55 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
     )
     rooms["barrow"].add_item(gold_pile)
 
+    # === CRYPTKEEPER'S SANCTUM REWARDS ===
+    cryptkeeper_amulet: Item = Item(
+        "amulet",
+        "cryptkeeper_amulet",
+        "A bone amulet inscribed with protective runes. It pulses with ancient power.",
+        weight=1,
+        value=100,
+    )
+    rooms["maze_sanctum"].add_item(cryptkeeper_amulet)
+
+    ancient_gold: Item = Item(
+        "gold",
+        "ancient_gold",
+        "A pile of ancient gold coins, far older than anything in Barovia.",
+        weight=8,
+        value=100,
+    )
+    rooms["maze_sanctum"].add_item(ancient_gold)
+
+    cryptkeeper_tome: StatefulItem = StatefulItem(
+        "tome",
+        "cryptkeeper_tome",
+        "A leather-bound tome resting on the sarcophagus.",
+        weight=3,
+        value=50,
+        state="unread",
+    )
+    cryptkeeper_tome.add_state_description(
+        "unread", "A leather-bound tome resting on the sarcophagus."
+    )
+    cryptkeeper_tome.add_state_description(
+        "read", "The Cryptkeeper's tome, filled with ancient secrets."
+    )
+    cryptkeeper_tome.add_interaction(
+        verb="read",
+        target_state="read",
+        message="You open the tome and read the Cryptkeeper's final words:\n\n"
+        "'I am the last of my order, sworn to guard Barovia's oldest secrets. "
+        "When the Dark Lord rose, we knew our time was ending. I sealed this maze "
+        "so that only the worthy could reach our treasures.\n\n"
+        "If you read this, you have proven yourself clever and brave. "
+        "Take what you find here and use it against the darkness.\n\n"
+        "Remember: the hag fears her true name. The Baron hides shame in shadows. "
+        "And Strahd... Strahd can be destroyed, but only by one who understands "
+        "that even immortals fear the final death.'\n\n"
+        "The tome contains hints about other puzzles in the land!",
+    )
+    rooms["maze_sanctum"].add_item(cryptkeeper_tome)
+
     # === QUEST ITEMS ===
     symbol: Item = Item(
         "symbol",
@@ -2272,6 +2870,206 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
         value=50,
     )
     rooms["bedroom"].add_item(stone)
+
+    # === HAG NAME HINTS ===
+    # Hint 1: Dolls in bedroom whisper part of the name
+    hag_dolls: StatefulItem = StatefulItem(
+        "dolls",
+        "hag_dolls",
+        "Strange dolls made of sticks and bone hang from the ceiling.",
+        weight=5,
+        value=0,
+        takeable=False,
+        state="hanging",
+        synonyms=["doll", "stick", "bone"],
+    )
+    hag_dolls.add_state_description(
+        "hanging", "Strange dolls made of sticks and bone hang from the ceiling."
+    )
+    hag_dolls.add_interaction(
+        verb="examine",
+        message="The dolls are disturbing - crude figures made of twigs wrapped in hair. "
+        "As you look at them, you swear you hear a faint whisper: '...gantha... gantha...' "
+        "The sound seems to come from the dolls themselves.",
+    )
+    hag_dolls.add_interaction(
+        verb="touch",
+        message="As your fingers brush the dolls, a voice whispers directly into your ear: "
+        "'...gantha... she who bakes the children... gantha...' "
+        "You snatch your hand back in horror.",
+    )
+    rooms["bedroom"].add_item(hag_dolls)
+
+    # Hint 2: Note in mill basement about true names
+    hag_note: StatefulItem = StatefulItem(
+        "note",
+        "hag_basement_note",
+        "A crumpled note lies among the bones.",
+        weight=1,
+        value=0,
+        state="unread",
+    )
+    hag_note.add_state_description("unread", "A crumpled note lies among the bones.")
+    hag_note.add_state_description("read", "A note you have read.")
+    hag_note.add_interaction(
+        verb="read",
+        target_state="read",
+        message="The note is stained but legible:\n\n"
+        "'To any who find this - the creature upstairs is no mere witch. "
+        "She is a night hag, bound to this place by dark pacts. "
+        "Only her TRUE NAME can weaken her power. I searched but could not find it. "
+        "Perhaps the Vistani know? They trade in secrets...\n\n"
+        "If you discover her name, speak it aloud in her presence. "
+        "It may be the only way to survive.'\n\n"
+        "The writer's final words are smeared with blood.",
+    )
+    rooms["millbasement"].add_item(hag_note)
+
+    # === BARON'S SECRET PUZZLE ===
+    # Baron's journal in mansion hints at secret, loose stone in dungeon reveals vault
+    baron_journal: StatefulItem = StatefulItem(
+        "journal",
+        "baron_journal",
+        "A leather-bound journal lies on the Baron's desk.",
+        weight=2,
+        value=15,
+        state="unread",
+        synonyms=["book", "diary"],
+    )
+    baron_journal.add_state_description(
+        "unread", "A leather-bound journal lies on the Baron's desk."
+    )
+    baron_journal.add_state_description(
+        "read", "The Baron's journal, now read. It revealed a dark secret."
+    )
+    baron_journal.add_interaction(
+        verb="read",
+        target_state="read",
+        message="The journal contains the Baron's private thoughts:\n\n"
+        "'The festival must succeed. All will be well. ALL WILL BE WELL.\n\n"
+        "I have hidden the evidence of my... methods... in the dungeon below. "
+        "Behind the third stone from the door, in the north wall. "
+        "No one must ever find what I have done in the name of happiness.\n\n"
+        "If they knew the true cost of our festivals... the sacrifices I've made... "
+        "they would never smile again.'\n\n"
+        "The Baron's handwriting becomes increasingly erratic on the later pages.",
+    )
+    baron_journal.add_interaction(
+        verb="examine",
+        message="A leather journal embossed with the Vallakovich family crest. "
+        "The Baron guards it jealously. It might contain secrets...",
+    )
+    rooms["mansion"].add_item(baron_journal)
+
+    # Loose stone in mansion dungeon - requires light and having read journal
+    def journal_was_read(player: Any, game_state: Any) -> bool:
+        """Check if player has read the baron's journal."""
+        for item in player.inventory:
+            if hasattr(item, "id") and item.id == "baron_journal":
+                return getattr(item, "state", None) == "read"
+        # Also check if it's in any room (might have been dropped)
+        for room_id, room in game_state.rooms.items():
+            for item in room.items:
+                if hasattr(item, "id") and item.id == "baron_journal":
+                    return getattr(item, "state", None) == "read"
+        return False
+
+    def can_find_stone(player: Any, game_state: Any) -> bool:
+        """Must have light AND have read the journal."""
+        return player_has_light(player, game_state) and journal_was_read(
+            player, game_state
+        )
+
+    loose_stone: StatefulItem = StatefulItem(
+        "stone",
+        "loose_stone",
+        "The dungeon walls are made of rough stone blocks.",
+        weight=100,
+        value=0,
+        takeable=False,
+        state="set",
+        synonyms=["wall", "brick", "block"],
+    )
+    loose_stone.add_state_description(
+        "set", "The dungeon walls are made of rough stone blocks."
+    )
+    loose_stone.add_state_description(
+        "removed", "One stone has been pulled from the wall, revealing a hidden space."
+    )
+    loose_stone.set_room_id("mansiondungeon")
+    loose_stone.add_interaction(
+        verb="examine",
+        message="With your light, you can see the dungeon walls clearly. "
+        "Now that you know where to look, you notice the third stone from the door "
+        "is slightly different - it's loose, and there are scratch marks around it.",
+        conditional_fn=can_find_stone,
+    )
+    loose_stone.add_interaction(
+        verb="examine",
+        message="The walls are rough stone. In this darkness, you can barely see anything. "
+        "You'd need light to examine them properly.",
+        conditional_fn=lambda p, gs: not player_has_light(p, gs),
+    )
+    loose_stone.add_interaction(
+        verb="examine",
+        message="The walls are made of rough stone blocks. They all look the same to you. "
+        "Perhaps if you knew what to look for...",
+    )
+    loose_stone.add_interaction(
+        verb="move",
+        target_state="removed",
+        message="Knowing exactly where to look, you pry at the third stone from the door. "
+        "It shifts with a grinding sound, then slides out! Behind it is a small vault "
+        "containing the Baron's darkest secrets - and his hidden treasures.",
+        from_state="set",
+        conditional_fn=can_find_stone,
+        add_exit=("in", "baron_vault"),
+    )
+    loose_stone.add_interaction(
+        verb="move",
+        message="You run your hands over the wall but can't find anything unusual. "
+        "Maybe you need to know exactly where to look?",
+        from_state="set",
+    )
+    loose_stone.add_interaction(
+        verb="push",
+        target_state="removed",
+        message="You push on the loose stone. It slides inward with a click, "
+        "revealing a hidden compartment!",
+        from_state="set",
+        conditional_fn=can_find_stone,
+        add_exit=("in", "baron_vault"),
+    )
+    loose_stone.add_interaction(
+        verb="pull",
+        target_state="removed",
+        message="You grip the edges of the loose stone and pull. "
+        "It slides out, revealing a dark space behind!",
+        from_state="set",
+        conditional_fn=can_find_stone,
+        add_exit=("in", "baron_vault"),
+    )
+    rooms["mansiondungeon"].add_item(loose_stone)
+
+    # Baron's vault contents
+    baron_gold: Item = Item(
+        "gold",
+        "baron_gold",
+        "A pile of gold coins confiscated from 'unhappy' citizens.",
+        weight=10,
+        value=75,
+    )
+    rooms["baron_vault"].add_item(baron_gold)
+
+    baron_documents: Item = Item(
+        "documents",
+        "baron_documents",
+        "Disturbing records of the Baron's 'corrections' - those who refused to be happy.",
+        weight=2,
+        value=25,
+        synonyms=["records", "papers"],
+    )
+    rooms["baron_vault"].add_item(baron_documents)
 
     # === CONSUMABLES ===
     wine: Item = Item(
@@ -2431,3 +3229,15 @@ def add_weapons(rooms: Dict[str, Room]) -> None:
         damage=8,
     )
     rooms["pool"].add_item(staff)
+
+    # Blessed dagger in Cryptkeeper's Sanctum - reward for maze completion
+    blessed_dagger: Weapon = Weapon(
+        name="dagger",
+        id="blessed_dagger",
+        description="A silver dagger blessed by ancient priests. It gleams with holy light.",
+        weight=1,
+        value=120,
+        damage=10,
+    )
+    blessed_dagger.emits_light = True  # Holy weapon radiates light
+    rooms["maze_sanctum"].add_item(blessed_dagger)

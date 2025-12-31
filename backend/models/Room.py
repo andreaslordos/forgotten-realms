@@ -1,6 +1,6 @@
 # Update models/Room.py to add hidden items support
 
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
 
 if False:  # TYPE_CHECKING
     pass
@@ -18,6 +18,7 @@ class Room:
     is_dark: bool
     is_outdoor: bool
     swamp_direction: Optional[str]
+    speech_triggers: Dict[str, Dict[str, Any]]  # Maps keywords to trigger configs
 
     def __init__(
         self,
@@ -37,6 +38,35 @@ class Room:
         self.is_dark = is_dark  # Whether room requires light source to see
         self.is_outdoor = is_outdoor  # Whether room is outdoors (for swamp command)
         self.swamp_direction: Optional[str] = None  # Precomputed direction to swamp
+        self.speech_triggers: Dict[str, Dict[str, Any]] = {}  # Keyword triggers
+
+    def add_speech_trigger(
+        self,
+        keyword: str,
+        message: str,
+        effect_fn: Optional[Callable[..., Union[None, Awaitable[None]]]] = None,
+        conditional_fn: Optional[Callable[[Any, Any], bool]] = None,
+        one_time: bool = True,
+    ) -> None:
+        """
+        Add a speech trigger that activates when a player types a keyword in this room.
+
+        Args:
+            keyword: The word/phrase that triggers the effect (case-insensitive)
+            message: Message shown to the player when triggered
+            effect_fn: Optional async function(player, game_state, player_manager,
+                       online_sessions, sio, utils) to execute
+            conditional_fn: Optional function(player, game_state) -> bool that must
+                           return True for trigger to activate
+            one_time: If True, trigger only fires once per game session
+        """
+        self.speech_triggers[keyword.lower()] = {
+            "message": message,
+            "effect_fn": effect_fn,
+            "conditional_fn": conditional_fn,
+            "one_time": one_time,
+            "triggered": False,
+        }
 
     def add_item(self, item: Any) -> None:  # item: "Item"
         """Add a visible item to the room."""

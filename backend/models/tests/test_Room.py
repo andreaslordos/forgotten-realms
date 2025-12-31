@@ -447,5 +447,91 @@ class RoomOutdoorTest(unittest.TestCase):
         self.assertEqual(reconstructed.swamp_direction, original.swamp_direction)
 
 
+class RoomSpeechTriggersTest(unittest.TestCase):
+    """Test room speech trigger functionality."""
+
+    def test___init___defaults_speech_triggers_to_empty_dict(self) -> None:
+        """Test room defaults to no speech triggers."""
+        room = Room("room1", "Test Room", "A test room")
+
+        self.assertEqual(room.speech_triggers, {})
+
+    def test_add_speech_trigger_adds_trigger_to_dict(self) -> None:
+        """Test adding a speech trigger."""
+        room = Room("room1", "Test Room", "A test room")
+
+        room.add_speech_trigger(
+            keyword="password",
+            message="The door opens!",
+        )
+
+        self.assertIn("password", room.speech_triggers)
+        self.assertEqual(room.speech_triggers["password"]["message"], "The door opens!")
+
+    def test_add_speech_trigger_converts_keyword_to_lowercase(self) -> None:
+        """Test that keywords are stored in lowercase."""
+        room = Room("room1", "Test Room", "A test room")
+
+        room.add_speech_trigger(keyword="PASSWORD", message="Success!")
+
+        self.assertIn("password", room.speech_triggers)
+        self.assertNotIn("PASSWORD", room.speech_triggers)
+
+    def test_add_speech_trigger_with_all_parameters(self) -> None:
+        """Test adding trigger with all optional parameters."""
+
+        def mock_effect(
+            p: object, gs: object, pm: object, os: object, sio: object, u: object
+        ) -> None:
+            pass
+
+        def mock_condition(p: object, gs: object) -> bool:
+            return True
+
+        room = Room("room1", "Test Room", "A test room")
+
+        room.add_speech_trigger(
+            keyword="riddle",
+            message="Correct!",
+            effect_fn=mock_effect,
+            conditional_fn=mock_condition,
+            one_time=False,
+        )
+
+        trigger = room.speech_triggers["riddle"]
+        self.assertEqual(trigger["message"], "Correct!")
+        self.assertEqual(trigger["effect_fn"], mock_effect)
+        self.assertEqual(trigger["conditional_fn"], mock_condition)
+        self.assertFalse(trigger["one_time"])
+        self.assertFalse(trigger["triggered"])
+
+    def test_add_speech_trigger_defaults_one_time_to_true(self) -> None:
+        """Test that one_time defaults to True."""
+        room = Room("room1", "Test Room", "A test room")
+
+        room.add_speech_trigger(keyword="word", message="Message")
+
+        self.assertTrue(room.speech_triggers["word"]["one_time"])
+
+    def test_add_speech_trigger_initializes_triggered_to_false(self) -> None:
+        """Test that triggered starts as False."""
+        room = Room("room1", "Test Room", "A test room")
+
+        room.add_speech_trigger(keyword="word", message="Message")
+
+        self.assertFalse(room.speech_triggers["word"]["triggered"])
+
+    def test_add_multiple_speech_triggers(self) -> None:
+        """Test adding multiple triggers to same room."""
+        room = Room("room1", "Test Room", "A test room")
+
+        room.add_speech_trigger(keyword="word1", message="Message 1")
+        room.add_speech_trigger(keyword="word2", message="Message 2")
+
+        self.assertEqual(len(room.speech_triggers), 2)
+        self.assertIn("word1", room.speech_triggers)
+        self.assertIn("word2", room.speech_triggers)
+
+
 if __name__ == "__main__":
     unittest.main()
