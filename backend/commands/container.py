@@ -85,7 +85,24 @@ async def handle_put(
                     break
 
     if not container:
-        return f"You don't see a container called '{instrument}' here."
+        # Fall back to interaction system for StatefulItems
+        # (e.g., "put torch in bracket" works like "place torch in bracket")
+        from commands.interaction import handle_interaction
+
+        modified_cmd = cmd.copy()
+        modified_cmd["verb"] = "place"
+        # Mark as reversed syntax since "put X in Y" has subject/instrument swapped
+        # relative to the interaction handler's expected order
+        modified_cmd["reversed_syntax"] = True
+        return await handle_interaction(
+            modified_cmd,
+            player,
+            game_state,
+            player_manager,
+            online_sessions,
+            sio,
+            utils,
+        )
 
     # Check if the container is open
     if container.state != "open":
@@ -311,6 +328,11 @@ async def handle_get_from(
     # Check if the container is open
     if container.state != "open":
         return f"The {container.name} is closed. You need to open it first."
+
+    # Check if the container forbids item removal
+    if getattr(container, "no_removal", False):
+        message = getattr(container, "no_removal_message", None)
+        return message or f"You cannot take items from the {container.name}."
 
     # Handle special cases: "all" and "t" (treasure)
     if subject and subject.lower() in ["all", "everything"]:
@@ -560,6 +582,11 @@ async def handle_empty(
     if not container:
         return f"You don't see '{subject}'!"
 
+    # Check if the container forbids item removal
+    if getattr(container, "no_removal", False):
+        message = getattr(container, "no_removal_message", None)
+        return message or f"You cannot take items from the {container.name}."
+
     # Container found - empty it
     if len(container.items) == 0:
         return f"The {container.name} is already empty."
@@ -600,6 +627,7 @@ command_registry.register(
     "Empty a container, dropping all its contents. Usage: empty <container>",
 )
 
-# Make sure to register insert as an alias for put
+# Make sure to register insert and place as aliases for put
 command_registry.register_alias("insert", "put")
+command_registry.register_alias("place", "put")
 # Note: "remove" alias for "get" is registered in commands/__init__.py after standard.py loads

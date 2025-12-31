@@ -593,23 +593,24 @@ class Level1Village(LevelGenerator):
             return False
 
         safe_coins = Item(
-            name="coin pouch",
+            name="pouch",
             id="safe_coins",
             description="A small leather pouch containing a handful of gold coins.",
             weight=1,
             value=50,
             takeable=True,
+            synonyms=["coin pouch", "leather pouch"],
         )
         self._rooms["tavern"].add_hidden_item(safe_coins, safe_opened)
 
         cellar_key = Item(
-            name="old key",
+            name="key",
             id="cellar_key",
             description="A tarnished brass key with teeth worn smooth by age.",
             weight=0,
             value=5,
             takeable=True,
-            synonyms=["brass key", "tarnished key"],
+            synonyms=["old key", "brass key", "tarnished key", "cellar key"],
         )
         self._rooms["tavern"].add_hidden_item(cellar_key, safe_opened)
 
@@ -680,14 +681,14 @@ class Level1Village(LevelGenerator):
             return False
 
         mist_token = Item(
-            name="mist token",
+            name="token",
             id="mist_token",
             description="A silver token inscribed with swirling runes. It pulses with faint "
             "otherworldly light. The mists seem to recoil from it.",
             weight=0,
             value=100,
             takeable=True,
-            synonyms=["silver token", "token", "rune token"],
+            synonyms=["mist token", "silver token", "rune token"],
         )
         self._rooms["cellar"].add_hidden_item(mist_token, chest_opened)
 
@@ -815,6 +816,8 @@ class Level1Village(LevelGenerator):
             capacity_limit=10,
             capacity_weight=20,
             takeable=False,
+            no_removal=True,
+            no_removal_message="The priest glares at you sternly. 'Those offerings belong to the Morning Lord, not to your pockets!'",
         )
         donation_box.synonyms = ["box", "offering box", "wooden box"]
         donation_box.add_interaction(
@@ -900,17 +903,17 @@ class Level1Village(LevelGenerator):
         )
         self._rooms["undercroft"].add_hidden_item(holy_bones, reliquary_opened)
 
-        prayer_book = Item(
-            name="prayer book",
+        prayerbook = Item(
+            name="prayerbook",
             id="prayer_book",
             description="A torn prayer book. One passage is circled: 'The Morning Lord's blessing "
             "grants safe passage through the mists of evil.'",
             weight=1,
             value=5,
             takeable=True,
-            synonyms=["book", "torn book"],
+            synonyms=["prayer book", "book", "torn book"],
         )
-        self._rooms["undercroft"].add_item(prayer_book)
+        self._rooms["undercroft"].add_item(prayerbook)
 
         # =====================================================================
         # MANOR STUDY - Opener, globe, portrait clue
@@ -927,17 +930,22 @@ class Level1Village(LevelGenerator):
         )
         self._rooms["study"].add_item(opener)
 
-        unfinished_letter = Item(
+        unfinished_letter = StatefulItem(
             name="letter",
             id="unfinished_letter",
-            description="A half-finished letter: 'My dearest Ireena, if you are reading this, "
-            "I am already dead. The Devil has come for us at last. Flee if you can, but know "
-            "this - the tavern cellar holds a secret that may save you. The token hidden there "
-            "can pierce even his cursed mists. Your loving father, Kolyan.'",
+            description="A half-finished letter lies here'",
+            state="default",
             weight=0,
             value=10,
             takeable=True,
             synonyms=["half-finished letter", "note", "message"],
+        )
+
+        unfinished_letter.add_interaction(
+            verb="read",
+            from_state="default",
+            target_state="default",
+            message="The letter reads: 'My dearest Ireena, if you are reading this, I am already dead. The Devil has come for us at last. Flee if you can, but know this - the tavern cellar holds a secret that may save you. The token hidden there can pierce.....' The rest of the letter is illegible.",
         )
         self._rooms["study"].add_item(unfinished_letter)
 
@@ -1181,6 +1189,25 @@ class Level1Village(LevelGenerator):
         # SHOP - Display case, supplies
         # =====================================================================
 
+        # Condition functions for display case
+        def bildrath_is_alive(player: Any, game_state: Any) -> bool:
+            """Check if Bildrath is alive in the shop."""
+            mob_manager = getattr(game_state, "_mob_manager", None)
+            if not mob_manager:
+                # Try to get it from the utils module (runtime attached)
+                import utils as utils_module
+
+                mob_manager = getattr(utils_module, "mob_manager", None)
+            if mob_manager:
+                for mob in mob_manager.get_mobs_in_room("shop"):
+                    if mob.name.lower() == "bildrath":
+                        return True
+            return False
+
+        def bildrath_is_dead(player: Any, game_state: Any) -> bool:
+            """Check if Bildrath is dead (not in shop)."""
+            return not bildrath_is_alive(player, game_state)
+
         display_case = StatefulItem(
             name="case",
             id="shop_case",
@@ -1195,19 +1222,100 @@ class Level1Village(LevelGenerator):
         )
         display_case.add_state_description("open", "The display case stands open.")
 
+        # If Bildrath is alive, he blocks opening
         display_case.add_interaction(
             verb="open",
             from_state="locked",
             message="Bildrath snarls at you. 'Touch that case and I'll have your hands! "
             "That's not for browsing - gold first, then you can look!'",
+            conditional_fn=bildrath_is_alive,
+        )
+        # If Bildrath is dead, you can open it with a key
+        display_case.add_interaction(
+            verb="open",
+            from_state="locked",
+            target_state="open",
+            message="With Bildrath out of the way, you use the key to unlock the display case. "
+            "The glass door swings open, revealing the valuable merchandise!",
+            required_instrument="key",
+            conditional_fn=bildrath_is_dead,
+        )
+        # If Bildrath is dead but no key
+        display_case.add_interaction(
+            verb="open",
+            from_state="locked",
+            message="The display case is locked. You'll need a key to open it.",
+            conditional_fn=bildrath_is_dead,
+        )
+        display_case.add_interaction(
+            verb="unlock",
+            from_state="locked",
+            target_state="open",
+            message="With Bildrath out of the way, you use the key to unlock the display case. "
+            "The glass door swings open, revealing the valuable merchandise!",
+            required_instrument="key",
+            conditional_fn=bildrath_is_dead,
+        )
+        display_case.add_interaction(
+            verb="unlock",
+            from_state="locked",
+            message="Bildrath snarls at you. 'Touch that case and I'll have your hands! "
+            "That's not for browsing - gold first, then you can look!'",
+            conditional_fn=bildrath_is_alive,
         )
         display_case.add_interaction(
             verb="examine",
-            message="Through the glass, you can see a silver dagger, some healing potions, "
-            "and what looks like a genuine torch that never goes out. All absurdly expensive, "
+            message="Through the glass, you can see a silver shiv, an elixir, "
+            "and what looks like a lantern that never goes out. All absurdly expensive, "
             "no doubt.",
         )
         self._rooms["shop"].add_item(display_case)
+
+        # Display case contents - hidden until case is opened
+        def display_case_opened(game_state: Any) -> bool:
+            room = game_state.get_room("shop")
+            if not room:
+                return False
+            for item in room.items:
+                if getattr(item, "id", None) == "shop_case":
+                    return getattr(item, "state", None) == "open"
+            return False
+
+        shiv = Weapon(
+            name="shiv",
+            id="silver_shiv",
+            description="A finely crafted silver shiv with intricate engravings. "
+            "Effective against creatures of darkness.",
+            weight=1,
+            value=75,
+            takeable=True,
+            damage=6,
+            min_level="Neophyte",
+            min_strength=0,
+            min_dexterity=8,
+        )
+        self._rooms["shop"].add_hidden_item(shiv, display_case_opened)
+
+        elixir = Item(
+            name="elixir",
+            id="healing_elixir",
+            description="A small vial of red liquid that restores health when consumed.",
+            weight=1,
+            value=50,
+            takeable=True,
+        )
+        self._rooms["shop"].add_hidden_item(elixir, display_case_opened)
+
+        lantern = Item(
+            name="lantern",
+            id="everburning_lantern",
+            description="A magical lantern that never goes out, providing eternal light.",
+            weight=1,
+            value=100,
+            takeable=True,
+            emits_light=True,
+        )
+        self._rooms["shop"].add_hidden_item(lantern, display_case_opened)
 
         # Basic supplies
         torch = Item(
@@ -1297,22 +1405,69 @@ class Level1Village(LevelGenerator):
         well_bucket.add_state_description(
             "down", "The bucket has been lowered into the well."
         )
+        well_bucket.add_state_description(
+            "raised_treasure",
+            "The bucket hangs above the well, dripping water. Some coins glint in the bucket.",
+        )
+        well_bucket.add_state_description(
+            "down_second", "The bucket has been lowered into the well again."
+        )
 
+        # First lowering
         well_bucket.add_interaction(
             verb="lower",
             from_state="up",
             target_state="down",
-            message="You lower the bucket into the dark water. When you pull it up, the water "
-            "is icy cold. Among the water, you notice something glinting - a few coins "
-            "from wishes long forgotten.",
+            message="You lower the bucket into the dark water. It disappears into the inky depths.",
         )
+        # First raising - reveals treasure
         well_bucket.add_interaction(
             verb="raise",
             from_state="down",
-            target_state="up",
-            message="You pull the bucket back up.",
+            target_state="raised_treasure",
+            message="You pull the bucket back up. The water is icy cold. Among the water, "
+            "you notice something glinting - a few coins from wishes long forgotten!",
+        )
+        # Second lowering (after treasure revealed)
+        well_bucket.add_interaction(
+            verb="lower",
+            from_state="raised_treasure",
+            target_state="down_second",
+            message="You lower the bucket into the well again, hoping for more treasure...",
+        )
+        # Second raising - SPIDER DEATH TRAP!
+        well_bucket.add_interaction(
+            verb="raise",
+            from_state="down_second",
+            target_state="raised_treasure",  # Won't actually reach this state
+            message="As you pull the bucket up, a massive black spider clings to the rope! "
+            "Before you can react, it lunges and sinks its fangs into your arm. "
+            "Icy venom floods through your veins. The world goes dark...",
+            kills_player=True,
         )
         self._rooms["well"].add_item(well_bucket)
+
+        # Coins become visible after raising the bucket with treasure
+        def bucket_has_treasure(game_state: Any) -> bool:
+            room = game_state.get_room("well")
+            if not room:
+                return False
+            for item in room.items:
+                if getattr(item, "id", None) == "well_bucket":
+                    return getattr(item, "state", None) == "raised_treasure"
+            return False
+
+        well_coins = Item(
+            name="coins",
+            id="well_coins",
+            description="A handful of tarnished copper and silver coins, old wishes "
+            "tossed into the well by hopeful villagers long ago.",
+            weight=1,
+            value=15,
+            takeable=True,
+            synonyms=["coin", "copper coins", "silver coins", "wish coins"],
+        )
+        self._rooms["well"].add_hidden_item(well_coins, bucket_has_treasure)
 
         # =====================================================================
         # COTTAGE2 (Herbalist) - Remedies and hints
@@ -1380,6 +1535,7 @@ class Level1Village(LevelGenerator):
         self.spawn_mob_in_room(mob_manager, "peasant", "square")
         self.spawn_mob_in_room(mob_manager, "barkeep", "tavern")
         self.spawn_mob_in_room(mob_manager, "priest", "church")
+        self.spawn_mob_in_room(mob_manager, "bildrath", "shop")
 
     def configure_npc_interactions(self, mob_manager: Any) -> None:
         """Configure NPC interactions for Level 1."""

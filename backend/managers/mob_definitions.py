@@ -150,6 +150,28 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "point_value": 0,
             "pronouns": "he",
         },
+        # Bildrath the greedy shopkeeper
+        "bildrath": {
+            "name": "Bildrath",
+            "description": "Bildrath, a portly man with beady eyes and greasy hair, watches your every move with suspicion.",
+            "strength": 20,
+            "dexterity": 15,
+            "max_stamina": 60,
+            "damage": 5,
+            "aggressive": False,
+            "aggro_delay_min": 0,
+            "aggro_delay_max": 0,
+            "patrol_rooms": [],
+            "movement_interval": 0,
+            "loot_table": [
+                {"item": coin, "chance": 1.0},
+                {"item": coin, "chance": 0.8},
+                {"item": coin, "chance": 0.6},
+            ],
+            "instant_death": False,
+            "point_value": 30,
+            "pronouns": "he",
+        },
         # Zombie - moderate threat in graveyard
         "zombie": {
             "name": "zombie",

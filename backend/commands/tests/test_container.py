@@ -848,7 +848,9 @@ class RoomContainerTest(AsyncTestCase):
             self.utils,
         )
 
-        self.assertIn("don't see a container", result)
+        # Now falls back to interaction system, which returns this message
+        # when no interactive item is found
+        self.assertIn("can't place", result)
 
     async def test_get_item_from_room_container(self):
         """Test getting an item from a container in the room."""
@@ -1019,6 +1021,255 @@ class RoomContainerTest(AsyncTestCase):
 
         self.assertIn("removed from", result)
         self.assertIn(self.item1, self.player.inventory)
+
+
+class NoRemovalContainerTest(AsyncTestCase):
+    """Test no_removal container functionality (e.g., donation box)."""
+
+    def setUp(self):
+        """Set up test fixtures with a no_removal container."""
+        super().setUp()
+        # Create a donation box that doesn't allow item removal
+        self.donation_box = ContainerItem(
+            "donation box",
+            "donation_box",
+            "A box for offerings.",
+            weight=5,
+            value=0,
+            capacity_limit=10,
+            capacity_weight=20,
+            takeable=False,
+            no_removal=True,
+            no_removal_message="The priest glares at you. 'Those offerings are sacred!'",
+        )
+        self.donation_box.set_state("open")
+        self.room.add_item(self.donation_box)
+
+    async def test_put_item_in_no_removal_container_succeeds(self):
+        """Test putting items into a no_removal container works."""
+        self.player.add_item(self.item1)
+
+        cmd = {"verb": "put", "subject": "gem", "instrument": "donation box"}
+
+        result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("now inside", result)
+        self.assertIn(self.item1, self.donation_box.items)
+
+    async def test_get_from_no_removal_container_fails(self):
+        """Test getting items from a no_removal container is blocked."""
+        self.donation_box.add_item(self.item1)
+
+        cmd = {"verb": "get", "subject": "gem", "instrument": "donation box"}
+
+        result = await handle_get_from(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("priest glares", result)
+        self.assertIn(self.item1, self.donation_box.items)
+        self.assertNotIn(self.item1, self.player.inventory)
+
+    async def test_get_all_from_no_removal_container_fails(self):
+        """Test getting all items from a no_removal container is blocked."""
+        self.donation_box.add_item(self.item1)
+        self.donation_box.add_item(self.item2)
+
+        cmd = {"verb": "get", "subject": "all", "instrument": "donation box"}
+
+        result = await handle_get_from(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("priest glares", result)
+        self.assertEqual(len(self.donation_box.items), 2)
+
+    async def test_get_treasure_from_no_removal_container_fails(self):
+        """Test getting treasure from a no_removal container is blocked."""
+        self.donation_box.add_item(self.item1)  # Has value
+
+        cmd = {"verb": "get", "subject": "treasure", "instrument": "donation box"}
+
+        result = await handle_get_from(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("priest glares", result)
+        self.assertIn(self.item1, self.donation_box.items)
+
+    async def test_empty_no_removal_container_fails(self):
+        """Test emptying a no_removal container is blocked."""
+        # First add the container to player inventory so empty can find it
+        self.room.items.remove(self.donation_box)
+        self.donation_box.takeable = True  # Temporarily make takeable
+        self.player.add_item(self.donation_box)
+        self.donation_box.add_item(self.item1)
+
+        cmd = {"verb": "empty", "subject": "donation box"}
+
+        result = await handle_empty(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("priest glares", result)
+        self.assertIn(self.item1, self.donation_box.items)
+
+    async def test_no_removal_without_custom_message(self):
+        """Test no_removal container uses default message when none provided."""
+        # Create a container without custom message
+        simple_box = ContainerItem(
+            "offering bowl",
+            "offering_bowl",
+            "A simple bowl.",
+            no_removal=True,
+        )
+        simple_box.set_state("open")
+        simple_box.add_item(self.item1)
+        self.room.add_item(simple_box)
+
+        cmd = {"verb": "get", "subject": "gem", "instrument": "offering bowl"}
+
+        result = await handle_get_from(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("cannot take items", result)
+
+    async def test_no_removal_serialization(self):
+        """Test no_removal property is preserved through serialization."""
+        # Convert to dict and back
+        data = self.donation_box.to_dict()
+        restored = ContainerItem.from_dict(data)
+
+        self.assertTrue(restored.no_removal)
+        self.assertEqual(
+            restored.no_removal_message,
+            "The priest glares at you. 'Those offerings are sacred!'",
+        )
+
+
+class PutFallbackToInteractionTest(AsyncTestCase):
+    """Test put command fallback to interaction system for StatefulItems."""
+
+    def setUp(self):
+        """Set up test fixtures with StatefulItem."""
+        super().setUp()
+        # Import StatefulItem for this test
+        from models.StatefulItem import StatefulItem
+
+        # Create a torch bracket (StatefulItem, not a container)
+        self.bracket = StatefulItem(
+            name="bracket",
+            id="test_bracket",
+            description="A torch bracket on the wall.",
+            state="empty",
+            takeable=False,
+        )
+        # Add state descriptions for all possible states
+        self.bracket.add_state_description("empty", "An empty torch bracket.")
+        self.bracket.add_state_description("lit", "A torch burns in the bracket.")
+        self.bracket.add_interaction(
+            verb="place",
+            from_state="empty",
+            target_state="lit",
+            message="You place a torch in the bracket.",
+            required_instrument="torch",
+        )
+        self.bracket.set_room_id("test_room")
+        self.room.add_item(self.bracket)
+
+        # Create a torch for the player
+        self.torch = Item("Torch", "torch_1", "A burning torch", weight=1, value=5)
+        self.player.add_item(self.torch)
+
+    async def test_put_falls_back_to_interaction_for_stateful_item(self):
+        """Test that 'put torch in bracket' works via fallback to interaction."""
+        # Arrange
+        cmd = {
+            "verb": "put",
+            "subject": "torch",
+            "instrument": "bracket",
+            "subject_object": self.torch,
+            "instrument_object": self.bracket,
+        }
+
+        # Act
+        result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert - verify the interaction was triggered
+        self.assertIn("place", result.lower())
+        self.assertEqual(self.bracket.state, "lit")
+
+    async def test_put_fallback_without_required_instrument(self):
+        """Test that put fallback fails when required instrument is missing."""
+        # Arrange - player doesn't have torch
+        self.player.remove_item(self.torch)
+        cmd = {
+            "verb": "put",
+            "subject": "rock",
+            "instrument": "bracket",
+            "instrument_object": self.bracket,
+        }
+
+        # Act
+        _result = await handle_put(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert - bracket state should not change
+        self.assertEqual(self.bracket.state, "empty")
 
 
 if __name__ == "__main__":

@@ -109,7 +109,7 @@ def create_wine() -> Item:
 def create_mist_token() -> Item:
     """Create the mist token that allows passage through the mist barrier."""
     return Item(
-        name="mist token",
+        name="token",
         id="mist_token",
         description=(
             "A small silver token inscribed with ancient runes. "
@@ -119,6 +119,7 @@ def create_mist_token() -> Item:
         weight=0,
         value=50,
         takeable=True,
+        synonyms=["mist token", "silver token"],
     )
 
 
@@ -140,7 +141,7 @@ def create_knight_medallion() -> Item:
 def create_shadow_key() -> Item:
     """Create the shadow key from the hag's domain."""
     return Item(
-        name="shadow key",
+        name="shadowkey",
         id="shadow_key",
         description=(
             "A key made of solidified shadow. It seems to absorb light "
@@ -149,6 +150,7 @@ def create_shadow_key() -> Item:
         weight=0,
         value=75,
         takeable=True,
+        synonyms=["shadow key", "dark key"],
     )
 
 
@@ -159,8 +161,8 @@ def create_shadow_key() -> Item:
 
 def create_rusty_dagger() -> Weapon:
     """Create a basic rusty dagger."""
-    return Weapon(
-        name="rusty dagger",
+    weapon = Weapon(
+        name="dagger",
         id="rusty_dagger",
         description="A corroded dagger with a chipped blade. Better than nothing.",
         weight=1,
@@ -171,12 +173,14 @@ def create_rusty_dagger() -> Weapon:
         min_strength=0,
         min_dexterity=0,
     )
+    weapon.synonyms = ["rusty dagger", "knife"]
+    return weapon
 
 
 def create_wooden_club() -> Weapon:
     """Create a basic wooden club."""
-    return Weapon(
-        name="wooden club",
+    weapon = Weapon(
+        name="club",
         id="wooden_club",
         description="A heavy wooden club, rough-hewn but effective.",
         weight=3,
@@ -187,12 +191,14 @@ def create_wooden_club() -> Weapon:
         min_strength=5,
         min_dexterity=0,
     )
+    weapon.synonyms = ["wooden club", "cudgel"]
+    return weapon
 
 
 def create_short_sword() -> Weapon:
     """Create a short sword."""
-    return Weapon(
-        name="short sword",
+    weapon = Weapon(
+        name="shortsword",
         id="short_sword",
         description="A well-balanced short sword with a leather-wrapped hilt.",
         weight=2,
@@ -203,12 +209,14 @@ def create_short_sword() -> Weapon:
         min_strength=10,
         min_dexterity=5,
     )
+    weapon.synonyms = ["short sword", "sword"]
+    return weapon
 
 
 def create_silver_dagger() -> Weapon:
     """Create a silver dagger effective against undead."""
-    return Weapon(
-        name="silver dagger",
+    weapon = Weapon(
+        name="dagger",
         id="silver_dagger",
         description="A dagger of pure silver, deadly to creatures of the night.",
         weight=1,
@@ -219,6 +227,8 @@ def create_silver_dagger() -> Weapon:
         min_strength=0,
         min_dexterity=5,
     )
+    weapon.synonyms = ["silver dagger", "knife"]
+    return weapon
 
 
 # ============================================================================

@@ -9,6 +9,8 @@ class ContainerItem(StatefulItem):
     capacity_limit: int
     capacity_weight: int
     items: List[Item]
+    no_removal: bool
+    no_removal_message: Optional[str]
 
     def __init__(
         self,
@@ -21,6 +23,8 @@ class ContainerItem(StatefulItem):
         state: Optional[str] = None,
         capacity_limit: int = 10,
         capacity_weight: int = 100,
+        no_removal: bool = False,
+        no_removal_message: Optional[str] = None,
     ) -> None:
         """
         :param capacity_limit: Maximum number of items the container can hold.
@@ -38,6 +42,8 @@ class ContainerItem(StatefulItem):
         self.capacity_limit = capacity_limit
         self.capacity_weight = capacity_weight
         self.items = []  # List to hold contained items
+        self.no_removal = no_removal
+        self.no_removal_message = no_removal_message
         self.update_weight()  # Set the initial total weight (base_weight + contained items)
         self.update_description()  # Set the initial description
 
@@ -184,6 +190,9 @@ class ContainerItem(StatefulItem):
         data["capacity_weight"] = self.capacity_weight
         data["items"] = [item.to_dict() for item in self.items]
         data["base_weight"] = self.base_weight
+        data["no_removal"] = self.no_removal
+        if self.no_removal_message:
+            data["no_removal_message"] = self.no_removal_message
         return data
 
     @staticmethod
@@ -201,6 +210,8 @@ class ContainerItem(StatefulItem):
             state=data.get("state", "closed"),
             capacity_limit=data.get("capacity_limit", 10),
             capacity_weight=data.get("capacity_weight", 100),
+            no_removal=data.get("no_removal", False),
+            no_removal_message=data.get("no_removal_message"),
         )
         if "items" in data:
             for item_data in data["items"]:

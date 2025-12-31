@@ -725,7 +725,7 @@ class Level2Woods(LevelGenerator):
 
         # Hidden note in corpse
         corpse_note = Item(
-            name="crumpled note",
+            name="note",
             id="corpse_note",
             description=(
                 "A crumpled, stained note. The handwriting is hurried:\n\n"
@@ -738,7 +738,7 @@ class Level2Woods(LevelGenerator):
             weight=0,
             value=0,
             takeable=True,
-            synonyms=["note", "paper", "letter"],
+            synonyms=["crumpled note", "paper", "letter"],
         )
 
         def corpse_searched(game_state: Any) -> bool:
@@ -1117,7 +1117,7 @@ class Level2Woods(LevelGenerator):
 
         # Knight's medallion - hidden until bones searched
         medallion = Item(
-            name="silver medallion",
+            name="medallion",
             id="knight_medallion",
             description=(
                 "A silver medallion bearing the crest of a knight's order - a "
@@ -1127,7 +1127,12 @@ class Level2Woods(LevelGenerator):
             weight=0,
             value=50,
             takeable=True,
-            synonyms=["medallion", "dragon medallion", "knight's medallion", "crest"],
+            synonyms=[
+                "silver medallion",
+                "dragon medallion",
+                "knight's medallion",
+                "crest",
+            ],
         )
 
         def bones_searched(game_state: Any) -> bool:
@@ -1188,7 +1193,7 @@ class Level2Woods(LevelGenerator):
 
         # Dagger from satchel (hidden until opened)
         rusty_dagger = Weapon(
-            name="rusty dagger",
+            name="dagger",
             id="wolf_dagger",
             description="A rusty but functional dagger, found in the wolf den.",
             weight=1,
@@ -1199,7 +1204,7 @@ class Level2Woods(LevelGenerator):
             min_strength=0,
             min_dexterity=0,
         )
-        rusty_dagger.synonyms = ["dagger", "knife"]
+        rusty_dagger.synonyms = ["rusty dagger", "knife"]
 
         def satchel_opened(game_state: Any) -> bool:
             room = game_state.get_room("wolf_den")
@@ -1449,7 +1454,7 @@ class Level2Woods(LevelGenerator):
         self._rooms["wagon"].add_item(crystal_ball)
 
         tarot_deck = Item(
-            name="tarot deck",
+            name="tarot",
             id="tarot_deck",
             description=(
                 "A worn deck of tarot cards. The images are strange - familiar "
@@ -1460,12 +1465,12 @@ class Level2Woods(LevelGenerator):
             weight=0,
             value=15,
             takeable=True,
-            synonyms=["cards", "deck", "fortune cards"],
+            synonyms=["tarot deck", "cards", "deck", "fortune cards"],
         )
         self._rooms["wagon"].add_item(tarot_deck)
 
         silver_bell = Item(
-            name="silver bell",
+            name="bell",
             id="wagon_bell",
             description=(
                 "A small silver bell with a clear, pure tone. The seer says it "
@@ -1474,7 +1479,7 @@ class Level2Woods(LevelGenerator):
             weight=0,
             value=10,
             takeable=True,
-            synonyms=["bell", "small bell"],
+            synonyms=["silver bell", "small bell"],
         )
         self._rooms["wagon"].add_item(silver_bell)
 
@@ -1597,13 +1602,13 @@ class Level2Woods(LevelGenerator):
 
         # Hidden coin in rowboat
         copper_coin = Item(
-            name="copper coin",
+            name="coin",
             id="dock_coin",
             description="An ancient copper coin with strange markings - not Barovian.",
             weight=0,
             value=5,
             takeable=True,
-            synonyms=["coin", "old coin"],
+            synonyms=["copper coin", "old coin"],
         )
         self._rooms["old_dock"].add_item(copper_coin)
 
@@ -1659,7 +1664,7 @@ class Level2Woods(LevelGenerator):
 
         # Hidden items in sarcophagus
         silver_amulet = Item(
-            name="silver amulet",
+            name="amulet",
             id="barrow_amulet",
             description=(
                 "A silver amulet on a tarnished chain. The symbol is a sun "
@@ -1669,11 +1674,11 @@ class Level2Woods(LevelGenerator):
             weight=0,
             value=40,
             takeable=True,
-            synonyms=["amulet", "necklace", "pendant"],
+            synonyms=["silver amulet", "necklace", "pendant"],
         )
 
         fine_sword = Weapon(
-            name="fine longsword",
+            name="longsword",
             id="barrow_sword",
             description=(
                 "An ancient but well-preserved longsword. The blade bears faint "
@@ -1688,7 +1693,7 @@ class Level2Woods(LevelGenerator):
             min_strength=12,
             min_dexterity=8,
         )
-        fine_sword.synonyms = ["sword", "longsword", "ancient sword"]
+        fine_sword.synonyms = ["fine longsword", "sword", "ancient sword"]
 
         def sarcophagus_opened(game_state: Any) -> bool:
             room = game_state.get_room("barrow")
@@ -1808,7 +1813,7 @@ class Level2Woods(LevelGenerator):
 
         # Map and coins (hidden until lockbox opened)
         treasure_map = Item(
-            name="faded map",
+            name="map",
             id="grove_map",
             description=(
                 "A faded map showing the Svalich Woods. An X marks a spot south "
@@ -1819,17 +1824,17 @@ class Level2Woods(LevelGenerator):
             weight=0,
             value=5,
             takeable=True,
-            synonyms=["map", "parchment", "treasure map"],
+            synonyms=["faded map", "parchment", "treasure map"],
         )
 
         gold_coins = Item(
-            name="gold coins",
+            name="coins",
             id="grove_gold",
             description="A handful of tarnished gold coins - someone's savings.",
             weight=0,
             value=50,
             takeable=True,
-            synonyms=["coins", "gold", "money"],
+            synonyms=["gold coins", "gold", "money"],
         )
 
         def lockbox_opened(game_state: Any) -> bool:
@@ -2002,7 +2007,7 @@ class Level2Woods(LevelGenerator):
 
         # Hidden acorn
         magic_acorn = Item(
-            name="golden acorn",
+            name="acorn",
             id="glade_acorn",
             description=(
                 "A perfect acorn that gleams like gold. It's warm to the touch "
@@ -2011,7 +2016,7 @@ class Level2Woods(LevelGenerator):
             weight=0,
             value=25,
             takeable=True,
-            synonyms=["acorn", "magic acorn"],
+            synonyms=["golden acorn", "magic acorn"],
         )
 
         def box_opened(game_state: Any) -> bool:
@@ -2163,13 +2168,13 @@ class Level2Woods(LevelGenerator):
 
         # Hidden treasures in droppings
         silver_ring = Item(
-            name="silver ring",
+            name="ring",
             id="raven_ring",
             description="A small silver ring, cleaned of its recent surroundings.",
             weight=0,
             value=15,
             takeable=True,
-            synonyms=["ring", "small ring"],
+            synonyms=["silver ring", "small ring"],
         )
 
         def droppings_searched(game_state: Any) -> bool:
@@ -2264,7 +2269,7 @@ class Level2Woods(LevelGenerator):
 
         # Crossbow (hidden until chest opened)
         hunters_crossbow = Weapon(
-            name="hunters crossbow",
+            name="crossbow",
             id="hunter_crossbow",
             description=(
                 "A well-maintained crossbow left by a long-gone hunter. It's "
@@ -2278,7 +2283,7 @@ class Level2Woods(LevelGenerator):
             min_strength=8,
             min_dexterity=10,
         )
-        hunters_crossbow.synonyms = ["crossbow", "bow"]
+        hunters_crossbow.synonyms = ["hunters crossbow", "bow"]
 
         def chest_opened(game_state: Any) -> bool:
             room = game_state.get_room("hunters_cache")

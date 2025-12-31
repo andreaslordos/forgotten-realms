@@ -332,6 +332,11 @@ async def handle_interaction(
                 if from_state is not None and from_state != primary_item.state:
                     continue
 
+            # Check conditional_fn early to allow fallthrough to next interaction
+            if "conditional_fn" in interaction and interaction["conditional_fn"]:
+                if not interaction["conditional_fn"](player, game_state):
+                    continue  # Condition not met, try next interaction
+
             # We found a match for the current state (or one with no state requirement)
             valid_interaction = interaction
             break
@@ -354,13 +359,7 @@ async def handle_interaction(
             if required_instrument.lower() not in secondary_item.name.lower():
                 return f"You can't {verb} the {primary_item.name} with that."
 
-        # Check any additional conditions
-        if (
-            "conditional_fn" in valid_interaction
-            and valid_interaction["conditional_fn"]
-        ):
-            if not valid_interaction["conditional_fn"](player, game_state):
-                return f"You can't {verb} the {primary_item.name} right now."
+        # Note: conditional_fn is checked during interaction selection above
 
         # All conditions met, perform the interaction
 
@@ -510,7 +509,6 @@ common_interaction_verbs = [
     "light",
     "extinguish",
     "touch",
-    "place",
     "cut",
     "break",
     "chop",
@@ -529,6 +527,8 @@ common_interaction_verbs = [
     "untie",
     "free",
     "release",
+    "raise",
+    "lower",
 ]
 
 
