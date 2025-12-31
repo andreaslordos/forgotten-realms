@@ -497,9 +497,17 @@ async def handle_flee(
                 )
 
     # Return result message including the room description
+    # Check if room is dark before showing description
+    from commands.darkness_utils import room_is_visible, get_dark_room_description
+
+    if room_is_visible(new_room, online_sessions, game_state):
+        room_desc = f"{new_room.name}\n{new_room.description}"
+    else:
+        room_desc = get_dark_room_description(new_room)
+
     return (
         f"You flee {direction}, dropping all your items and losing {points_lost} points to {opponent.name}!\n\n"
-        f"{new_room.name}\n{new_room.description}"
+        f"{room_desc}"
     )
 
 

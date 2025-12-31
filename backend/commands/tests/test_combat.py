@@ -1019,6 +1019,8 @@ class HandleFleeAdvancedTest(unittest.IsolatedAsyncioTestCase):
         self.new_room.room_id = "room2"
         self.new_room.name = "North Room"
         self.new_room.description = "A northern room"
+        self.new_room.is_dark = False  # Room is lit by default
+        self.new_room.get_items = Mock(return_value=[])  # No items
 
         self.game_state = Mock()
         self.game_state.get_room = Mock(
@@ -1153,6 +1155,66 @@ class HandleFleeAdvancedTest(unittest.IsolatedAsyncioTestCase):
                 for call in self.utils.send_message.call_args_list
             )
         )
+
+    async def test_flee_into_dark_room_hides_description(self):
+        """Test fleeing into a dark room shows darkness message instead of description."""
+        active_combats[self.player.name] = {
+            "target": self.opponent,
+            "target_sid": "opponent_sid",
+            "is_mob": False,
+        }
+
+        # Make the destination room dark
+        self.new_room.is_dark = True
+
+        cmd = {"verb": "flee", "subject": "north"}
+
+        result = await handle_flee(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Should show flee message but NOT show room description
+        self.assertIn("flee", result.lower())
+        self.assertIn("too dark", result.lower())
+        self.assertNotIn("New Room", result)
+
+    async def test_flee_into_dark_room_with_light_shows_description(self):
+        """Test fleeing into dark room with light source on ground shows full description."""
+        from models.Item import Item
+
+        active_combats[self.player.name] = {
+            "target": self.opponent,
+            "target_sid": "opponent_sid",
+            "is_mob": False,
+        }
+
+        # Make the destination room dark but with a light source on the ground
+        self.new_room.is_dark = True
+        torch = Item("torch", "torch_1", "A torch", emits_light=True)
+        self.new_room.get_items = Mock(return_value=[torch])  # Light source in room
+
+        cmd = {"verb": "flee", "subject": "north"}
+
+        result = await handle_flee(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Should show flee message and room description since there's light in the room
+        self.assertIn("flee", result.lower())
+        self.assertIn("North Room", result)
+        self.assertNotIn("too dark", result.lower())
 
 
 class ProcessCombatAttackTest(unittest.IsolatedAsyncioTestCase):
