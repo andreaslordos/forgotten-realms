@@ -1,0 +1,66 @@
+name: Auto Bug Fix (TDD)
+
+on:
+  issues:
+    types: [opened, labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  fix-bug:
+    # Trigger on: new issue with auto-fix label, OR @claude mention in comment
+    if: |
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'auto-fix')) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Fix bug with Claude Code (TDD)
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          trigger_phrase: "@claude"
+          prompt: |
+            Fix this runtime error using a strict TDD approach:
+
+            ${{ github.event.issue.body }}
+
+            ## TDD Workflow (follow in order):
+            1. **Analyze**: Read the error traceback and identify the root cause
+            2. **Write Test**: Create a failing unit test that reproduces the bug
+               - Place tests in backend/<module>/tests/test_*.py
+               - Use BaseCommandTest from tests/test_base.py as base class
+               - Follow Arrange-Act-Assert pattern
+            3. **Verify Fail**: Run `python3 -m unittest <test_file>.<TestClass>.<test_method> -v`
+               - Confirm test fails with the expected error
+            4. **Implement Fix**: Make the minimal code change to fix the bug
+            5. **Verify Pass**: Run the test again - confirm it passes
+            6. **Run Suite**: Run `./scripts/run_backend_tests.sh`
+               - All tests must pass
+               - Coverage must be >= 80%
+            7. **Commit & PR**: If all tests pass, commit changes and create a PR
+
+            ## Project Standards (from CLAUDE.md):
+            - All functions need type hints
+            - Tests use unittest.IsolatedAsyncioTestCase
+            - Test naming: test_{function_name}_{description}
+            - Use AsyncMock for async dependencies
+          claude_args: "--max-turns 20"

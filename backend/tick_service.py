@@ -12,6 +12,7 @@ from commands.communication import handle_pending_communication
 from commands.executor import execute_command
 from commands.parser import parse_command_wrapper
 from commands.rest import process_sleeping_players
+from services.error_reporter import report_error
 from services.notifications import broadcast_logout
 
 
@@ -261,6 +262,13 @@ class TickService:
             print(f"[Error] Command '{cmd_str}' failed for {player.name}: {str(exc)}")
             await self.utils.send_message(
                 self.sio, sid, f"Error processing command: {str(exc)}"
+            )
+            # Report error to GitHub for automated bug fixing
+            await report_error(
+                exception=exc,
+                command=cmd_str,
+                player=getattr(player, "name", "unknown"),
+                room=getattr(player, "current_room", None),
             )
         finally:
             await self._send_stats_and_handle_disconnect(sid, session, player)

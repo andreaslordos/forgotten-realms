@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 from commands.executor import build_look_description
 import logging
 import traceback
+from services.error_reporter import report_error
 from services.notifications import broadcast_room
 from commands.combat import active_combats
 
@@ -506,6 +507,13 @@ async def handle_interaction(
         error_trace = traceback.format_exc()
         logger.error(f"Exception in interaction handler: {e}")
         logger.error(error_trace)
+        # Report error to GitHub for automated bug fixing
+        await report_error(
+            exception=e,
+            command=cmd.get("original", ""),
+            player=getattr(player, "name", None),
+            room=getattr(player, "current_room", None),
+        )
         return f"Error processing command: {str(e)}"
 
 
