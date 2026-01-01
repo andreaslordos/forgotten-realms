@@ -23,15 +23,19 @@ jobs:
       (github.event_name == 'issues' && github.event.label.name == 'auto-fix') ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
     runs-on: ubuntu-latest
+    timeout-minutes: 120 # Increased timeout for Opus 4.5 + 50 turns
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history is critical for smart agents
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install Python dependencies
         run: |
@@ -49,29 +53,25 @@ jobs:
             ${{ github.event.issue.body }}
 
             ## TDD Workflow (follow in order):
-            1. **Analyze**: Read the error traceback and identify the root cause
-            2. **Write Test**: Create a failing unit test that reproduces the bug
+            1. **Analyze**: Read the error traceback and server logs and identify the root cause.
+            2. **Write Test**: Create a failing unit test that reproduces the bug.
                - Place tests in backend/<module>/tests/test_*.py
                - Use BaseCommandTest from tests/test_base.py as base class
-               - Follow Arrange-Act-Assert pattern
-            3. **Verify Fail**: Run `python3 -m unittest <test_file>.<TestClass>.<test_method> -v`
-               - Confirm test fails with the expected error
-            4. **Implement Fix**: Make the minimal code change to fix the bug
-            5. **Verify Pass**: Run the test again - confirm it passes
-            6. **Run Suite**: Run `./scripts/run_backend_tests.sh`
-               - All tests must pass
-               - Coverage must be >= 80%
-            7. **Commit & PR**: If all tests pass:
-               - Create a branch: `git checkout -b fix/issue-${{ github.event.issue.number }}`
-               - Stage and commit: `git add -A && git commit -m "fix: <description>"`
-               - Push: `git push -u origin fix/issue-${{ github.event.issue.number }}`
-               - Create PR: `gh pr create --title "Fix: <description>" --body "Fixes #${{ github.event.issue.number }}"`
+            3. **Verify Fail**: Run the test to confirm it fails with the expected error.
+            4. **Implement Fix**: Make the minimal code change to fix the bug.
+            5. **Verify Pass**: Run the test again - confirm it passes.
+            6. **Run Suite**: Run `./scripts/run_backend_tests.sh` (ensure >80% coverage).
+            7. **Commit & PR**:
+               - Branch: `fix/issue-${{ github.event.issue.number }}`
+               - Commit: `git commit -m "fix: <description>"`
+               - PR: `gh pr create --title "Fix: <description>" --body "Fixes #${{ github.event.issue.number }}"`
 
-            ## Project Standards (from CLAUDE.md):
-            - All functions need type hints
+            ## Project Standards:
             - Tests use unittest.IsolatedAsyncioTestCase
-            - Test naming: test_{function_name}_{description}
             - Use AsyncMock for async dependencies
+            - All functions need type hints
+            - Test naming: test_{function_name}_{description}
           claude_args: |
+            --model claude-opus-4-5-20251101
             --allowedTools "Bash(git:*)" "Bash(python3:*)" "Bash(gh:*)" "Bash(./scripts:*)" "Bash(cd:*)" "Bash(find:*)" "Bash(cat:*)" "Bash(pip:*)" "Edit" "Read" "Grep" "Glob"
-            --max-turns 20
+            --max-turns 100
