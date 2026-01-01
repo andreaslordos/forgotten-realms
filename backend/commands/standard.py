@@ -759,28 +759,6 @@ command_registry.register(
     "debug", handle_diagnostic, "Show diagnostic info for debugging."
 )
 
-
-# ===== TEST ERROR COMMAND (TEMPORARY - for testing error reporter) =====
-async def handle_testerror(
-    cmd: Dict[str, Any],
-    player: Any,
-    game_state: Any,
-    player_manager: Any,
-    online_sessions: Dict[str, Any],
-    sio: Any,
-    utils: Any,
-) -> str:
-    """Intentionally raise an error to test the error reporting system."""
-    # This function has a bug: calling a method that doesn't exist
-    result = player.this_method_does_not_exist()
-    return f"This should never be reached: {result}"
-
-
-command_registry.register(
-    "testerror", handle_testerror, "Test error reporting (temporary)"
-)
-
-
 # Register aliases
 command_registry.register_alias("l", "look")
 command_registry.register_alias("commands", "help")
