@@ -29,7 +29,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Full history is critical for smart agents
+          fetch-depth: 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -46,7 +46,6 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_OAUTH_TOKEN }}
-          trigger_phrase: "@claude"
           prompt: |
             Fix this runtime error using a strict TDD approach:
 
