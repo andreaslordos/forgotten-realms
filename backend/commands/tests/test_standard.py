@@ -1655,5 +1655,43 @@ class HandleDiagnosticTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Is a dictionary: NO", result)
 
 
+class TesterrorCommandRemovedTest(unittest.TestCase):
+    """Test that the testerror command has been removed from the codebase.
+
+    The testerror command was a temporary command that intentionally raised
+    an AttributeError by calling a non-existent method on the Player object.
+    This test ensures it has been properly removed.
+    """
+
+    def test_testerror_command_not_registered(self) -> None:
+        """Test that 'testerror' command is not registered in the command registry."""
+        # Arrange
+        from commands.registry import command_registry
+
+        # Act
+        handler = command_registry.get_handler("testerror")
+
+        # Assert - handler should be None if command is not registered
+        self.assertIsNone(
+            handler,
+            "The 'testerror' command should not be registered. "
+            "This command was temporary and intentionally raised errors.",
+        )
+
+    def test_handle_testerror_not_importable(self) -> None:
+        """Test that handle_testerror function is not importable from standard module."""
+        # Arrange/Act/Assert
+        try:
+            from commands.standard import handle_testerror
+
+            self.fail(
+                "handle_testerror should not be importable. "
+                "The function should be removed from standard.py."
+            )
+        except ImportError:
+            # This is the expected behavior - function should not exist
+            pass
+
+
 if __name__ == "__main__":
     unittest.main()
