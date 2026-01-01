@@ -45,7 +45,7 @@ jobs:
       - name: Fix bug with Claude Code (TDD)
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_OAUTH_TOKEN }}
           trigger_phrase: "@claude"
           prompt: |
             Fix this runtime error using a strict TDD approach:
