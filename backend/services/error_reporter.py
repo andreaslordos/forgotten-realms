@@ -96,7 +96,12 @@ class ErrorReporter:
                 missing.append("GITHUB_REPO")
             logger.warning(f"ErrorReporter disabled: {', '.join(missing)} not set")
 
-    def _generate_signature(self, exception: Exception) -> str:
+    def _generate_signature(
+        self,
+        exception: Exception,
+        command: Optional[str] = None,
+        room: Optional[str] = None,
+    ) -> str:
         """Generate a unique signature for deduplication."""
         tb = traceback.extract_tb(exception.__traceback__)
         last_frame = tb[-1] if tb else None
@@ -104,7 +109,9 @@ class ErrorReporter:
         sig_content = (
             f"{type(exception).__name__}:"
             f"{last_frame.filename if last_frame else ''}:"
-            f"{last_frame.lineno if last_frame else ''}"
+            f"{last_frame.lineno if last_frame else ''}:"
+            f"{command or ''}:"
+            f"{room or ''}"
         )
         return hashlib.md5(sig_content.encode()).hexdigest()[:8]
 
@@ -131,8 +138,8 @@ class ErrorReporter:
             logger.debug("Error reporter disabled, skipping")
             return False
 
-        # Deduplicate by error signature
-        sig = self._generate_signature(exception)
+        # Deduplicate by error signature (includes command and room)
+        sig = self._generate_signature(exception, command, room)
         if sig in self.reported_signatures:
             logger.debug(f"Error already reported (signature: {sig}), skipping")
             return False
