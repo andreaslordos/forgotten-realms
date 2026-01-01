@@ -12,6 +12,10 @@ permissions:
   issues: write
   id-token: write
 
+concurrency:
+  group: bugfix-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   fix-bug:
     # Trigger on: new issue with auto-fix label, OR @claude mention in comment
@@ -39,6 +43,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           trigger_phrase: "@claude"
+          allowed_tools: "Edit,Write,Bash,Read,Glob,Grep"
           prompt: |
             Fix this runtime error using a strict TDD approach:
 
