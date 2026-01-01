@@ -73,5 +73,5 @@ jobs:
             - Test naming: test_{function_name}_{description}
           claude_args: |
             --model claude-opus-4-5-20251101
-            --allowedTools "Bash(git:*)" "Bash(python3:*)" "Bash(gh:*)" "Bash(./scripts:*)" "Bash(cd:*)" "Bash(find:*)" "Bash(cat:*)" "Bash(pip:*)" "Edit" "Read" "Grep" "Glob"
+            --dangerously-skip-permissions
             --max-turns 100
