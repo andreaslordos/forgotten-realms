@@ -977,17 +977,17 @@ class ObjectBinder:
             logger.debug("Subject is 'treasure', returning special token")
             return "treasure"
 
-        # Check player's inventory first
+        # Check player's inventory first (using matches_name for synonym support)
         for item in player.inventory:
-            if subject_str.lower() == item.name.lower():
-                logger.debug(f"Found exact matching item in inventory: {item.name}")
+            if hasattr(item, "matches_name") and item.matches_name(subject_str):
+                logger.debug(f"Found matching item in inventory: {item.name}")
                 return item
 
-        # Then try exact name matching in room
+        # Then try matching in room (using matches_name for synonym support)
         current_room = game_state.get_room(player.current_room)
         for item in current_room.get_items(game_state):
-            if subject_str.lower() == item.name.lower():
-                logger.debug(f"Found exact matching item in room: {item.name}")
+            if hasattr(item, "matches_name") and item.matches_name(subject_str):
+                logger.debug(f"Found matching item in room: {item.name}")
                 return item
 
         # Try exact name matching for other players
@@ -1041,17 +1041,17 @@ class ObjectBinder:
             logger.debug(f"Resolved pronoun '{instrument_str}' to {result}")
             return result
 
-        # First try exact matches in inventory
+        # First try matches in inventory (using matches_name for synonym support)
         for item in player.inventory:
-            if instrument_str.lower() == item.name.lower():
-                logger.debug(f"Found exact matching item in inventory: {item.name}")
+            if hasattr(item, "matches_name") and item.matches_name(instrument_str):
+                logger.debug(f"Found matching item in inventory: {item.name}")
                 return item
 
-        # Then try exact matches in room
+        # Then try matches in room (using matches_name for synonym support)
         current_room = game_state.get_room(player.current_room)
         for item in current_room.get_items(game_state):
-            if instrument_str.lower() == item.name.lower():
-                logger.debug(f"Found exact matching item in room: {item.name}")
+            if hasattr(item, "matches_name") and item.matches_name(instrument_str):
+                logger.debug(f"Found matching item in room: {item.name}")
                 return item
 
         # Try exact matching for other players

@@ -1110,9 +1110,6 @@ class Level2Woods(LevelGenerator):
             value=50,
             takeable=True,
             synonyms=[
-                "silver medallion",
-                "dragon medallion",
-                "knight's medallion",
                 "crest",
             ],
         )

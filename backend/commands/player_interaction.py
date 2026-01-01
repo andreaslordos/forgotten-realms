@@ -158,6 +158,24 @@ async def handle_give(
             utils,
         )
 
+    # Check if target is a StatefulItem with a "give" interaction
+    from models.StatefulItem import StatefulItem
+
+    if target_obj and isinstance(target_obj, StatefulItem):
+        if hasattr(target_obj, "interactions") and "give" in target_obj.interactions:
+            # Route to interaction handler for StatefulItem "give" interactions
+            from commands.interaction import handle_interaction
+
+            return await handle_interaction(
+                cmd,
+                player,
+                game_state,
+                player_manager,
+                online_sessions,
+                sio,
+                utils,
+            )
+
     # Find the target player - prefer bound object
     target_player = None
     target_sid = None

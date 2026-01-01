@@ -1032,6 +1032,121 @@ class GiveToMobTest(AsyncTestCase):
         self.assertIn("You give the Coin to Collector", result)
 
 
+class GiveToStatefulItemTest(AsyncTestCase):
+    """Test give command routing to StatefulItem interactions."""
+
+    async def test_give_to_stateful_item_routes_to_interaction(self):
+        """Test giving item to StatefulItem with 'give' interaction routes correctly."""
+        from models.StatefulItem import StatefulItem
+
+        # Create a StatefulItem (like the ghostly knight) with a "give" interaction
+        ghostly_knight = StatefulItem(
+            name="spectral knight",
+            id="ghost_knight",
+            description="A ghostly knight blocks the path.",
+            state="blocking",
+            takeable=False,
+            synonyms=["knight", "ghost"],
+        )
+        # Add state descriptions (required for set_state to work)
+        ghostly_knight.add_state_description(
+            "blocking", "A ghostly knight blocks the path."
+        )
+        ghostly_knight.add_state_description(
+            "appeased", "The ghostly knight has stepped aside."
+        )
+        ghostly_knight.add_interaction(
+            verb="give",
+            required_instrument="medallion_1",
+            from_state="blocking",
+            target_state="appeased",
+            message="The knight accepts your offering and steps aside.",
+            consume_instrument=True,
+        )
+        self.room.add_item(ghostly_knight)
+
+        # Create the medallion in player's inventory
+        medallion = Item(
+            "silver medallion",
+            "medallion_1",
+            "A silver medallion",
+            synonyms=["medallion"],
+        )
+        self.player.add_item(medallion)
+
+        cmd = {
+            "verb": "give",
+            "subject": "knight",
+            "subject_object": ghostly_knight,
+            "instrument": "medallion",
+            "instrument_object": medallion,
+            "reversed_syntax": True,
+        }
+
+        result = await handle_give(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Should trigger the StatefulItem interaction, not fail
+        self.assertIn("knight accepts", result.lower())
+        # Item should be consumed
+        self.assertNotIn(medallion, self.player.inventory)
+        # State should change
+        self.assertEqual(ghostly_knight.state, "appeased")
+
+    async def test_give_to_stateful_item_without_give_interaction_fails(self):
+        """Test giving to StatefulItem without 'give' interaction falls through."""
+        from models.StatefulItem import StatefulItem
+
+        # Create a StatefulItem without a "give" interaction
+        lever = StatefulItem(
+            name="rusty lever",
+            id="lever_1",
+            description="A rusty lever.",
+            state="up",
+            takeable=False,
+        )
+        lever.add_interaction(
+            verb="pull",
+            from_state="up",
+            target_state="down",
+            message="You pull the lever.",
+        )
+        self.room.add_item(lever)
+
+        self.player.add_item(self.item1)
+
+        cmd = {
+            "verb": "give",
+            "subject": "lever",
+            "subject_object": lever,
+            "instrument": "sword",
+            "instrument_object": self.item1,
+            "reversed_syntax": True,
+        }
+
+        result = await handle_give(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Should fall through to player search and fail
+        self.assertIn("don't see", result.lower())
+        # Item should still be with player
+        self.assertIn(self.item1, self.player.inventory)
+
+
 class StealBoundObjectsTest(AsyncTestCase):
     """Test steal command with bound objects."""
 

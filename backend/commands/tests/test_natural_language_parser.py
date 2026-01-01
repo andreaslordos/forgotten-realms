@@ -328,6 +328,95 @@ class ObjectBindingTest(unittest.TestCase):
 
         self.assertEqual(bound, sword)
 
+    def test_bind_subject_matches_by_synonym_in_inventory(self):
+        """Test binding subject matches item by synonym in inventory."""
+        # Create item with synonyms
+        knight_medallion = Item(
+            "silver medallion",
+            "medallion_1",
+            "A silver medallion",
+            synonyms=["medallion", "token", "badge"],
+        )
+        self.player.add_item(knight_medallion)
+
+        # Should match by synonym "medallion"
+        bound = self.binder.bind_subject(
+            "medallion", self.player, self.game_state, self.context
+        )
+        self.assertEqual(bound, knight_medallion)
+
+        # Should match by synonym "badge"
+        bound = self.binder.bind_subject(
+            "badge", self.player, self.game_state, self.context
+        )
+        self.assertEqual(bound, knight_medallion)
+
+    def test_bind_subject_matches_by_synonym_in_room(self):
+        """Test binding subject matches item by synonym in room."""
+        # Create item with synonyms in room
+        ghostly_knight = Item(
+            "spectral knight",
+            "ghost_knight",
+            "A ghostly knight",
+            synonyms=["knight", "ghost", "spirit", "specter"],
+        )
+        self.room.add_item(ghostly_knight)
+
+        # Should match by synonym "ghost"
+        bound = self.binder.bind_subject(
+            "ghost", self.player, self.game_state, self.context
+        )
+        self.assertEqual(bound, ghostly_knight)
+
+        # Should match by synonym "knight"
+        bound = self.binder.bind_subject(
+            "knight", self.player, self.game_state, self.context
+        )
+        self.assertEqual(bound, ghostly_knight)
+
+    def test_bind_subject_matches_by_partial_name(self):
+        """Test binding subject matches by partial name (substring)."""
+        long_sword = Item("Long Sword", "sword_1", "A long sword")
+        self.room.add_item(long_sword)
+
+        # Should match by substring "sword"
+        bound = self.binder.bind_subject(
+            "sword", self.player, self.game_state, self.context
+        )
+        self.assertEqual(bound, long_sword)
+
+    def test_bind_instrument_matches_by_synonym_in_inventory(self):
+        """Test binding instrument matches item by synonym in inventory."""
+        magic_key = Item(
+            "golden key",
+            "key_1",
+            "A golden key",
+            synonyms=["key", "gold key"],
+        )
+        self.player.add_item(magic_key)
+
+        # Should match by synonym "key"
+        bound = self.binder.bind_instrument(
+            "key", self.player, self.game_state, self.context
+        )
+        self.assertEqual(bound, magic_key)
+
+    def test_bind_instrument_matches_by_synonym_in_room(self):
+        """Test binding instrument matches item by synonym in room."""
+        ancient_lever = Item(
+            "ancient lever",
+            "lever_1",
+            "An old lever",
+            synonyms=["lever", "handle", "switch"],
+        )
+        self.room.add_item(ancient_lever)
+
+        # Should match by synonym "handle"
+        bound = self.binder.bind_instrument(
+            "handle", self.player, self.game_state, self.context
+        )
+        self.assertEqual(bound, ancient_lever)
+
 
 class FullCommandParsingTest(unittest.TestCase):
     """Test complete command parsing."""
