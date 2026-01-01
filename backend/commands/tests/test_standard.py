@@ -1655,5 +1655,32 @@ class HandleDiagnosticTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Is a dictionary: NO", result)
 
 
+class TesterrorCommandRemovedTest(unittest.IsolatedAsyncioTestCase):
+    """Test that the testerror command has been removed.
+
+    The testerror command was a temporary command for testing the error reporter.
+    It contained a bug that called a non-existent method on Player objects.
+    This test verifies the command has been properly removed from the registry.
+    """
+
+    def test_testerror_command_not_in_registry(self) -> None:
+        """Test that testerror command is not registered.
+
+        The testerror command called player.this_method_does_not_exist() which
+        raised an AttributeError. The fix is to remove this temporary test command.
+        """
+        # Import the command registry to check if testerror is registered
+        from commands.registry import command_registry
+
+        # Verify testerror is NOT in the commands registry
+        handler = command_registry.get_handler("testerror")
+        self.assertIsNone(
+            handler,
+            "The 'testerror' command should be removed from the registry. "
+            "It was a temporary test command that contained a bug "
+            "(calling player.this_method_does_not_exist()).",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
