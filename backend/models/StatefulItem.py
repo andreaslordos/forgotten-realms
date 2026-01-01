@@ -85,6 +85,7 @@ class StatefulItem(Item):
         damage: Optional[int] = None,
         kills_player: bool = False,
         damage_message: Optional[str] = None,
+        points_awarded: Optional[int] = None,
     ) -> None:
         """
         Register an interaction for this item.
@@ -142,6 +143,8 @@ class StatefulItem(Item):
             interaction["kills_player"] = True
         if damage_message is not None:
             interaction["damage_message"] = damage_message
+        if points_awarded is not None:
+            interaction["points_awarded"] = points_awarded
 
         # Add the interaction to the list
         self.interactions[verb].append(interaction)

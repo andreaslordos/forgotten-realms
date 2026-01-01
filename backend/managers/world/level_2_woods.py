@@ -31,6 +31,7 @@ from .shared_items import (
     create_torch,
     create_coin,
 )
+from .shared_conditions import stones_aligned
 
 
 class Level2Woods(LevelGenerator):
@@ -964,26 +965,7 @@ class Level2Woods(LevelGenerator):
         )
         self._rooms["clearing"].add_item(northern_stone)
 
-        # Altar Stone
-        def stones_aligned(game_state: Any) -> bool:
-            """Check if all three stones are in correct positions."""
-            room = game_state.get_room("clearing")
-            if not room:
-                return False
-            east_correct = False
-            west_correct = False
-            north_correct = False
-            for item in room.items:
-                item_id = getattr(item, "id", None)
-                state = getattr(item, "state", None)
-                if item_id == "eastern_stone" and state == "sunrise":
-                    east_correct = True
-                elif item_id == "western_stone" and state == "sunset":
-                    west_correct = True
-                elif item_id == "northern_stone" and state == "noon":
-                    north_correct = True
-            return east_correct and west_correct and north_correct
-
+        # Altar Stone - uses stones_aligned from shared_conditions
         altar = StatefulItem(
             name="altar stone",
             id="clearing_altar",

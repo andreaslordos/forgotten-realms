@@ -466,6 +466,16 @@ async def handle_interaction(
             player.remove_item(secondary_item)
             current_room.add_item(secondary_item)
 
+        # Handle awarding points
+        points_message = ""
+        if valid_interaction.get("points_awarded"):
+            points_amount = valid_interaction["points_awarded"]
+            _, points_notification = player.add_points(
+                points_amount, sio, online_sessions, send_notification=False
+            )
+            if points_notification:
+                points_message = f"\n{points_notification}"
+
         # Save changes to player and game state
         player_manager.save_players()
         # game_state.save_rooms()  # Uncomment if you're saving rooms
@@ -488,9 +498,9 @@ async def handle_interaction(
                 if utils and hasattr(utils, "__dict__")
                 else None
             )
-            return f"{message}{exit_msg}\n\n{build_look_description(player, game_state, online_sessions, mob_manager=mob_manager)}"
+            return f"{message}{exit_msg}{points_message}\n\n{build_look_description(player, game_state, online_sessions, mob_manager=mob_manager)}"
 
-        return f"{message}{exit_msg}"
+        return f"{message}{exit_msg}{points_message}"
 
     except Exception as e:
         error_trace = traceback.format_exc()

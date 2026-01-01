@@ -56,6 +56,33 @@ def has_item_by_id(item_id: str) -> Any:
 
 
 # ============================================================================
+# PLAYER LEVEL CONDITIONS
+# ============================================================================
+
+
+def player_is_novice_or_below(player: Any, game_state: Any) -> bool:
+    """Check if player is at Novice level or below (< 400 points)."""
+    return getattr(player, "points", 0) < 400
+
+
+def player_level_at_most(max_points: int) -> Any:
+    """
+    Create a condition function that checks if player has at most N points.
+
+    Args:
+        max_points: Maximum points threshold (exclusive).
+
+    Returns:
+        A condition function that checks the player's points.
+    """
+
+    def check(player: Any, game_state: Any) -> bool:
+        return getattr(player, "points", 0) < max_points
+
+    return check
+
+
+# ============================================================================
 # ROOM/ITEM STATE CONDITIONS
 # ============================================================================
 
@@ -72,11 +99,11 @@ def stones_aligned(player: Any, game_state: Any) -> bool:
 
     for item in room.items:
         if hasattr(item, "id"):
-            if item.id == "eaststone":
+            if item.id == "eastern_stone":
                 east_state = getattr(item, "state", None)
-            elif item.id == "weststone":
+            elif item.id == "western_stone":
                 west_state = getattr(item, "state", None)
-            elif item.id == "northstone":
+            elif item.id == "northern_stone":
                 north_state = getattr(item, "state", None)
 
     return east_state == "sunrise" and west_state == "sunset" and north_state == "noon"

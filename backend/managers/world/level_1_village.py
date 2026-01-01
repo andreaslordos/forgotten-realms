@@ -20,6 +20,7 @@ from models.ContainerItem import ContainerItem
 from models.Weapon import Weapon
 from models.SpecializedRooms import SwampRoom
 from .level_base import LevelGenerator
+from .shared_conditions import player_is_novice_or_below
 
 
 class Level1Village(LevelGenerator):
@@ -1221,8 +1222,16 @@ class Level1Village(LevelGenerator):
         angel_statue.add_interaction(
             verb="pray",
             message="You kneel before the angel and offer a silent prayer. For a moment, you "
-            "feel a warmth in your chest, a sense of peace. Then it fades, but you feel "
-            "slightly stronger for it.",
+            "feel a warmth in your chest, a sense of peace. The angel's blessing fills you "
+            "with renewed strength.",
+            conditional_fn=player_is_novice_or_below,
+            points_awarded=5,
+        )
+        angel_statue.add_interaction(
+            verb="pray",
+            message="You kneel before the angel and offer a silent prayer. For a moment, you "
+            "feel a warmth in your chest, a sense of peace. The angel watches over you, "
+            "but you sense its blessing is meant for those still finding their way.",
         )
         self._rooms["graveyard"].add_item(angel_statue)
 
@@ -1607,10 +1616,10 @@ class Level1Village(LevelGenerator):
             peasant.accepts_item = {
                 "coin": {
                     "message": "The peasant palms the coin and leans in conspiratorially. 'Looking to leave, are you? Can't say I blame you.' The peasant then disappears in a puff of smoke.",
+                    "one_time": True,
+                    "triggered": False,
+                    "effect_fn": peasant_gives_hint,
                 },
-                "one_time": True,
-                "triggered": False,
-                "effect_fn": peasant_gives_hint,
             }
 
         # Priest - give bones for blessing (alternative to mist token)
