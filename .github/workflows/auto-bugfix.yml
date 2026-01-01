@@ -62,7 +62,11 @@ jobs:
             6. **Run Suite**: Run `./scripts/run_backend_tests.sh`
                - All tests must pass
                - Coverage must be >= 80%
-            7. **Commit & PR**: If all tests pass, commit changes and create a PR
+            7. **Commit & PR**: If all tests pass:
+               - Create a branch: `git checkout -b fix/issue-${{ github.event.issue.number }}`
+               - Stage and commit: `git add -A && git commit -m "fix: <description>"`
+               - Push: `git push -u origin fix/issue-${{ github.event.issue.number }}`
+               - Create PR: `gh pr create --title "Fix: <description>" --body "Fixes #${{ github.event.issue.number }}"`
 
             ## Project Standards (from CLAUDE.md):
             - All functions need type hints
