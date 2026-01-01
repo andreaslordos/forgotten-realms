@@ -2,7 +2,7 @@ name: Auto Bug Fix (TDD)
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [labeled]
   issue_comment:
     types: [created]
 
@@ -18,9 +18,9 @@ concurrency:
 
 jobs:
   fix-bug:
-    # Trigger on: new issue with auto-fix label, OR @claude mention in comment
+    # Trigger on: auto-fix label added, OR @claude mention in comment
     if: |
-      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'auto-fix')) ||
+      (github.event_name == 'issues' && github.event.label.name == 'auto-fix') ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
     runs-on: ubuntu-latest
 
