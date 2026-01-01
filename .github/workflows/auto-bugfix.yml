@@ -43,7 +43,6 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           trigger_phrase: "@claude"
-          allowed_tools: "Edit,Write,Bash,Read,Glob,Grep"
           prompt: |
             Fix this runtime error using a strict TDD approach:
 
@@ -73,4 +72,6 @@ jobs:
             - Tests use unittest.IsolatedAsyncioTestCase
             - Test naming: test_{function_name}_{description}
             - Use AsyncMock for async dependencies
-          claude_args: "--max-turns 20"
+          claude_args: |
+            --allowedTools "Bash(git:*)" "Bash(python3:*)" "Bash(gh:*)" "Bash(./scripts:*)" "Bash(cd:*)" "Bash(find:*)" "Bash(cat:*)" "Bash(pip:*)" "Edit" "Read" "Grep" "Glob"
+            --max-turns 20
