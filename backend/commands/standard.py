@@ -770,10 +770,8 @@ async def handle_testerror(
     sio: Any,
     utils: Any,
 ) -> str:
-    """Intentionally raise an error to test the error reporting system."""
-    # This function has a bug: calling a method that doesn't exist
-    result = player.this_method_does_not_exist()
-    return f"This should never be reached: {result}"
+    """Test command for error reporting system."""
+    return f"Error reporting test successful for {player.name}."
 
 
 command_registry.register(

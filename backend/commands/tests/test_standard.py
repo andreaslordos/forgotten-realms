@@ -28,8 +28,10 @@ from commands.standard import (
     handle_users,
     handle_quit,
     handle_diagnostic,
+    handle_testerror,
 )
 from models.Item import Item
+from models.Player import Player
 from models.Room import Room
 from models.StatefulItem import StatefulItem
 
@@ -1653,6 +1655,42 @@ class HandleDiagnosticTest(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertIn("Is a dictionary: NO", result)
+
+
+class HandleTesterrorTest(unittest.IsolatedAsyncioTestCase):
+    """Test handle_testerror command does not crash."""
+
+    def setUp(self) -> None:
+        """Set up mocks for tests."""
+        # Use spec=Player to ensure AttributeError is raised for non-existent methods
+        self.player = Mock(spec=Player)
+        self.player.name = "TestPlayer"
+        self.player.current_room = "test_room"
+
+        self.game_state = Mock()
+        self.player_manager = Mock()
+        self.online_sessions: dict[str, dict[str, object]] = {}
+        self.sio = AsyncMock()
+        self.utils = Mock()
+
+    async def test_handle_testerror_does_not_raise_attribute_error(self) -> None:
+        """Test that handle_testerror does not crash with AttributeError."""
+        # Arrange
+        cmd = {"verb": "testerror", "original": "testerror"}
+
+        # Act & Assert - command should not raise an exception
+        result = await handle_testerror(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Should return a string, not crash
+        self.assertIsInstance(result, str)
 
 
 if __name__ == "__main__":
