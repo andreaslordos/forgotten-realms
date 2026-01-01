@@ -1593,8 +1593,6 @@ async def handle_mob_defeat(
 
     # Victory message
     victory_msg = f"You have slain {mob.name}!"
-    if mob.point_value > 0:
-        victory_msg += f" You gain {mob.point_value} points!"
 
     if loot_dropped:
         loot_names = ", ".join(item.name for item in loot_dropped)

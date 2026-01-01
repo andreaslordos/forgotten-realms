@@ -630,14 +630,13 @@ class Level1Village(LevelGenerator):
                     return getattr(item, "state", None) == "open"
             return False
 
-        safe_coins = Item(
+        safe_coins = ContainerItem(
             name="pouch",
             id="safe_coins",
             description="A small leather pouch containing a handful of gold coins.",
             weight=1,
             value=50,
             takeable=True,
-            synonyms=["coin pouch", "leather pouch"],
         )
         self._rooms["tavern"].add_hidden_item(safe_coins, safe_opened)
 
@@ -730,17 +729,21 @@ class Level1Village(LevelGenerator):
         )
         self._rooms["cellar"].add_hidden_item(mist_token, chest_opened)
 
-        old_documents = Item(
+        old_documents = StatefulItem(
             name="documents",
             id="old_documents",
-            description="Yellowed documents describing the mist barrier. One passage reads: "
-            "'The token grants passage, but the Morning Lord's blessing may also part the mists.'",
+            description="Yellowed documents lie here, worn by time.",
             weight=0,
             value=10,
             takeable=True,
             synonyms=["old documents", "papers", "yellowed papers"],
         )
         self._rooms["cellar"].add_hidden_item(old_documents, chest_opened)
+
+        old_documents.add_interaction(
+            verb="read",
+            message="One passage reads: 'The token grants passage, but the Morning Lord's blessing may also part the mists.'",
+        )
 
         # Crate hiding tunnel
         crate = StatefulItem(
@@ -1124,7 +1127,7 @@ class Level1Village(LevelGenerator):
             from_state="empty",
             target_state="lit",
             message="You place a torch in the bracket. The flames seem to push back the mist slightly.",
-            required_instrument="torch",
+            required_instrument="shop_torch",
         )
         self._rooms["gatehouse"].add_item(torch_bracket)
 
@@ -1583,6 +1586,32 @@ class Level1Village(LevelGenerator):
                 if mob.name.lower() == name.lower():
                     return mob
             return None
+
+        # Peasant - give coins for hints
+        peasant = find_mob_by_name("peasant")
+        if peasant:
+
+            async def peasant_gives_hint(
+                player: Any,
+                game_state: Any,
+                player_manager: Any,
+                online_sessions: Any,
+                sio: Any,
+                utils: Any,
+            ) -> None:
+                """Give coins for hints."""
+                player.add_points(10)
+                # Remove the peasant from the room
+                mob_manager.remove_mob(peasant.id, game_state)
+
+            peasant.accepts_item = {
+                "coin": {
+                    "message": "The peasant palms the coin and leans in conspiratorially. 'Looking to leave, are you? Can't say I blame you.' The peasant then disappears in a puff of smoke.",
+                },
+                "one_time": True,
+                "triggered": False,
+                "effect_fn": peasant_gives_hint,
+            }
 
         # Priest - give bones for blessing (alternative to mist token)
         priest = find_mob_by_name("priest")
