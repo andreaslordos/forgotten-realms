@@ -13,6 +13,7 @@ from aiohttp import web
 from event_handlers import register_handlers
 from globals import online_sessions
 from managers.auth import AuthManager
+from services.error_reporter import install_log_buffer
 from managers.game_state import GameState
 from managers.mob_definitions import get_mob_definitions
 from managers.mob_manager import MobManager
@@ -26,6 +27,9 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# Install log buffer for error reporting (captures last 200 lines)
+install_log_buffer(capacity=200)
 
 # Determine if we're in test mode (skip SSL) using a -test flag
 TEST_MODE = "-test" in sys.argv
