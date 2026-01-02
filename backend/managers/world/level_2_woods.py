@@ -25,6 +25,7 @@ from typing import Dict, Any
 from models.Room import Room
 from models.Item import Item
 from models.StatefulItem import StatefulItem
+from models.ContainerItem import ContainerItem
 from models.Weapon import Weapon
 from .level_base import LevelGenerator
 from .shared_items import (
@@ -51,19 +52,20 @@ class Level2Woods(LevelGenerator):
         road_south = Room(
             "road_south",
             "Old Svalich Road",
-            "The road emerges from the mists. Ancient oaks loom on either side and a "
-            "weathered milestone stands at the roadside. A rusted signpost points "
-            "south toward a crossroads. To the east, a narrow trail disappears into "
-            "the undergrowth.",
+            "The road emerges from the mists into gloomy twilight. Ancient oaks loom "
+            "on either side, their branches reaching like grasping fingers. To the "
+            "south, the road continues toward a crossroads. A narrow trail disappears "
+            "into the undergrowth to the east.",
             is_outdoor=True,
         )
 
         crossroads = Room(
             "crossroads",
             "Gallows Crossroads",
-            "Four roads meet beneath a grim gallows where a corpse sways in the "
-            "windless air. A carved signpost stands at the center. A tarnished brass "
-            "bell hangs from it, green with age. Someone scratched words into the post.",
+            "Four roads meet beneath a grim gallows. Crows circle overhead, their "
+            "caws echoing across the empty crossroads. The air smells of rot and old "
+            "death. Roads lead north toward the village, south to Tser Pool, east "
+            "toward the castle, and west toward a distant bridge.",
             is_outdoor=True,
         )
 
@@ -84,9 +86,9 @@ class Level2Woods(LevelGenerator):
             "clearing",
             "Standing Stone Clearing",
             "Three massive standing stones form a triangle in this clearing, each "
-            "twice a man's height with spiraling carvings. A flat altar stone lies "
-            "at the center. The eastern stone shows a rising sun, the western a "
-            "setting sun, the northern a sun at its zenith. Paths lead east and south.",
+            "twice a man's height with spiraling carvings. Ancient power hums in the "
+            "air, making your skin prickle. Paths lead west toward the woods and "
+            "south into darker growth.",
             is_outdoor=True,
         )
 
@@ -94,8 +96,8 @@ class Level2Woods(LevelGenerator):
             "dark_grove",
             "Dark Grove",
             "The trees grow so close you must squeeze between them. The air is thick "
-            "with rot. A carpet of dead leaves covers the ground. A glint of metal "
-            "catches your eye near a gnarled root. The clearing lies north.",
+            "with rot and a carpet of dead leaves covers the ground, muffling your "
+            "footsteps. The clearing lies north and a hollow opens to the east.",
             is_dark=True,
             is_outdoor=True,
         )
@@ -112,9 +114,9 @@ class Level2Woods(LevelGenerator):
         wolf_den = Room(
             "wolf_den",
             "Wolf Den",
-            "The stench of wolf is overwhelming. Bones scatter everywhere - animal "
-            "and human. A large nest of matted fur occupies the back. An old leather "
-            "satchel lies half-buried in one corner.",
+            "The stench of wolf is overwhelming. Bones scatter everywhere — animal "
+            "and human alike. A large nest of matted fur occupies the back of this "
+            "cramped cave. The exit leads back out to the rocky outcrop.",
             is_dark=True,
         )
 
@@ -122,37 +124,31 @@ class Level2Woods(LevelGenerator):
             "stream_crossing",
             "Forest Stream",
             "A clear stream cuts through the forest, surprisingly pure in this "
-            "land of mists. Mossy stepping stones provide crossing. The water "
-            "is cold and swift, tumbling over smooth rocks. A weathered wooden "
-            "sign is nailed to a tree, its message faded.\n\n"
-            "A fallen branch has dammed part of the stream, creating a small "
-            "pool where fish dart in the shadows. The hollow lies west, and "
-            "a mushroom-covered glade opens to the east.",
+            "land of mists. Mossy stepping stones provide crossing, and the water "
+            "is cold and swift, tumbling over smooth rocks. A fallen branch has "
+            "dammed part of the stream, creating a small pool where fish dart in "
+            "the shadows. The hollow lies west, a mushroom-covered glade to the "
+            "east, and a ravine looms to the north.",
             is_outdoor=True,
         )
 
         hollow = Room(
             "hollow",
             "Misty Hollow",
-            "A deep depression in the forest floor where mist collects like "
-            "water. The fog here is so thick you can barely see the ground. "
-            "Whispers seem to echo from within the mist - voices speaking words "
-            "you can almost understand. A crude stone marker stands at the edge.\n\n"
-            "An old rope dangles from a tree branch overhead, swaying gently "
-            "despite the still air. The stream lies to the east, the main "
-            "woods are to the north.",
+            "Mist collects in this deep depression like water in a bowl. The fog "
+            "is so thick you can barely see the ground, and whispers seem to echo "
+            "from within — voices speaking words you can almost understand. The "
+            "stream lies to the east, the dark grove to the west, and woods to "
+            "the north.",
             is_outdoor=True,
         )
 
         mushroom_glade = Room(
             "mushroom_glade",
             "Mushroom Glade",
-            "A perfect ring of pale mushrooms encircles this small glade. The "
-            "air here feels charged, like before a lightning strike. Local legend "
-            "warns against stepping inside fairy rings. Strange lights flicker "
-            "at the edge of vision.\n\n"
-            "At the center of the ring sits a small wooden box, weathered by "
-            "years of rain and sun. The stream lies to the west.",
+            "The air here feels charged, like before a lightning strike. Strange "
+            "lights flicker at the edge of vision, and local legend warns against "
+            "stepping inside fairy rings. The stream lies to the west.",
             is_outdoor=True,
         )
 
@@ -166,45 +162,38 @@ class Level2Woods(LevelGenerator):
             "A dark pool reflects the grey sky like a tarnished mirror. Colorful "
             "Vistani wagons are camped on the muddy shore, their painted sides "
             "a jarring splash of color in this dreary land. Cooking fires burn, "
-            "and the smell of spiced meat drifts on the breeze.\n\n"
-            "A fortune teller's wagon stands apart from the others, its door "
-            "marked with strange symbols. A merchant's stall has been set up "
-            "near the water's edge. An old wooden dock extends into the pool.",
+            "and the smell of spiced meat drifts on the breeze. The crossroads "
+            "lies north, a fortune teller's wagon beckons to the west, a merchant "
+            "has set up to the east, and a dock extends south into the water.",
             is_outdoor=True,
         )
 
         wagon = Room(
             "wagon",
             "Fortune Teller's Wagon",
-            "Incense smoke hangs thick in the cramped wagon, making your eyes "
-            "water. Silken scarves of deep purple and crimson cover every surface. "
-            "Strange charms dangle from the ceiling - bones, feathers, glass eyes. "
-            "A crystal ball sits on a velvet cloth before you.\n\n"
-            "An ancient woman watches from her chair, her milky eyes seeing far "
-            "more than they should. A worn deck of tarot cards lies on the table "
-            "beside a silver bell.",
+            "Incense smoke hangs thick in this cramped wagon, making your eyes "
+            "water. Silken scarves of deep purple and crimson cover every surface, "
+            "and strange charms dangle from the ceiling — bones, feathers, glass "
+            "eyes. An ancient woman watches from her chair, her milky eyes seeing "
+            "far more than they should. The exit leads back out to Tser Pool.",
         )
 
         merchant_stall = Room(
             "merchant_stall",
             "Vistani Merchant's Stall",
-            "A canvas awning shelters tables laden with curious goods - jewelry "
-            "from distant lands, bundles of dried herbs, stoppered bottles of "
-            "unknown liquids, and weapons of unusual make. A Vistani man with "
-            "gold rings in his ears watches you with knowing eyes.\n\n"
-            "A locked strongbox sits beneath the main table. A wooden rack "
-            "displays several blades and a fine crossbow.",
+            "A canvas awning shelters tables laden with curious goods — jewelry "
+            "from distant lands, bundles of dried herbs, and stoppered bottles of "
+            "unknown liquids. A Vistani man with gold rings in his ears watches "
+            "you with knowing eyes. Tser Pool lies to the west.",
         )
 
         old_dock = Room(
             "old_dock",
             "Rotting Dock",
             "Weathered planks creak beneath your feet as you walk out over the "
-            "dark water. The pool is deeper than it looks - you cannot see the "
-            "bottom. Something large moves in the depths. A rowboat is tied to "
-            "a post, half-full of rainwater.\n\n"
-            "The shore lies back to the west. An inscription is carved into one "
-            "of the dock posts, barely visible beneath years of grime.",
+            "dark water. The pool is deeper than it looks — you cannot see the "
+            "bottom, and something large moves in the depths. The shore and "
+            "Vistani camp lie back to the north.",
         )
 
         # =====================================================================
@@ -215,11 +204,9 @@ class Level2Woods(LevelGenerator):
             "river_approach",
             "River Approach",
             "The road narrows as it approaches a rushing river. The water is "
-            "black and swift, roaring over rocks. Spray fills the air. An ancient "
+            "black and swift, roaring over rocks as spray fills the air. An ancient "
             "stone bridge spans the torrent ahead, gargoyles crouching at either "
-            "end. Something moves on the bridge.\n\n"
-            "A worn stone bench sits by the roadside, placed here long ago for "
-            "weary travelers. Someone has left fresh flowers on it.",
+            "end. Something moves on the bridge. The crossroads lies east.",
             is_outdoor=True,
         )
 
@@ -228,11 +215,8 @@ class Level2Woods(LevelGenerator):
             "Stone Bridge",
             "This ancient bridge of weathered stone spans the rushing river below. "
             "Gargoyle statues crouch at each corner, their faces worn smooth by "
-            "centuries of rain. The water's roar is deafening.\n\n"
-            "A spectral knight bars the western path, his translucent form "
-            "flickering like candlelight. He wears tarnished armor bearing a "
-            "dragon crest, and his hollow eyes burn with eternal purpose. His "
-            "skeletal hand rests on a ghostly sword.",
+            "centuries of rain. The water's roar is deafening. The river approach "
+            "lies to the east.",
             is_outdoor=True,
         )
 
@@ -244,11 +228,10 @@ class Level2Woods(LevelGenerator):
             "castle_road",
             "Road to the Castle",
             "The road climbs steeply through the forest toward a dark silhouette "
-            "looming against the grey sky - Castle Ravenloft. Lightning flickers "
-            "around its spires. The air grows colder with each step.\n\n"
-            "A wayside shrine stands at the roadside, its guardian statue "
-            "weathered beyond recognition. Offerings - coins, flowers, teeth - "
-            "are piled at its base. The castle gates are visible ahead.",
+            "looming against the grey sky — Castle Ravenloft. Lightning flickers "
+            "around its spires and the air grows colder with each step. A wayside "
+            "shrine stands at the roadside, offerings piled at its base. The "
+            "castle gates are visible to the east, the crossroads to the west.",
             is_outdoor=True,
         )
 
@@ -256,12 +239,10 @@ class Level2Woods(LevelGenerator):
             "castle_gates",
             "Castle Gates",
             "Massive iron gates tower before you, twice the height of a man. "
-            "Frost covers every surface despite no visible cold, and glowing "
-            "runes pulse with dark energy across the metal. The castle beyond "
-            "looms impossibly large, its spires stabbing at the churning sky.\n\n"
-            "A heavy iron chain secures the gates, its links as thick as your "
-            "wrist. A brass plate beside the gate bears an inscription. Dragon "
-            "statues flank the entrance, their eyes following your movements.",
+            "Frost covers every surface despite no visible cold. The castle beyond "
+            "looms impossibly large, its spires stabbing at the churning sky. "
+            "Dragon statues flank the entrance, their stone eyes seeming to follow "
+            "your movements. The road leads back west.",
             is_outdoor=True,
         )
 
@@ -272,12 +253,10 @@ class Level2Woods(LevelGenerator):
         barrow = Room(
             "barrow",
             "Ancient Barrow",
-            "Stone steps descend into an ancient burial mound. The air is thick "
+            "Stone steps descend into this ancient burial mound. The air is thick "
             "with the dust of ages and the smell of old death. Niches in the "
-            "walls once held offerings, now long since crumbled or stolen.\n\n"
-            "A stone sarcophagus dominates the chamber, its lid carved with the "
-            "image of a sleeping warrior. Tarnished coins are scattered on the "
-            "floor. A rusted sword leans against the far wall.",
+            "walls once held offerings, now long since crumbled or stolen. The "
+            "steps lead back up to the standing stone clearing.",
             is_dark=True,
         )
 
@@ -289,9 +268,9 @@ class Level2Woods(LevelGenerator):
             "overgrown_trail",
             "Overgrown Trail",
             "Brambles and thorns have nearly consumed this old trail. Scratches "
-            "on tree trunks mark the passage of deer - and perhaps wolves hunting "
-            "them. A weathered boot lies in the undergrowth, its owner long gone.\n\n"
-            "The trail continues south toward the main road.",
+            "on tree trunks mark the passage of deer — and perhaps wolves hunting "
+            "them. A weathered boot lies in the undergrowth, its owner long gone. "
+            "The main road lies west and a clearing opens to the south.",
             is_outdoor=True,
         )
 
@@ -299,11 +278,10 @@ class Level2Woods(LevelGenerator):
             "fallen_tree",
             "Fallen Oak",
             "A massive oak has fallen across the path, torn from the earth by "
-            "some ancient storm. Its root ball forms a wall taller than a man. "
-            "The hollow beneath the roots creates a natural shelter, and someone "
-            "has used it recently - ashes of a cook fire remain.\n\n"
-            "An old pack lies in the shelter, forgotten or abandoned. The trail "
-            "continues north toward the forest path.",
+            "some ancient storm. Its root ball forms a wall taller than a man, "
+            "and the hollow beneath creates a natural shelter — someone has used "
+            "it recently, judging by the ashes of a cook fire. The forest path "
+            "continues north and a hunter's cache is visible to the east.",
             is_outdoor=True,
         )
 
@@ -312,10 +290,8 @@ class Level2Woods(LevelGenerator):
             "Raven's Roost",
             "An ancient dead tree stands alone in a small clearing, every branch "
             "covered in ravens. Dozens of the black birds watch you with gleaming "
-            "intelligent eyes. They seem to be waiting for something - or someone.\n\n"
-            "One raven, larger than the others, wears a silver band around its "
-            "leg. Strange droppings - some glittering - cover the ground beneath "
-            "the tree. A path leads west to the shrine.",
+            "intelligent eyes, seeming to wait for something — or someone. The "
+            "overgrown trail lies north and a path leads west toward a shrine.",
             is_outdoor=True,
         )
 
@@ -324,11 +300,10 @@ class Level2Woods(LevelGenerator):
             "Forgotten Shrine",
             "A small stone shrine stands half-hidden by overgrowth, dedicated to "
             "a deity long forgotten in this cursed land. Despite its age, fresh "
-            "offerings appear at its base - wildflowers, small coins, bits of "
-            "bread. Someone still believes.\n\n"
-            "The shrine's guardian statue has lost its head, but its hands are "
-            "cupped as if waiting to receive something. A silver bowl sits "
-            "between the stone palms. The ravens roost lies east.",
+            "offerings appear at its base — wildflowers, small coins, bits of "
+            "bread. Someone still believes. The shrine's guardian statue has lost "
+            "its head, but its hands remain cupped as if waiting to receive "
+            "something. The ravens roost lies east.",
             is_outdoor=True,
         )
 
@@ -338,7 +313,7 @@ class Level2Woods(LevelGenerator):
             "A deep ravine cuts through the forest, its bottom lost in shadow "
             "and mist. You can hear water rushing far below. A fallen log "
             "provides precarious crossing - it looks stable enough, but the "
-            "drop is deadly.\n\n"
+            "drop is deadly.\n"
             "Someone has carved handholds into the log for better grip. Rope "
             "fibers caught on splinters suggest a safer method once existed.",
             is_outdoor=True,
@@ -347,12 +322,10 @@ class Level2Woods(LevelGenerator):
         hunters_cache = Room(
             "hunters_cache",
             "Hunter's Cache",
-            "A wooden platform is built into the branches of an ancient oak, "
-            "accessible by a rope ladder. This hunter's blind has been abandoned "
-            "for some time - leaves cover everything, and spider webs fill the "
-            "corners.\n\n"
-            "A locked wooden chest sits in one corner, its iron bands rusted. "
-            "Carved into the platform's railing are tally marks - dozens of them.",
+            "Leaves cover everything in this abandoned hunter's blind, built into "
+            "the branches of an ancient oak. Spider webs fill the corners and "
+            "tally marks — dozens of them — are carved into the railing. A rope "
+            "ladder leads back down to the fallen tree.",
         )
 
         # =====================================================================
@@ -581,10 +554,10 @@ class Level2Woods(LevelGenerator):
             from_state="unread",
             target_state="read",
             message=(
-                "You trace the worn letters with your finger:\n\n"
+                "You trace the worn letters with your finger:\n"
                 "    'Barovia - 1 league North\n"
                 "     Crossroads - 100 paces South\n"
-                "     Beware the Mists'\n\n"
+                "     Beware the Mists'\n"
                 "Below the official inscription, someone has scratched:\n"
                 "'The stones remember. Sunrise, noon, sunset.'"
             ),
@@ -623,7 +596,7 @@ class Level2Woods(LevelGenerator):
                 "  North: 'BAROVIA - Village of the Damned'\n"
                 "  South: 'TSER POOL - The Vistani Know'\n"
                 "  East:  'RAVENLOFT - Abandon Hope'\n"
-                "  West:  'VALLAKI - Through the Ghost'\n\n"
+                "  West:  'VALLAKI - Through the Ghost'\n"
                 "Scratched into the post below: 'Ring for luck - if you dare.'"
             ),
         )
@@ -639,12 +612,12 @@ class Level2Woods(LevelGenerator):
         self._rooms["crossroads"].add_item(signpost)
 
         brass_bell = StatefulItem(
-            name="brass bell",
+            name="bell",
             id="crossroads_bell",
             description="A tarnished brass bell hanging from the signpost.",
             state="silent",
             takeable=False,
-            synonyms=["bell", "tarnished bell"],
+            synonyms=["brass bell", "tarnished bell"],
         )
         brass_bell.set_room_id("crossroads")
         brass_bell.add_state_description(
@@ -662,7 +635,7 @@ class Level2Woods(LevelGenerator):
             message=(
                 "You ring the bell. Its clear tone echoes across the crossroads, "
                 "far louder than such a small bell should be. The crows on the "
-                "gallows take flight. For a moment, you feel watched.\n\n"
+                "gallows take flight. For a moment, you feel watched.\n"
                 "The corpse on the gallows seems to twitch. Probably the wind."
             ),
         )
@@ -725,21 +698,26 @@ class Level2Woods(LevelGenerator):
         self._rooms["crossroads"].add_item(corpse)
 
         # Hidden note in corpse
-        corpse_note = Item(
+        corpse_note = StatefulItem(
             name="note",
             id="corpse_note",
-            description=(
-                "A crumpled, stained note. The handwriting is hurried:\n\n"
-                "'If you read this, I am dead. The ghost on the bridge seeks "
-                "his medallion - stolen by wolves. Their den lies east of the "
-                "game trail. Return it and he may let you pass.\n\n"
-                "Do not trust the hags. Do not enter the mill. May the "
-                "Morninglord have mercy on your soul.'"
-            ),
+            description="A crumpled, stained note lies here, its handwriting hurried.",
+            state="default",
             weight=0,
             value=0,
             takeable=True,
             synonyms=["crumpled note", "paper", "letter"],
+        )
+        corpse_note.add_interaction(
+            verb="read",
+            message=(
+                "The note reads:\n"
+                "'If you read this, I am dead. The ghost on the bridge seeks "
+                "his medallion - stolen by wolves. Their den lies east of the "
+                "game trail. Return it and he may let you pass.\n"
+                "Do not trust the hags. Do not enter the mill. May the "
+                "Morninglord have mercy on your soul.'"
+            ),
         )
 
         def corpse_searched(game_state: Any) -> bool:
@@ -759,12 +737,12 @@ class Level2Woods(LevelGenerator):
 
         # Eastern Stone
         eastern_stone = StatefulItem(
-            name="eastern stone",
+            name="sunstone",
             id="eastern_stone",
             description="A massive standing stone carved with a sun rising over mountains.",
             state="default",
             takeable=False,
-            synonyms=["east stone", "sunrise stone", "stone"],
+            synonyms=["eastern stone", "east stone", "sunrise stone"],
         )
         eastern_stone.set_room_id("clearing")
         eastern_stone.add_state_description(
@@ -829,12 +807,12 @@ class Level2Woods(LevelGenerator):
 
         # Western Stone
         western_stone = StatefulItem(
-            name="western stone",
+            name="duskstone",
             id="western_stone",
             description="A massive standing stone carved with a sun setting into the sea.",
             state="default",
             takeable=False,
-            synonyms=["west stone", "sunset stone"],
+            synonyms=["western stone", "west stone", "sunset stone"],
         )
         western_stone.set_room_id("clearing")
         western_stone.add_state_description(
@@ -898,12 +876,12 @@ class Level2Woods(LevelGenerator):
 
         # Northern Stone
         northern_stone = StatefulItem(
-            name="northern stone",
+            name="noonstone",
             id="northern_stone",
             description="A massive standing stone carved with a blazing sun overhead.",
             state="default",
             takeable=False,
-            synonyms=["north stone", "noon stone"],
+            synonyms=["northern stone", "north stone", "noon stone"],
         )
         northern_stone.set_room_id("clearing")
         northern_stone.add_state_description(
@@ -967,12 +945,12 @@ class Level2Woods(LevelGenerator):
 
         # Altar Stone - uses stones_aligned from shared_conditions
         altar = StatefulItem(
-            name="altar stone",
+            name="altar",
             id="clearing_altar",
             description="A flat altar stone lies at the center of the three standing stones.",
             state="dormant",
             takeable=False,
-            synonyms=["altar", "flat stone", "center stone"],
+            synonyms=["altar stone", "flat stone", "center stone"],
         )
         altar.set_room_id("clearing")
         altar.add_state_description(
@@ -991,7 +969,7 @@ class Level2Woods(LevelGenerator):
                 "As you touch the altar, the three standing stones begin to hum. "
                 "Lines of light connect them - sunrise, noon, sunset! The earth "
                 "trembles, and the altar stone slides aside, revealing stone steps "
-                "descending into darkness.\n\n"
+                "descending into darkness.\n"
                 "An ancient barrow lies below. The path to forgotten knowledge "
                 "is open!"
             ),
@@ -1013,7 +991,7 @@ class Level2Woods(LevelGenerator):
             message=(
                 "The altar is a flat granite slab, worn smooth by countless "
                 "years. Faint traces of old offerings stain its surface - blood, "
-                "wine, tears. An inscription circles its edge:\n\n"
+                "wine, tears. An inscription circles its edge:\n"
                 "'When dawn rises in the east, noon blazes in the north, and "
                 "sunset falls in the west, touch the heart and descend to wisdom.'"
             ),
@@ -1042,12 +1020,12 @@ class Level2Woods(LevelGenerator):
         # =====================================================================
 
         bone_pile = StatefulItem(
-            name="pile of bones",
+            name="bones",
             id="wolf_bones",
             description="A grisly pile of gnawed bones - animal and human alike.",
             state="unsearched",
             takeable=False,
-            synonyms=["bones", "bone pile", "gnawed bones"],
+            synonyms=["pile of bones", "bone pile", "gnawed bones"],
         )
         bone_pile.set_room_id("wolf_den")
         bone_pile.add_state_description(
@@ -1102,16 +1080,14 @@ class Level2Woods(LevelGenerator):
             name="medallion",
             id="knight_medallion",
             description=(
-                "A silver medallion bearing the crest of a knight's order - a "
-                "dragon coiled around a sword. Despite its time among wolf bones, "
-                "it gleams as if newly polished. It feels cold to the touch."
+                "A silver medallion lies here, bearing a dragon coiled around a "
+                "sword. Despite its time among wolf bones, it gleams as if newly "
+                "polished."
             ),
             weight=0,
             value=50,
             takeable=True,
-            synonyms=[
-                "crest",
-            ],
+            synonyms=["crest", "silver medallion", "knight medallion"],
         )
 
         def bones_searched(game_state: Any) -> bool:
@@ -1127,12 +1103,12 @@ class Level2Woods(LevelGenerator):
 
         # Old satchel with clue
         satchel = StatefulItem(
-            name="leather satchel",
+            name="satchel",
             id="wolf_satchel",
             description="An old leather satchel, half-buried in debris.",
             state="closed",
             takeable=False,
-            synonyms=["satchel", "bag", "old satchel"],
+            synonyms=["leather satchel", "bag", "old satchel"],
         )
         satchel.set_room_id("wolf_den")
         satchel.add_state_description(
@@ -1149,7 +1125,7 @@ class Level2Woods(LevelGenerator):
             target_state="open",
             message=(
                 "You pull the satchel from the debris and open it. Inside you "
-                "find a few copper coins, a dagger, and a water-stained letter:\n\n"
+                "find a few copper coins, a dagger, and a water-stained letter:\n"
                 "'Brother,\n"
                 "If the wolves take me, know that I died trying to recover Sir "
                 "Godfrey's medallion. The ghost on the bridge cannot rest until "
@@ -1174,7 +1150,7 @@ class Level2Woods(LevelGenerator):
         rusty_dagger = Weapon(
             name="dagger",
             id="wolf_dagger",
-            description="A rusty but functional dagger, found in the wolf den.",
+            description="A rusty but functional dagger lies here.",
             weight=1,
             value=8,
             takeable=True,
@@ -1201,7 +1177,7 @@ class Level2Woods(LevelGenerator):
         # =====================================================================
 
         ghostly_knight = StatefulItem(
-            name="spectral knight",
+            name="knight",
             id="ghost_knight",
             description=(
                 "A ghostly knight in tarnished armor blocks the western path. "
@@ -1210,7 +1186,13 @@ class Level2Woods(LevelGenerator):
             ),
             state="blocking",
             takeable=False,
-            synonyms=["knight", "ghost", "ghostly knight", "spirit", "specter"],
+            synonyms=[
+                "spectral knight",
+                "ghost",
+                "ghostly knight",
+                "spirit",
+                "specter",
+            ],
         )
         ghostly_knight.set_room_id("bridge")
         ghostly_knight.add_state_description(
@@ -1228,14 +1210,14 @@ class Level2Woods(LevelGenerator):
             target_state="appeased",
             message=(
                 "You hold out the silver medallion. The knight's hollow eyes widen "
-                "with recognition, his flickering form steadying.\n\n"
+                "with recognition, his flickering form steadying.\n"
                 "'My... my honor,' he whispers, his voice like wind through dead "
-                "leaves. 'Returned at last, after all these years.'\n\n"
+                "leaves. 'Returned at last, after all these years.'\n"
                 "He takes the medallion with translucent fingers, pressing it to "
                 "his chest where his heart once beat. A single spectral tear runs "
-                "down his cheek.\n\n"
+                "down his cheek.\n"
                 "'You have my eternal gratitude, mortal. The road to Vallaki is "
-                "open to you. May you find what you seek in these cursed lands.'\n\n"
+                "open to you. May you find what you seek in these cursed lands.'\n"
                 "He steps aside, bowing deeply, and the way west is clear."
             ),
             add_exit=("west", "towngate"),  # Opens path to Level 4 Vallaki
@@ -1258,11 +1240,11 @@ class Level2Woods(LevelGenerator):
             verb="talk",
             from_state="blocking",
             message=(
-                "The knight's hollow voice echoes across the bridge:\n\n"
+                "The knight's hollow voice echoes across the bridge:\n"
                 "'I cannot let you pass, mortal. My honor was lost in these very "
                 "woods - my medallion, stolen by the wolf pack that haunts the "
-                "eastern trails. Until it is returned, I am bound to this bridge.'\n\n"
-                "He gestures toward the forest with his ghostly blade.\n\n"
+                "eastern trails. Until it is returned, I am bound to this bridge.'\n"
+                "He gestures toward the forest with his ghostly blade.\n"
                 "'The wolves lair somewhere east of here, along the game trail. "
                 "Find my medallion among their... trophies... and I shall trouble "
                 "you no more.'"
@@ -1273,7 +1255,7 @@ class Level2Woods(LevelGenerator):
             from_state="blocking",
             message=(
                 "Your weapon passes through the knight as if through smoke. "
-                "He regards you with infinite sadness in his burning eyes.\n\n"
+                "He regards you with infinite sadness in his burning eyes.\n"
                 "'I am beyond your harm, mortal. I have stood this vigil for "
                 "three hundred years. Find my medallion if you wish to pass.'"
             ),
@@ -1285,7 +1267,7 @@ class Level2Woods(LevelGenerator):
                 "The knight wears tarnished plate armor bearing a dragon crest - "
                 "the same design as on a medallion, you realize. His form "
                 "flickers constantly, more solid at times, nearly invisible at "
-                "others. The sword in his hand looks terrifyingly real.\n\n"
+                "others. The sword in his hand looks terrifyingly real.\n"
                 "An inscription on his breastplate reads: 'Sir Godfrey, Order "
                 "of the Silver Dragon.'"
             ),
@@ -1302,12 +1284,12 @@ class Level2Woods(LevelGenerator):
             return getattr(game_state, "beacon_lit", False)
 
         iron_gates = StatefulItem(
-            name="iron gates",
+            name="gates",
             id="castle_gates_item",
             description="Massive iron gates covered in frost and glowing runes.",
             state="sealed",
             takeable=False,
-            synonyms=["gates", "castle gates", "massive gates"],
+            synonyms=["iron gates", "castle gates", "massive gates"],
         )
         iron_gates.set_room_id("castle_gates")
         iron_gates.add_state_description(
@@ -1324,7 +1306,7 @@ class Level2Woods(LevelGenerator):
             message=(
                 "You push against the gates with all your strength. They don't "
                 "budge - not even slightly. The runes flare angrily at your touch, "
-                "and cold burns your palms.\n\n"
+                "and cold burns your palms.\n"
                 "Some greater power seals these gates. The inscription speaks of "
                 "a beacon... perhaps lighting it would weaken this dark magic."
             ),
@@ -1337,7 +1319,7 @@ class Level2Woods(LevelGenerator):
                 "As you touch the gates, light erupts on the horizon - the dragon "
                 "beacon! Its radiance washes across the land, and the runes on the "
                 "gates flicker and die. The iron groans, frost shattering, as the "
-                "gates slowly swing open.\n\n"
+                "gates slowly swing open.\n"
                 "Castle Ravenloft awaits."
             ),
             conditional_fn=beacon_lit,
@@ -1353,7 +1335,7 @@ class Level2Woods(LevelGenerator):
             message=(
                 "The gates are twice the height of a man, their iron surface "
                 "covered in frost despite no visible cold. Glowing runes pulse "
-                "across the metal in patterns that hurt to look at.\n\n"
+                "across the metal in patterns that hurt to look at.\n"
                 "A brass plate beside the gates reads:\n"
                 "'THESE GATES ANSWER ONLY TO THE LIGHT OF THE SILVER DRAGON. "
                 "REKINDLE THE BEACON, AND THE WAY SHALL OPEN.'"
@@ -1362,12 +1344,12 @@ class Level2Woods(LevelGenerator):
         self._rooms["castle_gates"].add_item(iron_gates)
 
         brass_plate = StatefulItem(
-            name="brass plate",
+            name="plate",
             id="gates_plate",
             description="A brass plate mounted beside the castle gates.",
             state="default",
             takeable=False,
-            synonyms=["plate", "inscription", "sign"],
+            synonyms=["brass plate", "inscription", "sign"],
         )
         brass_plate.set_room_id("castle_gates")
         brass_plate.add_state_description(
@@ -1377,10 +1359,10 @@ class Level2Woods(LevelGenerator):
         brass_plate.add_interaction(
             verb="read",
             message=(
-                "The plate reads:\n\n"
+                "The plate reads:\n"
                 "'THESE GATES ANSWER ONLY TO THE LIGHT OF THE SILVER DRAGON.\n"
                 "REKINDLE THE BEACON IN THE MANOR OF ARGYNVOSTHOLT,\n"
-                "AND THE WAY TO RAVENLOFT SHALL OPEN.\n\n"
+                "AND THE WAY TO RAVENLOFT SHALL OPEN.\n"
                 "- Lord Argynvost, Commander of the Silver Order'"
             ),
         )
@@ -1396,12 +1378,12 @@ class Level2Woods(LevelGenerator):
 
         # Fortune teller's wagon
         crystal_ball = StatefulItem(
-            name="crystal ball",
+            name="crystal",
             id="crystal_ball",
             description="A large crystal ball sits on velvet cloth, swirling with mist.",
             state="clouded",
             takeable=False,
-            synonyms=["ball", "orb", "scrying orb"],
+            synonyms=["crystal ball", "ball", "orb", "scrying orb"],
         )
         crystal_ball.set_room_id("wagon")
         crystal_ball.add_state_description(
@@ -1421,7 +1403,7 @@ class Level2Woods(LevelGenerator):
             message=(
                 "The moment your fingers touch the crystal, the mist parts. You "
                 "see yourself standing before massive gates, light blazing behind "
-                "you. Then darkness, and a pale face with crimson eyes.\n\n"
+                "you. Then darkness, and a pale face with crimson eyes.\n"
                 "The seer chuckles. 'You'll need the beacon before those gates "
                 "open. And before the beacon... the ghost must rest.'"
             ),
@@ -1432,29 +1414,31 @@ class Level2Woods(LevelGenerator):
         )
         self._rooms["wagon"].add_item(crystal_ball)
 
-        tarot_deck = Item(
+        tarot_deck = StatefulItem(
             name="tarot",
             id="tarot_deck",
-            description=(
-                "A worn deck of tarot cards. The images are strange - familiar "
-                "archetypes twisted into Barovian forms. The Tower shows Castle "
-                "Ravenloft burning. The Lovers depicts a man and woman separated "
-                "by mist. Death rides a pale horse through eternal twilight."
-            ),
+            description="A worn deck of tarot cards lies here, the images strange and unsettling.",
+            state="default",
             weight=0,
             value=15,
             takeable=True,
             synonyms=["tarot deck", "cards", "deck", "fortune cards"],
+        )
+        tarot_deck.add_interaction(
+            verb="examine",
+            message=(
+                "The images are familiar archetypes twisted into Barovian forms. "
+                "The Tower shows Castle Ravenloft burning. The Lovers depicts a "
+                "man and woman separated by mist. Death rides a pale horse through "
+                "eternal twilight."
+            ),
         )
         self._rooms["wagon"].add_item(tarot_deck)
 
         silver_bell = Item(
             name="bell",
             id="wagon_bell",
-            description=(
-                "A small silver bell with a clear, pure tone. The seer says it "
-                "wards off evil spirits. Whether that's true remains to be seen."
-            ),
+            description="A small silver bell lies here, said to ward off evil spirits.",
             weight=0,
             value=10,
             takeable=True,
@@ -1464,12 +1448,12 @@ class Level2Woods(LevelGenerator):
 
         # Merchant stall
         weapon_rack = StatefulItem(
-            name="weapon rack",
+            name="rack",
             id="merchant_rack",
             description="A wooden rack displaying several weapons for sale.",
             state="default",
             takeable=False,
-            synonyms=["rack", "weapons", "display"],
+            synonyms=["weapon rack", "weapons", "display"],
         )
         weapon_rack.set_room_id("merchant_stall")
         weapon_rack.add_state_description(
@@ -1482,7 +1466,7 @@ class Level2Woods(LevelGenerator):
                 "The rack holds:\n"
                 "  - A short sword (20 gold) - well-balanced, good steel\n"
                 "  - A crossbow (35 gold) - Vistani make, reliable\n"
-                "  - Several daggers (5 gold each)\n\n"
+                "  - Several daggers (5 gold each)\n"
                 "The Vistani trader watches you appraisingly."
             ),
         )
@@ -1518,12 +1502,12 @@ class Level2Woods(LevelGenerator):
 
         # Old dock
         dock_post = StatefulItem(
-            name="dock post",
+            name="post",
             id="dock_post",
             description="A weathered post at the end of the dock.",
             state="default",
             takeable=False,
-            synonyms=["post", "wooden post"],
+            synonyms=["dock post", "wooden post"],
         )
         dock_post.set_room_id("old_dock")
         dock_post.add_state_description(
@@ -1534,7 +1518,7 @@ class Level2Woods(LevelGenerator):
             verb="examine",
             message=(
                 "The post is carved with Vistani symbols - protection against "
-                "water spirits, you think. An inscription is carved below:\n\n"
+                "water spirits, you think. An inscription is carved below:\n"
                 "'The lake holds secrets. Ask the seer about the ghost ship.'"
             ),
         )
@@ -1583,7 +1567,7 @@ class Level2Woods(LevelGenerator):
         copper_coin = Item(
             name="coin",
             id="dock_coin",
-            description="An ancient copper coin with strange markings - not Barovian.",
+            description="An ancient copper coin lies here, its markings strange and foreign.",
             weight=0,
             value=5,
             takeable=True,
@@ -1646,9 +1630,8 @@ class Level2Woods(LevelGenerator):
             name="amulet",
             id="barrow_amulet",
             description=(
-                "A silver amulet on a tarnished chain. The symbol is a sun "
-                "rising over mountains - the same as the eastern standing stone. "
-                "It radiates faint warmth."
+                "A silver amulet lies here on a tarnished chain, depicting a sun "
+                "rising over mountains. It radiates faint warmth."
             ),
             weight=0,
             value=40,
@@ -1660,9 +1643,8 @@ class Level2Woods(LevelGenerator):
             name="longsword",
             id="barrow_sword",
             description=(
-                "An ancient but well-preserved longsword. The blade bears faint "
-                "runic inscriptions that seem to glow in darkness. This weapon "
-                "was made to fight evil."
+                "An ancient but well-preserved longsword lies here, its blade "
+                "bearing faint runic inscriptions that glow in darkness."
             ),
             weight=3,
             value=100,
@@ -1698,12 +1680,12 @@ class Level2Woods(LevelGenerator):
         # =====================================================================
 
         buried_cache = StatefulItem(
-            name="glinting metal",
+            name="glint",
             id="grove_cache",
             description="Something metallic glints among the dead leaves.",
             state="buried",
             takeable=False,
-            synonyms=["metal", "glint", "buried metal"],
+            synonyms=["glinting metal", "metal", "buried metal"],
         )
         buried_cache.set_room_id("dark_grove")
         buried_cache.add_state_description(
@@ -1741,12 +1723,12 @@ class Level2Woods(LevelGenerator):
         self._rooms["dark_grove"].add_item(buried_cache)
 
         lockbox = StatefulItem(
-            name="iron lockbox",
+            name="lockbox",
             id="grove_lockbox",
             description="A small iron lockbox with a rusted lock.",
             state="locked",
             takeable=False,
-            synonyms=["lockbox", "box", "chest"],
+            synonyms=["iron lockbox", "box", "chest"],
         )
         lockbox.set_room_id("dark_grove")
         lockbox.add_state_description(
@@ -1791,25 +1773,30 @@ class Level2Woods(LevelGenerator):
         self._rooms["dark_grove"].add_hidden_item(lockbox, cache_uncovered)
 
         # Map and coins (hidden until lockbox opened)
-        treasure_map = Item(
+        treasure_map = StatefulItem(
             name="map",
             id="grove_map",
-            description=(
-                "A faded map showing the Svalich Woods. An X marks a spot south "
-                "of the standing stones with the note: 'Cache buried. Mill path "
-                "revealed when stones align.' Another X marks the wolf den with: "
-                "'Ghost's honor.' Useful information!"
-            ),
+            description="A faded map lies here, showing the Svalich Woods.",
+            state="default",
             weight=0,
             value=5,
             takeable=True,
             synonyms=["faded map", "parchment", "treasure map"],
         )
+        treasure_map.add_interaction(
+            verb="read",
+            message=(
+                "The map shows the Svalich Woods. An X marks a spot south of the "
+                "standing stones with the note: 'Cache buried. Mill path revealed "
+                "when stones align.' Another X marks the wolf den with: 'Ghost's "
+                "honor.'"
+            ),
+        )
 
         gold_coins = Item(
             name="coins",
             id="grove_gold",
-            description="A handful of tarnished gold coins - someone's savings.",
+            description="A handful of tarnished gold coins lie here, someone's savings.",
             weight=0,
             value=50,
             takeable=True,
@@ -1833,12 +1820,12 @@ class Level2Woods(LevelGenerator):
         # =====================================================================
 
         hanging_rope = StatefulItem(
-            name="old rope",
+            name="rope",
             id="hollow_rope",
             description="An old rope hangs from a tree branch over the misty hollow.",
             state="hanging",
             takeable=False,
-            synonyms=["rope", "hanging rope"],
+            synonyms=["old rope", "hanging rope"],
         )
         hanging_rope.set_room_id("hollow")
         hanging_rope.add_state_description(
@@ -1871,12 +1858,12 @@ class Level2Woods(LevelGenerator):
         self._rooms["hollow"].add_item(hanging_rope)
 
         stone_marker = StatefulItem(
-            name="stone marker",
+            name="marker",
             id="hollow_marker",
             description="A crude stone marker stands at the edge of the hollow.",
             state="default",
             takeable=False,
-            synonyms=["marker", "stone", "crude stone"],
+            synonyms=["stone marker", "stone", "crude stone"],
         )
         stone_marker.set_room_id("hollow")
         stone_marker.add_state_description(
@@ -1889,7 +1876,7 @@ class Level2Woods(LevelGenerator):
                 "The marker bears crude carvings:\n"
                 "  A circle (the sun?)\n"
                 "  Three arrows pointing east, north, west\n"
-                "  The words: 'DAWN - ZENITH - DUSK'\n\n"
+                "  The words: 'DAWN - ZENITH - DUSK'\n"
                 "Below, someone has scratched: 'Touch the heart when they align.'"
             ),
         )
@@ -1908,12 +1895,12 @@ class Level2Woods(LevelGenerator):
         # =====================================================================
 
         fairy_ring = StatefulItem(
-            name="mushroom ring",
+            name="mushrooms",
             id="fairy_ring",
             description="A perfect circle of pale mushrooms in the glade.",
             state="intact",
             takeable=False,
-            synonyms=["ring", "mushrooms", "fairy ring", "mushroom circle"],
+            synonyms=["mushroom ring", "fairy ring", "mushroom circle"],
         )
         fairy_ring.set_room_id("mushroom_glade")
         fairy_ring.add_state_description(
@@ -1947,12 +1934,12 @@ class Level2Woods(LevelGenerator):
         self._rooms["mushroom_glade"].add_item(fairy_ring)
 
         wooden_box = StatefulItem(
-            name="wooden box",
+            name="box",
             id="glade_box",
             description="A weathered wooden box sits at the center of the fairy ring.",
             state="closed",
             takeable=False,
-            synonyms=["box", "small box"],
+            synonyms=["wooden box", "small box"],
         )
         wooden_box.set_room_id("mushroom_glade")
         wooden_box.add_state_description(
@@ -1989,8 +1976,7 @@ class Level2Woods(LevelGenerator):
             name="acorn",
             id="glade_acorn",
             description=(
-                "A perfect acorn that gleams like gold. It's warm to the touch "
-                "and hums faintly. The Vistani might know what it's for."
+                "A perfect acorn lies here, gleaming like gold and warm to the touch."
             ),
             weight=0,
             value=25,
@@ -2015,12 +2001,12 @@ class Level2Woods(LevelGenerator):
 
         # Fallen tree - old pack
         old_pack = StatefulItem(
-            name="old pack",
+            name="pack",
             id="fallen_pack",
             description="An old traveler's pack lies in the shelter beneath the roots.",
             state="closed",
             takeable=False,
-            synonyms=["pack", "backpack", "bag"],
+            synonyms=["old pack", "backpack", "bag"],
         )
         old_pack.set_room_id("fallen_tree")
         old_pack.add_state_description(
@@ -2037,7 +2023,7 @@ class Level2Woods(LevelGenerator):
             target_state="open",
             message=(
                 "You open the rotting pack. Inside you find dried rations (spoiled), "
-                "a tinderbox (working!), and a crumpled note:\n\n"
+                "a tinderbox (working!), and a crumpled note:\n"
                 "'If you find this, know that I made it as far as the standing "
                 "stones. The answer is in the sun - dawn east, noon north, dusk west. "
                 "Touch the altar when aligned. The barrow holds treasure.'"
@@ -2055,7 +2041,7 @@ class Level2Woods(LevelGenerator):
         tinderbox = Item(
             name="tinderbox",
             id="fallen_tinderbox",
-            description="A brass tinderbox with flint and steel inside. Still functional.",
+            description="A brass tinderbox lies here, still functional.",
             weight=0,
             value=8,
             takeable=True,
@@ -2075,12 +2061,12 @@ class Level2Woods(LevelGenerator):
 
         # Raven roost
         banded_raven = StatefulItem(
-            name="banded raven",
+            name="raven",
             id="banded_raven",
             description="A large raven wearing a silver band on its leg.",
             state="watching",
             takeable=False,
-            synonyms=["raven", "large raven", "bird"],
+            synonyms=["banded raven", "large raven", "bird"],
         )
         banded_raven.set_room_id("raven_roost")
         banded_raven.add_state_description(
@@ -2099,9 +2085,9 @@ class Level2Woods(LevelGenerator):
             verb="talk",
             message=(
                 "You speak to the raven. It cocks its head, listening intently. "
-                "Then, impossibly, it speaks:\n\n"
+                "Then, impossibly, it speaks:\n"
                 "'The stones remember. The ghost waits. The gates fear the light. "
-                "Bring wine to the seer for more.'\n\n"
+                "Bring wine to the seer for more.'\n"
                 "The other ravens caw in what might be laughter."
             ),
         )
@@ -2109,12 +2095,12 @@ class Level2Woods(LevelGenerator):
 
         # Glittering droppings (coins hidden in guano)
         raven_droppings = StatefulItem(
-            name="glittering droppings",
+            name="droppings",
             id="raven_droppings",
             description="The droppings beneath the tree glitter with something metallic.",
             state="unsearched",
             takeable=False,
-            synonyms=["droppings", "guano", "mess"],
+            synonyms=["glittering droppings", "guano", "mess"],
         )
         raven_droppings.set_room_id("raven_roost")
         raven_droppings.add_state_description(
@@ -2149,7 +2135,7 @@ class Level2Woods(LevelGenerator):
         silver_ring = Item(
             name="ring",
             id="raven_ring",
-            description="A small silver ring, cleaned of its recent surroundings.",
+            description="A small silver ring lies here, recently cleaned.",
             weight=0,
             value=15,
             takeable=True,
@@ -2170,49 +2156,195 @@ class Level2Woods(LevelGenerator):
             create_coin("raven_coin"), droppings_searched
         )
 
-        # Old shrine
-        silver_bowl = StatefulItem(
-            name="silver bowl",
+        # Old shrine - offering bowl with consequences
+        silver_bowl = ContainerItem(
+            name="bowl",
             id="shrine_bowl",
-            description="A tarnished silver bowl sits in the statue's cupped hands.",
+            description="A tarnished silver bowl sits in the statue's cupped hands",
             state="empty",
             takeable=False,
-            synonyms=["bowl", "offering bowl"],
+            capacity_limit=5,
+            capacity_weight=10,
         )
+        silver_bowl.synonyms = ["silver bowl", "offering bowl", "bowl"]
         silver_bowl.set_room_id("old_shrine")
+
+        # Clear default interactions
+        silver_bowl.interactions = {}
+
         silver_bowl.add_state_description(
             "empty",
             "An empty silver bowl rests in the statue's hands, waiting for offerings.",
         )
         silver_bowl.add_state_description(
-            "filled",
-            "The silver bowl holds your offering.",
+            "open",
+            "A silver bowl holds offerings left by previous visitors.",
         )
+        silver_bowl.add_state_description(
+            "blessed",
+            "The silver bowl glows faintly with divine favor.",
+        )
+
         silver_bowl.add_interaction(
             verb="examine",
             message=(
                 "The bowl is tarnished but valuable. An inscription around the "
-                "rim reads: 'GIVE AND YE SHALL RECEIVE.' Placing an offering "
-                "might bring luck - or the gods' attention."
+                "rim reads: 'GIVE AND YE SHALL RECEIVE.'\n"
+                "A smaller inscription below warns: 'TAKE NOT WHAT IS GIVEN.'\n"
+                "The statue's missing head once depicted a god of nature and "
+                "wild things. A silver offering might please such a deity..."
             ),
         )
+
+        # Taking from the shrine = divine punishment (death)
         silver_bowl.add_interaction(
             verb="take",
             message=(
-                "As your hand nears the bowl, you feel a chill of warning. "
-                "Perhaps stealing from a shrine would bring bad luck..."
+                "Your hand closes around an offering in the bowl. Instantly, "
+                "lightning strikes from the clear sky! The forgotten god is not "
+                "so forgotten after all...\n"
+                "You collapse, smoke rising from your charred remains."
             ),
+            kills_player=True,
+            damage_message="You have been smitten by the gods for your sacrilege!",
         )
+        silver_bowl.add_interaction(
+            verb="get",
+            message=(
+                "As you reach for the offerings, divine wrath strikes you down! "
+                "A bolt of pure light pierces your chest.\n"
+                "The inscription's warning echoes in your fading consciousness: "
+                "'TAKE NOT WHAT IS GIVEN...'"
+            ),
+            kills_player=True,
+            damage_message="The gods have punished your greed with death!",
+        )
+        silver_bowl.add_interaction(
+            verb="steal",
+            message=(
+                "SACRILEGE! Thunder roars and holy fire consumes you where you stand!"
+            ),
+            kills_player=True,
+            damage_message="Divine retribution for defiling a sacred shrine!",
+        )
+
+        # Callback for when items are placed in the bowl
+        def on_offering_placed(
+            game_state: Any, container: Any, item: Any
+        ) -> str | None:
+            """Handle offerings placed in the shrine bowl."""
+            item_id = getattr(item, "id", "")
+            item_name = getattr(item, "name", "").lower()
+
+            # The correct offering is the silver ring (found at nearby raven roost)
+            # Check ID, name, or synonyms for silver ring
+            item_synonyms = getattr(item, "synonyms", []) or []
+            is_silver_ring = (
+                item_id == "raven_ring"
+                or "silver ring" in item_name
+                or any("silver" in syn.lower() for syn in item_synonyms)
+            )
+            if is_silver_ring:
+                # Perfect offering! Grant blessing and points
+                container.state = "blessed"
+                container.update_description()
+
+                # Grant points to the player
+                try:
+                    from globals import online_sessions
+
+                    for sid, session in online_sessions.items():
+                        player = session.get("player")
+                        if player and player.current_room == "old_shrine":
+                            player.add_points(50)
+                            # Also grant a blessing
+                            if "blessings" not in session:
+                                session["blessings"] = set()
+                            session["blessings"].add("nature_blessing")
+                except ImportError:
+                    pass
+
+                return (
+                    "\nThe silver ring settles into the bowl and begins to glow!\n"
+                    "A warm presence fills the shrine - the forgotten god remembers "
+                    "those who remember him. Divine favor washes over you.\n"
+                    "You feel blessed by ancient powers. (+50 points)\n"
+                    "The wolves of these woods will no longer see you as prey."
+                )
+
+            # Coins are acceptable but not ideal
+            elif "coin" in item_name or "gold" in item_name:
+                # Minor offering
+                try:
+                    from globals import online_sessions
+
+                    for sid, session in online_sessions.items():
+                        player = session.get("player")
+                        if player and player.current_room == "old_shrine":
+                            player.add_points(10)
+                except ImportError:
+                    pass
+
+                return (
+                    "\nThe coin clinks into the bowl. A faint warmth touches your "
+                    "heart - the god acknowledges your offering, though it seems "
+                    "to desire something more personal. (+10 points)"
+                )
+
+            # Wrong offering - punishment!
+            else:
+                # Punish the player
+                try:
+                    from globals import online_sessions
+
+                    for sid, session in online_sessions.items():
+                        player = session.get("player")
+                        if player and player.current_room == "old_shrine":
+                            player.add_points(-5)
+                except ImportError:
+                    pass
+
+                # Remove the offending item from the bowl
+                if item in container.items:
+                    container.items.remove(item)
+                container.update_weight()
+                container.update_description()
+
+                return (
+                    f"\nYou place the {item.name} in the bowl. A chill wind blows "
+                    "through the shrine and the offering is flung back at you!\n"
+                    "The forgotten god is displeased with such a meager gift. "
+                    "You feel a cold disapproval settle over you. (-5 points)\n"
+                    "Perhaps something silver would be more appropriate..."
+                )
+
+        silver_bowl.on_item_added = on_offering_placed
+
+        # Pre-fill the bowl with a gold chalice (tempting but deadly to take)
+        gold_chalice = Item(
+            name="chalice",
+            id="shrine_chalice",
+            description="An ornate gold chalice, left as an offering long ago.",
+            weight=2,
+            value=100,
+            takeable=True,
+            synonyms=["gold chalice", "golden chalice", "offering", "cup"],
+        )
+        silver_bowl.items.append(gold_chalice)
+        silver_bowl.state = "open"
+        silver_bowl.update_weight()
+        silver_bowl.update_description()
+
         self._rooms["old_shrine"].add_item(silver_bowl)
 
         # Hunter's cache
         locked_chest = StatefulItem(
-            name="locked chest",
+            name="chest",
             id="hunter_chest",
             description="A locked wooden chest sits in the corner of the hunter's blind.",
             state="locked",
             takeable=False,
-            synonyms=["chest", "wooden chest"],
+            synonyms=["locked chest", "wooden chest"],
         )
         locked_chest.set_room_id("hunters_cache")
         locked_chest.add_state_description(
@@ -2250,10 +2382,7 @@ class Level2Woods(LevelGenerator):
         hunters_crossbow = Weapon(
             name="crossbow",
             id="hunter_crossbow",
-            description=(
-                "A well-maintained crossbow left by a long-gone hunter. It's "
-                "already loaded and ready to fire."
-            ),
+            description="A well-maintained crossbow lies here, already loaded and ready.",
             weight=4,
             value=35,
             takeable=True,
@@ -2277,12 +2406,12 @@ class Level2Woods(LevelGenerator):
 
         # Stream crossing - wooden sign
         wooden_sign = StatefulItem(
-            name="wooden sign",
+            name="sign",
             id="stream_sign",
             description="A weathered wooden sign is nailed to a tree by the stream.",
             state="default",
             takeable=False,
-            synonyms=["sign", "old sign"],
+            synonyms=["wooden sign", "old sign"],
         )
         wooden_sign.set_room_id("stream_crossing")
         wooden_sign.add_state_description(
@@ -2292,7 +2421,7 @@ class Level2Woods(LevelGenerator):
         wooden_sign.add_interaction(
             verb="read",
             message=(
-                "The faded text reads:\n\n"
+                "The faded text reads:\n"
                 "'DANGER - WOLVES TO THE NORTH\n"
                 " FAIRY RING TO THE EAST - DO NOT ENTER\n"
                 " HOLLOW TO THE WEST - BEWARE THE MISTS'"
@@ -2320,7 +2449,7 @@ class Level2Woods(LevelGenerator):
         # Non-aggressive Vistani
         self.spawn_mob_in_room(mob_manager, "vistani", "tser_pool")
         self.spawn_mob_in_room(mob_manager, "seer", "wagon")
-        self.spawn_mob_in_room(mob_manager, "vistani_trader", "merchant_stall")
+        self.spawn_mob_in_room(mob_manager, "vistani", "merchant_stall")
 
     def configure_npc_interactions(self, mob_manager: Any) -> None:
         """Configure NPC interactions for Level 2."""
@@ -2337,18 +2466,18 @@ class Level2Woods(LevelGenerator):
             seer.accepts_item = {
                 "wine": {
                     "message": (
-                        "The seer's milky eyes light up as she takes the wine.\n\n"
-                        "'Ah, a gift freely given! The mists part for generosity...'\n\n"
-                        "She drinks deeply, then fixes you with an unseeing gaze:\n\n"
-                        "'I see your path clearly now:\n\n"
+                        "The seer's milky eyes light up as she takes the wine.\n"
+                        "'Ah, a gift freely given! The mists part for generosity...'\n"
+                        "She drinks deeply, then fixes you with an unseeing gaze:\n"
+                        "'I see your path clearly now:\n"
                         "1. THE STONES - In the clearing, three stones hold the sun. "
                         "Turn the east to sunrise, the north to noon, the west to sunset. "
-                        "Then touch the altar - ancient wisdom awaits below.\n\n"
+                        "Then touch the altar - ancient wisdom awaits below.\n"
                         "2. THE GHOST - A knight guards the western bridge. His medallion "
                         "was stolen by wolves - search their den for bones that gleam. "
-                        "Return his honor and he shall let you pass.\n\n"
+                        "Return his honor and he shall let you pass.\n"
                         "3. THE GATES - They answer only to the beacon's light. You must "
-                        "journey to Argynvostholt and rekindle the dragon fire.\n\n"
+                        "journey to Argynvostholt and rekindle the dragon fire.\n"
                         "'May the Morninglord guide your steps, traveler.'"
                     ),
                     "one_time": True,
@@ -2357,21 +2486,21 @@ class Level2Woods(LevelGenerator):
             }
 
         # Vistani trader - accepts gold for information
-        trader = find_mob_in_room("vistani_trader", "merchant_stall")
+        trader = find_mob_in_room("vistani", "merchant_stall")
         if trader:
             trader.accepts_item = {
                 "coin": {
                     "message": (
-                        "The Vistani trader nods appreciatively.\n\n"
+                        "The Vistani trader nods appreciatively.\n"
                         "'Information is more valuable than gold in Barovia, friend. "
-                        "But gold opens lips...'\n\n"
+                        "But gold opens lips...'\n"
                         "'The ghost on the bridge was once Sir Godfrey of the Silver "
                         "Dragon order. His medallion - his very honor - was stolen by "
-                        "the wolf pack. They lair east of here, along the game trails.\n\n"
+                        "the wolf pack. They lair east of here, along the game trails.\n"
                         "'As for the castle gates... see those runes? Dark magic, bound "
                         "to the will of the land's master. Only the light of the dragon "
                         "beacon can break the seal. The beacon is in Argynvostholt, the "
-                        "ruined manor beyond the bridge.\n\n"
+                        "ruined manor beyond the bridge.\n"
                         "'The seer knows more, if you bring her wine.'"
                     ),
                     "one_time": True,
@@ -2379,13 +2508,13 @@ class Level2Woods(LevelGenerator):
                 },
                 "gold coins": {
                     "message": (
-                        "The trader's eyes widen at the gold.\n\n"
-                        "'Generous! Very generous! For this, I share everything:\n\n"
+                        "The trader's eyes widen at the gold.\n"
+                        "'Generous! Very generous! For this, I share everything:\n"
                         "'The standing stones in the clearing hide an ancient barrow. "
                         "Align the suns - dawn in the east, noon in the north, dusk in "
-                        "the west - then touch the altar. The way will open.\n\n"
+                        "the west - then touch the altar. The way will open.\n"
                         "'In the barrow lies treasure and a weapon blessed against evil. "
-                        "You'll need such things where you're going.\n\n"
+                        "You'll need such things where you're going.\n"
                         "'The ghost knight wants his medallion. The wolf den has it. "
                         "The castle gates need the beacon lit. It's all connected, friend. "
                         "Everything in Barovia is connected.'"

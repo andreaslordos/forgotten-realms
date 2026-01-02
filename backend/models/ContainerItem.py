@@ -99,24 +99,36 @@ class ContainerItem(StatefulItem):
         "<base description>, <state>.
             The bag contains <items list or 'nothing'>"
 
-        When closed, the contents are hidden.
+        When closed/locked, the contents are hidden.
+        Uses custom state_descriptions if available.
         """
-        if self.state == "open":
+        # Use custom state description if available
+        if (
+            hasattr(self, "state_descriptions")
+            and self.state
+            and self.state in self.state_descriptions
+        ):
+            full_desc = f"{self.state_descriptions[self.state]}\n"
+        elif self.state == "open":
             full_desc = f"{self.base_description}, open.\n"
-        else:  # state is "closed"
+        else:  # state is "closed" or other non-open state
             full_desc = f"{self.base_description}, closed.\n"
         full_desc += self.get_contained()
         self.description = full_desc
 
     def set_state(self, new_state: str, game_state: Any = None) -> bool:
         """
-        Change the state of the container to "open" or "closed" and update its description.
+        Change the state of the container and update its description.
 
-        :param new_state: Must be either "open" or "closed".
+        :param new_state: The new state (e.g., "open", "closed", "locked").
         :param game_state: Optional game state for updating room exits.
         :return: True if state was changed, False otherwise.
         """
-        if new_state not in ["open", "closed"]:
+        # Allow standard container states plus any custom states in state_descriptions
+        valid_states = {"open", "closed"}
+        if hasattr(self, "state_descriptions"):
+            valid_states.update(self.state_descriptions.keys())
+        if new_state not in valid_states:
             return False
 
         self.state = new_state

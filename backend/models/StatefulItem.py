@@ -86,6 +86,7 @@ class StatefulItem(Item):
         kills_player: bool = False,
         damage_message: Optional[str] = None,
         points_awarded: Optional[int] = None,
+        effect_fn: Optional[Callable[..., Optional[str]]] = None,
     ) -> None:
         """
         Register an interaction for this item.
@@ -106,6 +107,9 @@ class StatefulItem(Item):
             damage (int, optional): Amount of stamina damage to deal to player
             kills_player (bool, optional): If True, instantly kills the player (trap)
             damage_message (str, optional): Custom message when damage/death occurs
+            effect_fn (callable, optional): Function called after interaction succeeds.
+                Signature: effect_fn(player, game_state) -> Optional[str]
+                Returns additional message to append, or None.
         """
         verb = verb.lower()
 
@@ -145,6 +149,8 @@ class StatefulItem(Item):
             interaction["damage_message"] = damage_message
         if points_awarded is not None:
             interaction["points_awarded"] = points_awarded
+        if effect_fn is not None:
+            interaction["effect_fn"] = effect_fn
 
         # Add the interaction to the list
         self.interactions[verb].append(interaction)

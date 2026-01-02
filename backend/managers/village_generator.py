@@ -251,9 +251,9 @@ def configure_npc_interactions(mob_manager: Any, rooms: Dict[str, Room]) -> None
         seer.accepts_item = {
             "wine": {
                 "message": (
-                    "The seer's milky eyes light up as she takes the wine.\n\n"
-                    "'Ah, a gift freely given! The mists part for generosity...'\n\n"
-                    "She drinks deeply, then fixes you with an unseeing gaze:\n\n"
+                    "The seer's milky eyes light up as she takes the wine.\n"
+                    "'Ah, a gift freely given! The mists part for generosity...'\n"
+                    "She drinks deeply, then fixes you with an unseeing gaze:\n"
                     "'I see your path clearly now. The Dark Lord fears three things:\n"
                     "The light of the sun made manifest, the bones of the saint,\n"
                     "and the dragon's beacon rekindled. Seek these, and you may prevail.'"
@@ -290,10 +290,10 @@ def configure_npc_interactions(mob_manager: Any, rooms: Dict[str, Room]) -> None
         priest.accepts_item = {
             "bones": {
                 "message": (
-                    "Father Donavich gasps as you hand him the holy bones.\n\n"
+                    "Father Donavich gasps as you hand him the holy bones.\n"
                     "'The bones of St. Andral! You've found them! The church is "
-                    "protected once more!'\n\n"
-                    "He clasps your hands, tears in his eyes.\n\n"
+                    "protected once more!'\n"
+                    "He clasps your hands, tears in his eyes.\n"
                     "'Bless you, brave soul. May the Morning Lord's light guide you. "
                     "I grant you his blessing - you are cleansed of all afflictions.'"
                 ),
@@ -309,10 +309,10 @@ def configure_npc_interactions(mob_manager: Any, rooms: Dict[str, Room]) -> None
         barkeep.accepts_item = {
             "coin": {
                 "message": (
-                    "The barkeep palms the coin and leans in conspiratorially.\n\n"
-                    "'You want to know about the Devil? I've heard things...'\n\n"
+                    "The barkeep palms the coin and leans in conspiratorially.\n"
+                    "'You want to know about the Devil? I've heard things...'\n"
                     "'They say his heart isn't in his chest - it's in a crystal, "
-                    "hidden in his castle. Destroy that, and he can be hurt.'\n\n"
+                    "hidden in his castle. Destroy that, and he can be hurt.'\n"
                     "'And there's a sword, a blade of pure sunlight, locked away "
                     "in his treasury. The dials must be set right: sun, star, moon.'"
                 ),
@@ -328,12 +328,12 @@ def configure_npc_interactions(mob_manager: Any, rooms: Dict[str, Room]) -> None
             "bone": {
                 "message": (
                     "The raven hops down and pecks at the bone. Then, before your "
-                    "eyes, it transforms!\n\n"
-                    "A dark-haired man now stands before you, sharp-featured and keen-eyed.\n\n"
+                    "eyes, it transforms!\n"
+                    "A dark-haired man now stands before you, sharp-featured and keen-eyed.\n"
                     "'You have a kind heart,' he says. 'We Keepers of the Feather "
                     "watch over Barovia. The hags at the mill - they steal children. "
                     "Free them if you can, but beware: the hag's true name is her "
-                    "weakness. Say it in her kitchen, and she weakens.'\n\n"
+                    "weakness. Say it in her kitchen, and she weakens.'\n"
                     "He transforms back into a raven and flies away."
                 ),
                 "one_time": True,
@@ -342,12 +342,12 @@ def configure_npc_interactions(mob_manager: Any, rooms: Dict[str, Room]) -> None
             "meat": {
                 "message": (
                     "The raven hops down and pecks at the meat. Then, before your "
-                    "eyes, it transforms!\n\n"
-                    "A dark-haired man now stands before you, sharp-featured and keen-eyed.\n\n"
+                    "eyes, it transforms!\n"
+                    "A dark-haired man now stands before you, sharp-featured and keen-eyed.\n"
                     "'You have a kind heart,' he says. 'We Keepers of the Feather "
                     "watch over Barovia. The hags at the mill - they steal children. "
                     "Free them if you can, but beware: the hag's true name is her "
-                    "weakness. Say it in her kitchen, and she weakens.'\n\n"
+                    "weakness. Say it in her kitchen, and she weakens.'\n"
                     "He transforms back into a raven and flies away."
                 ),
                 "one_time": True,
@@ -388,10 +388,10 @@ def configure_npc_interactions(mob_manager: Any, rooms: Dict[str, Room]) -> None
         hunter.accepts_item = {
             "fang": {
                 "message": (
-                    "The hunter examines the fang, then nods with respect.\n\n"
+                    "The hunter examines the fang, then nods with respect.\n"
                     "'A vampire fang. You've faced the spawn and survived. "
-                    "That takes courage - or foolishness.'\n\n"
-                    "He reaches into his pack and pulls out a gleaming blade.\n\n"
+                    "That takes courage - or foolishness.'\n"
+                    "He reaches into his pack and pulls out a gleaming blade.\n"
                     "'Take this silver dagger. Against the undead, silver cuts "
                     "deeper than steel. You'll need it if you're going to the castle.'"
                 ),
@@ -423,7 +423,7 @@ def configure_npc_interactions(mob_manager: Any, rooms: Dict[str, Room]) -> None
             "meat": {
                 "message": (
                     "You toss the meat to the wolf. It sniffs cautiously, then "
-                    "devours it hungrily.\n\n"
+                    "devours it hungrily.\n"
                     "The wolf's posture relaxes. Its snarl fades to a curious "
                     "expression. It seems you've earned a measure of trust - "
                     "for now, at least."
@@ -435,7 +435,7 @@ def configure_npc_interactions(mob_manager: Any, rooms: Dict[str, Room]) -> None
             "bone": {
                 "message": (
                     "You offer the bone to the wolf. It snatches it from your "
-                    "hand and begins gnawing contentedly.\n\n"
+                    "hand and begins gnawing contentedly.\n"
                     "The wolf's aggressive stance softens. It regards you with "
                     "something almost like gratitude. Perhaps not all creatures "
                     "in Barovia are beyond redemption."
@@ -455,12 +455,12 @@ def configure_npc_interactions(mob_manager: Any, rooms: Dict[str, Room]) -> None
             target_state="freed",
             message=(
                 "You work at the heavy chains binding the prisoner. After much effort, "
-                "they come loose.\n\n"
-                "The prisoner slumps to the ground, gasping.\n\n"
+                "they come loose.\n"
+                "The prisoner slumps to the ground, gasping.\n"
                 "'Thank you... thank you...' he whispers. 'The Baron - he's mad. He tortures "
                 "anyone who doesn't smile at his festivals. There's a secret vault behind "
                 "the dungeon wall - third stone from the door. His darkest crimes are recorded "
-                "there. Expose him, and Vallaki might be free.'\n\n"
+                "there. Expose him, and Vallaki might be free.'\n"
                 "The prisoner limps away into the shadows."
             ),
             from_state="alive",
@@ -470,12 +470,12 @@ def configure_npc_interactions(mob_manager: Any, rooms: Dict[str, Room]) -> None
             target_state="freed",
             message=(
                 "You work at the heavy chains binding the prisoner. After much effort, "
-                "they come loose.\n\n"
-                "The prisoner slumps to the ground, gasping.\n\n"
+                "they come loose.\n"
+                "The prisoner slumps to the ground, gasping.\n"
                 "'Thank you... thank you...' he whispers. 'The Baron - he's mad. He tortures "
                 "anyone who doesn't smile at his festivals. There's a secret vault behind "
                 "the dungeon wall - third stone from the door. His darkest crimes are recorded "
-                "there. Expose him, and Vallaki might be free.'\n\n"
+                "there. Expose him, and Vallaki might be free.'\n"
                 "The prisoner limps away into the shadows."
             ),
             from_state="alive",
@@ -485,12 +485,12 @@ def configure_npc_interactions(mob_manager: Any, rooms: Dict[str, Room]) -> None
             target_state="freed",
             message=(
                 "You work at the heavy chains binding the prisoner. After much effort, "
-                "they come loose.\n\n"
-                "The prisoner slumps to the ground, gasping.\n\n"
+                "they come loose.\n"
+                "The prisoner slumps to the ground, gasping.\n"
                 "'Thank you... thank you...' he whispers. 'The Baron - he's mad. He tortures "
                 "anyone who doesn't smile at his festivals. There's a secret vault behind "
                 "the dungeon wall - third stone from the door. His darkest crimes are recorded "
-                "there. Expose him, and Vallaki might be free.'\n\n"
+                "there. Expose him, and Vallaki might be free.'\n"
                 "The prisoner limps away into the shadows."
             ),
             from_state="alive",
@@ -521,8 +521,8 @@ def configure_npc_interactions(mob_manager: Any, rooms: Dict[str, Room]) -> None
             "coin": {
                 "message": (
                     "The gargoyle's stone eyes fix on the coin. A gravelly voice "
-                    "rumbles from within:\n\n"
-                    "'Tribute... accepted.'\n\n"
+                    "rumbles from within:\n"
+                    "'Tribute... accepted.'\n"
                     "It plucks the coin from your palm and freezes back into "
                     "apparent stone. But this time, its gaze doesn't follow you. "
                     "You may pass unharmed."
@@ -1674,7 +1674,7 @@ def add_container_items(rooms: Dict[str, Room]) -> None:
         target_state="broken",
         message="You swing the executioner's axe with all your might! CLANG! CLANG! "
         "The iron bars buckle and break! The children scramble out, crying with relief. "
-        "'Run!' you urge them, and they flee down the stairs into the night.\n\n"
+        "'Run!' you urge them, and they flee down the stairs into the night.\n"
         "From below, you hear a TERRIBLE SHRIEK. The hag has noticed.\n"
         "'MY PRETTIES! WHO DARES?!' Her voice echoes through the mill. "
         "You hear heavy footsteps on the stairs. She's coming for you.",
@@ -2490,9 +2490,9 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
 
     rooms["kitchen"].add_speech_trigger(
         keyword="morgantha",
-        message="As you speak the hag's true name, a TERRIBLE SHRIEK echoes through the mill!\n\n"
+        message="As you speak the hag's true name, a TERRIBLE SHRIEK echoes through the mill!\n"
         "'HOW DO YOU KNOW THAT NAME?!' The hag's voice trembles with fear and rage. "
-        "'No one should know my TRUE NAME! That was sealed away centuries ago!'\n\n"
+        "'No one should know my TRUE NAME! That was sealed away centuries ago!'\n"
         "You feel a shift in the air - the hag's power has been diminished. "
         "If you face her in combat, she will be significantly weakened!",
         effect_fn=weaken_hag,
@@ -2615,11 +2615,11 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
     mirror_riddle.add_interaction(
         verb="read",
         target_state="read",
-        message="The riddle reads:\n\n"
+        message="The riddle reads:\n"
         "'First the sun rises in the east,\n"
         "Then at noon the shadows flee,\n"
         "Moon in darkness claims the west,\n"
-        "Stars point north eternally.'\n\n"
+        "Stars point north eternally.'\n"
         "Four mirrors surround you. Perhaps they must be touched in a certain order?",
     )
     mirror_riddle.add_interaction(
@@ -2680,12 +2680,12 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
     archive_tome.add_interaction(
         verb="read",
         target_state="read",
-        message="The tome's pages glow with ethereal light. A riddle appears:\n\n"
+        message="The tome's pages glow with ethereal light. A riddle appears:\n"
         "'I am sought by kings and beggars alike,\n"
         "Yet none who find me wish to stay.\n"
         "I am feared by the living, welcomed by the suffering,\n"
         "And Strahd himself cannot keep me at bay.\n"
-        "What am I?'\n\n"
+        "What am I?'\n"
         "The ghostly voice whispers: 'Speak the answer, if you dare...'",
     )
     archive_tome.add_interaction(
@@ -2710,9 +2710,9 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
 
     rooms["maze_library"].add_speech_trigger(
         keyword="death",
-        message="As you speak the word, the ghostly voice sighs with profound relief.\n\n"
+        message="As you speak the word, the ghostly voice sighs with profound relief.\n"
         "'Yes... DEATH is the answer we all seek to avoid, yet cannot escape. "
-        "Even Strahd, for all his power, fears the true death that waits beyond his immortality.'\n\n"
+        "Even Strahd, for all his power, fears the true death that waits beyond his immortality.'\n"
         "A hidden door slides open to the north, revealing a passage to a small chapel.",
         effect_fn=open_chapel_door,
         one_time=True,
@@ -2744,7 +2744,7 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
         verb="examine",
         message="The altar is carved with protective symbols. An inscription reads:\n"
         "'Only one who has prayed at the saint's church may speak his name with true faith. "
-        "Speak the name of the saint who protects the faithful of Vallaki.'\n\n"
+        "Speak the name of the saint who protects the faithful of Vallaki.'\n"
         "Perhaps visiting St. Andral's Church would help you learn the name?",
     )
     rooms["maze_chapel"].add_item(chapel_altar)
@@ -2770,9 +2770,9 @@ def add_stateful_items(rooms: Dict[str, Room]) -> None:
 
     rooms["maze_chapel"].add_speech_trigger(
         keyword="andral",
-        message="As you speak the saint's name, the altar glows with brilliant white light!\n\n"
+        message="As you speak the saint's name, the altar glows with brilliant white light!\n"
         "The shimmering barrier wavers, then dissolves completely. You feel a wave of "
-        "warmth wash over you - the blessing of St. Andral recognizes your faith.\n\n"
+        "warmth wash over you - the blessing of St. Andral recognizes your faith.\n"
         "The passage to the sanctum is now open!",
         effect_fn=unseal_sanctum,
         conditional_fn=player_visited_vallaki_church,
@@ -2828,11 +2828,11 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
     letter.add_interaction(
         verb="read",
         target_state="read",
-        message="The letter reads:\n\n"
+        message="The letter reads:\n"
         "'Hail thee of might and valor. I, Burgomaster Kolyan Indirovich, write to entreat thy aid. "
         "My adopted daughter, Ireena, is being pursued by a creature of terrible evil. He has "
         "already visited her twice, drinking her blood each time. She grows weaker. I beg thee, "
-        "come to our village and help us escape this accursed land...\n\n"
+        "come to our village and help us escape this accursed land...\n"
         "The letter trails off, unfinished. Kolyan never sent it. He never got the chance.",
     )
     rooms["study"].add_item(letter)
@@ -2852,15 +2852,15 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
     tome.add_interaction(
         verb="read",
         target_state="read",
-        message="You open the Tome of Strahd and read:\n\n"
+        message="You open the Tome of Strahd and read:\n"
         "'I am the Ancient. I am the Land. My beginnings are lost in the darkness of the past. "
         "I was the warrior, I was good and just. I thundered across the land like the wrath of "
-        "a just god, but the war years and the killing years wore down my soul...\n\n"
+        "a just god, but the war years and the killing years wore down my soul...\n"
         "I found her, my Tatyana. So beautiful, so pure. But she loved another - my brother, "
         "Sergei. On their wedding day, I made my pact. I killed my brother. I drank her blood. "
-        "And she threw herself from the walls of this very castle rather than become mine...'\n\n"
-        "In the margins, Strahd has scrawled notes:\n\n"
-        "'The Heart of Sorrow protects me. It fears only the light of the sun.'\n\n"
+        "And she threw herself from the walls of this very castle rather than become mine...'\n"
+        "In the margins, Strahd has scrawled notes:\n"
+        "'The Heart of Sorrow protects me. It fears only the light of the sun.'\n"
         "'My treasury is sealed by the celestial lock. Sun first, then star, then moon. "
         "Only a fool would try to take from me without knowing the sequence.'",
     )
@@ -2934,13 +2934,13 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
     cards.add_interaction(
         verb="read",
         target_state="read",
-        message="The seer shuffles the worn deck and draws three cards:\n\n"
+        message="The seer shuffles the worn deck and draws three cards:\n"
         "'The Artifact - Seek the sun's blade in the castle's golden hoard.\n"
         "The Broken One - An ally awaits in the inn of blue water.\n"
-        "The Mists - The lord of this land rests in darkness beneath his throne.'\n\n"
+        "The Mists - The lord of this land rests in darkness beneath his throne.'\n"
         "The seer pauses, then adds in a low whisper:\n"
         "'And beware the hag of the windmill... her name begins with Mor... "
-        "To speak her full name is to weaken her. But I cannot remember more.'\n\n"
+        "To speak her full name is to weaken her. But I cannot remember more.'\n"
         "She nods cryptically. 'The cards have spoken. Heed their wisdom, traveler.'",
         from_state="waiting",
         conditional_fn=seer_paid,
@@ -2966,12 +2966,12 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
     )
     invitation.add_interaction(
         verb="read",
-        message="The invitation reads:\n\n"
-        "'My Dear Guest,\n\n"
+        message="The invitation reads:\n"
+        "'My Dear Guest,\n"
         "I bid you welcome to my home. Your presence honors me, and I look forward to making "
-        "your acquaintance. Please, enjoy my hospitality. Dinner will be served at midnight.\n\n"
+        "your acquaintance. Please, enjoy my hospitality. Dinner will be served at midnight.\n"
         "Your Humble Host,\n"
-        "Count Strahd von Zarovich'\n\n"
+        "Count Strahd von Zarovich'\n"
         "The handwriting is elegant but somehow threatening.",
     )
     rooms["entrance"].add_item(invitation)
@@ -3019,11 +3019,11 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
     note.add_interaction(
         verb="read",
         target_state="read",
-        message="The note is stained but legible:\n\n"
+        message="The note is stained but legible:\n"
         "'Three stones mark the path to the ancient barrow.\n"
         "East greets the dawn.\n"
         "West bids farewell.\n"
-        "North watches all from its peak.'\n\n"
+        "North watches all from its peak.'\n"
         "Below, in a shaky hand: 'I almost had it. So close...'",
     )
 
@@ -3169,15 +3169,15 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
     cryptkeeper_tome.add_interaction(
         verb="read",
         target_state="read",
-        message="You open the tome and read the Cryptkeeper's final words:\n\n"
+        message="You open the tome and read the Cryptkeeper's final words:\n"
         "'I am the last of my order, sworn to guard Barovia's oldest secrets. "
         "When the Dark Lord rose, we knew our time was ending. I sealed this maze "
-        "so that only the worthy could reach our treasures.\n\n"
+        "so that only the worthy could reach our treasures.\n"
         "If you read this, you have proven yourself clever and brave. "
-        "Take what you find here and use it against the darkness.\n\n"
+        "Take what you find here and use it against the darkness.\n"
         "Remember: the hag fears her true name. The Baron hides shame in shadows. "
         "And Strahd... Strahd can be destroyed, but only by one who understands "
-        "that even immortals fear the final death.'\n\n"
+        "that even immortals fear the final death.'\n"
         "The tome contains hints about other puzzles in the land!",
     )
     rooms["maze_sanctum"].add_item(cryptkeeper_tome)
@@ -3254,13 +3254,13 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
     hag_note.add_interaction(
         verb="read",
         target_state="read",
-        message="The note is stained but legible:\n\n"
+        message="The note is stained but legible:\n"
         "'To any who find this - the creature upstairs is no mere witch. "
         "She is a night hag, bound to this place by dark pacts. "
         "Only her TRUE NAME can weaken her power. I searched but could not find it. "
-        "Perhaps the Vistani know? They trade in secrets...\n\n"
+        "Perhaps the Vistani know? They trade in secrets...\n"
         "If you discover her name, speak it aloud in her presence. "
-        "It may be the only way to survive.'\n\n"
+        "It may be the only way to survive.'\n"
         "The writer's final words are smeared with blood.",
     )
     rooms["millbasement"].add_item(hag_note)
@@ -3285,13 +3285,13 @@ def add_regular_items(rooms: Dict[str, Room]) -> None:
     baron_journal.add_interaction(
         verb="read",
         target_state="read",
-        message="The journal contains the Baron's private thoughts:\n\n"
-        "'The festival must succeed. All will be well. ALL WILL BE WELL.\n\n"
+        message="The journal contains the Baron's private thoughts:\n"
+        "'The festival must succeed. All will be well. ALL WILL BE WELL.\n"
         "I have hidden the evidence of my... methods... in the dungeon below. "
         "Behind the third stone from the door, in the north wall. "
-        "No one must ever find what I have done in the name of happiness.\n\n"
+        "No one must ever find what I have done in the name of happiness.\n"
         "If they knew the true cost of our festivals... the sacrifices I've made... "
-        "they would never smile again.'\n\n"
+        "they would never smile again.'\n"
         "The Baron's handwriting becomes increasingly erratic on the later pages.",
     )
     baron_journal.add_interaction(
@@ -3544,7 +3544,7 @@ def add_weapons(rooms: Dict[str, Room]) -> None:
             "The execution block is deeply scarred from countless blows. "
             "Dried blood has soaked into the grain of the wood over the years. "
             "A plaque reads: 'For the unhappy. For the ungrateful. For those "
-            "who will not SMILE.'\n\n"
+            "who will not SMILE.'\n"
             "An executioner's axe leans against the wall nearby."
         ),
     )
@@ -3564,12 +3564,12 @@ def add_weapons(rooms: Dict[str, Room]) -> None:
     notice_board.add_interaction(
         verb="read",
         message=(
-            "Several notices are pinned to the board:\n\n"
+            "Several notices are pinned to the board:\n"
             "LOST: Bones of St. Andral. Last seen in church undercroft. "
-            "Reward offered for safe return to Father Lucian.\n\n"
-            "WARNING: Children missing near Old Bonegrinder. Avoid the mill!\n\n"
+            "Reward offered for safe return to Father Lucian.\n"
+            "WARNING: Children missing near Old Bonegrinder. Avoid the mill!\n"
             "WANTED: Information on the Argynvostholt ruins. "
-            "Speak to the Vistani seer if you dare.\n\n"
+            "Speak to the Vistani seer if you dare.\n"
             "NOTICE: The Baron's Festival of the Blazing Sun is MANDATORY. "
             "All citizens WILL be happy. SMILES ARE REQUIRED."
         ),
@@ -3577,12 +3577,12 @@ def add_weapons(rooms: Dict[str, Room]) -> None:
     notice_board.add_interaction(
         verb="examine",
         message=(
-            "Several notices are pinned to the board:\n\n"
+            "Several notices are pinned to the board:\n"
             "LOST: Bones of St. Andral. Last seen in church undercroft. "
-            "Reward offered for safe return to Father Lucian.\n\n"
-            "WARNING: Children missing near Old Bonegrinder. Avoid the mill!\n\n"
+            "Reward offered for safe return to Father Lucian.\n"
+            "WARNING: Children missing near Old Bonegrinder. Avoid the mill!\n"
             "WANTED: Information on the Argynvostholt ruins. "
-            "Speak to the Vistani seer if you dare.\n\n"
+            "Speak to the Vistani seer if you dare.\n"
             "NOTICE: The Baron's Festival of the Blazing Sun is MANDATORY. "
             "All citizens WILL be happy. SMILES ARE REQUIRED."
         ),
@@ -3603,11 +3603,11 @@ def add_weapons(rooms: Dict[str, Room]) -> None:
     doll_note.add_interaction(
         verb="read",
         message=(
-            "The note is written in a childish scrawl:\n\n"
+            "The note is written in a childish scrawl:\n"
             "'Mommy locks us in the cage upstairs. She says we're special. "
             "The bars are too strong - we tried to bend them. "
             "Only the executioner's blade could break them, "
-            "but the axe is far away in the town.'\n\n"
+            "but the axe is far away in the town.'\n"
             "The rest of the note is too smeared with tears to read."
         ),
     )

@@ -123,5 +123,81 @@ class StatefulItemTest(unittest.TestCase):
         self.assertIn("door_2", item.linked_items)
 
 
+class AddInteractionEffectFnTest(unittest.TestCase):
+    """Test add_interaction with effect_fn parameter."""
+
+    def test_add_interaction_with_effect_fn_stores_function(self):
+        """Test that effect_fn is stored in the interaction."""
+        item = StatefulItem("Coffin", "coffin_1", "A stone coffin", state="closed")
+
+        def my_effect(player, game_state):
+            return "Something happened!"
+
+        item.add_interaction(
+            verb="open",
+            target_state="open",
+            message="You open the coffin.",
+            from_state="closed",
+            effect_fn=my_effect,
+        )
+
+        self.assertIn("open", item.interactions)
+        interaction = item.interactions["open"][0]
+        self.assertIn("effect_fn", interaction)
+        self.assertEqual(interaction["effect_fn"], my_effect)
+
+    def test_add_interaction_without_effect_fn_has_no_key(self):
+        """Test that effect_fn key is absent when not provided."""
+        item = StatefulItem("Door", "door_1", "A door", state="closed")
+
+        item.add_interaction(
+            verb="open",
+            target_state="open",
+            message="You open the door.",
+        )
+
+        interaction = item.interactions["open"][0]
+        self.assertNotIn("effect_fn", interaction)
+
+    def test_effect_fn_can_be_called(self):
+        """Test that stored effect_fn can be called and returns value."""
+        item = StatefulItem("Chest", "chest_1", "A chest", state="closed")
+        effect_called = {"count": 0}
+
+        def track_effect(player, game_state):
+            effect_called["count"] += 1
+            return "Effect triggered!"
+
+        item.add_interaction(
+            verb="open",
+            target_state="open",
+            effect_fn=track_effect,
+        )
+
+        # Simulate calling the effect_fn
+        interaction = item.interactions["open"][0]
+        result = interaction["effect_fn"](None, None)
+
+        self.assertEqual(effect_called["count"], 1)
+        self.assertEqual(result, "Effect triggered!")
+
+    def test_effect_fn_can_return_none(self):
+        """Test that effect_fn can return None."""
+        item = StatefulItem("Box", "box_1", "A box", state="closed")
+
+        def silent_effect(player, game_state):
+            return None
+
+        item.add_interaction(
+            verb="open",
+            effect_fn=silent_effect,
+        )
+
+        interaction = item.interactions["open"][0]
+        result = interaction["effect_fn"](None, None)
+
+        self.assertIsNone(result)
+
+
 if __name__ == "__main__":
     unittest.main()

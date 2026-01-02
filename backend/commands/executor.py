@@ -136,30 +136,35 @@ async def execute_command(
             and current_room.speech_triggers
         ):
             raw_input = cmd.get("original", "").lower().strip()
-            for keyword, config in current_room.speech_triggers.items():
+            for keyword, triggers in current_room.speech_triggers.items():
                 if keyword in raw_input:
-                    # Skip if one-time trigger already fired
-                    if config.get("one_time") and config.get("triggered"):
-                        continue
-                    # Check conditional function
-                    conditional_fn = config.get("conditional_fn")
-                    if conditional_fn and not conditional_fn(player, game_state):
-                        continue
-                    # Mark as triggered
-                    if config.get("one_time"):
-                        config["triggered"] = True
-                    # Execute effect function if present
-                    effect_fn = config.get("effect_fn")
-                    if effect_fn:
-                        await effect_fn(
-                            player,
-                            game_state,
-                            player_manager,
-                            online_sessions,
-                            sio,
-                            utils,
-                        )
-                    return cast(str, config.get("message", ""))
+                    # Triggers can be a list (new format) or dict (old format)
+                    trigger_list = (
+                        triggers if isinstance(triggers, list) else [triggers]
+                    )
+                    for config in trigger_list:
+                        # Skip if one-time trigger already fired
+                        if config.get("one_time") and config.get("triggered"):
+                            continue
+                        # Check conditional function
+                        conditional_fn = config.get("conditional_fn")
+                        if conditional_fn and not conditional_fn(player, game_state):
+                            continue
+                        # Mark as triggered
+                        if config.get("one_time"):
+                            config["triggered"] = True
+                        # Execute effect function if present
+                        effect_fn = config.get("effect_fn")
+                        if effect_fn:
+                            await effect_fn(
+                                player,
+                                game_state,
+                                player_manager,
+                                online_sessions,
+                                sio,
+                                utils,
+                            )
+                        return cast(str, config.get("message", ""))
 
         return f"I don't know how to '{verb}'."
 

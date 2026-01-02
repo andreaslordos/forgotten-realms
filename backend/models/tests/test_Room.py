@@ -466,7 +466,10 @@ class RoomSpeechTriggersTest(unittest.TestCase):
         )
 
         self.assertIn("password", room.speech_triggers)
-        self.assertEqual(room.speech_triggers["password"]["message"], "The door opens!")
+        self.assertEqual(len(room.speech_triggers["password"]), 1)
+        self.assertEqual(
+            room.speech_triggers["password"][0]["message"], "The door opens!"
+        )
 
     def test_add_speech_trigger_converts_keyword_to_lowercase(self) -> None:
         """Test that keywords are stored in lowercase."""
@@ -498,7 +501,7 @@ class RoomSpeechTriggersTest(unittest.TestCase):
             one_time=False,
         )
 
-        trigger = room.speech_triggers["riddle"]
+        trigger = room.speech_triggers["riddle"][0]
         self.assertEqual(trigger["message"], "Correct!")
         self.assertEqual(trigger["effect_fn"], mock_effect)
         self.assertEqual(trigger["conditional_fn"], mock_condition)
@@ -511,7 +514,7 @@ class RoomSpeechTriggersTest(unittest.TestCase):
 
         room.add_speech_trigger(keyword="word", message="Message")
 
-        self.assertTrue(room.speech_triggers["word"]["one_time"])
+        self.assertTrue(room.speech_triggers["word"][0]["one_time"])
 
     def test_add_speech_trigger_initializes_triggered_to_false(self) -> None:
         """Test that triggered starts as False."""
@@ -519,7 +522,7 @@ class RoomSpeechTriggersTest(unittest.TestCase):
 
         room.add_speech_trigger(keyword="word", message="Message")
 
-        self.assertFalse(room.speech_triggers["word"]["triggered"])
+        self.assertFalse(room.speech_triggers["word"][0]["triggered"])
 
     def test_add_multiple_speech_triggers(self) -> None:
         """Test adding multiple triggers to same room."""
@@ -531,6 +534,41 @@ class RoomSpeechTriggersTest(unittest.TestCase):
         self.assertEqual(len(room.speech_triggers), 2)
         self.assertIn("word1", room.speech_triggers)
         self.assertIn("word2", room.speech_triggers)
+
+    def test_add_multiple_triggers_for_same_keyword(self) -> None:
+        """Test adding multiple triggers for the same keyword with different conditions."""
+
+        def condition_a(p: object, gs: object) -> bool:
+            return True
+
+        def condition_b(p: object, gs: object) -> bool:
+            return False
+
+        room = Room("room1", "Test Room", "A test room")
+
+        room.add_speech_trigger(
+            keyword="lathander",
+            message="The mists part!",
+            conditional_fn=condition_a,
+        )
+        room.add_speech_trigger(
+            keyword="lathander",
+            message="Nothing happens.",
+            conditional_fn=condition_b,
+        )
+
+        # Should have one keyword with two triggers
+        self.assertEqual(len(room.speech_triggers), 1)
+        self.assertIn("lathander", room.speech_triggers)
+        self.assertEqual(len(room.speech_triggers["lathander"]), 2)
+
+        # Verify both triggers are stored
+        self.assertEqual(
+            room.speech_triggers["lathander"][0]["message"], "The mists part!"
+        )
+        self.assertEqual(
+            room.speech_triggers["lathander"][1]["message"], "Nothing happens."
+        )
 
 
 if __name__ == "__main__":

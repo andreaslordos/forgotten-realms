@@ -477,6 +477,17 @@ async def handle_interaction(
             if points_notification:
                 points_message = f"\n{points_notification}"
 
+        # Handle effect function (custom callback after interaction)
+        effect_message = ""
+        if valid_interaction.get("effect_fn"):
+            effect_fn = valid_interaction["effect_fn"]
+            try:
+                result = effect_fn(player, game_state)
+                if result:
+                    effect_message = f"\n{result}"
+            except Exception as effect_error:
+                logger.error(f"Error in effect_fn: {effect_error}")
+
         # Save changes to player and game state
         player_manager.save_players()
         # game_state.save_rooms()  # Uncomment if you're saving rooms
@@ -499,9 +510,9 @@ async def handle_interaction(
                 if utils and hasattr(utils, "__dict__")
                 else None
             )
-            return f"{message}{exit_msg}{points_message}\n\n{build_look_description(player, game_state, online_sessions, mob_manager=mob_manager)}"
+            return f"{message}{exit_msg}{points_message}{effect_message}\n\n{build_look_description(player, game_state, online_sessions, mob_manager=mob_manager)}"
 
-        return f"{message}{exit_msg}{points_message}"
+        return f"{message}{exit_msg}{points_message}{effect_message}"
 
     except Exception as e:
         error_trace = traceback.format_exc()

@@ -1550,6 +1550,244 @@ class InteractionTrapTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(self.player.current_room)  # Not in limbo
 
 
+class InteractionEffectFnTest(unittest.IsolatedAsyncioTestCase):
+    """Test effect_fn callback functionality."""
+
+    def setUp(self):
+        """Set up mocks for tests."""
+        self.player = Mock()
+        self.player.name = "TestPlayer"
+        self.player.current_room = "test_room"
+        self.player.inventory = []
+
+        self.game_state = Mock()
+        self.player_manager = Mock()
+        self.player_manager.save_players = Mock()
+        self.online_sessions = {}
+        self.sio = AsyncMock()
+        self.utils = Mock()
+        self.utils.send_to_player = AsyncMock()
+        self.utils.broadcast_to_room = AsyncMock()
+
+        self.current_room = Mock()
+        self.current_room.room_id = "test_room"
+        self.current_room.items = []
+        self.current_room.exits = {}
+        self.current_room.get_items = Mock(return_value=[])
+        self.game_state.get_room.return_value = self.current_room
+
+    async def test_handle_interaction_effect_fn_appends_message(self):
+        """Test effect_fn return value is appended to result message."""
+        # Arrange
+        stateful_item = StatefulItem(
+            name="coffin", id="coffin_1", description="A stone coffin", state="closed"
+        )
+        stateful_item.add_state_description("closed", "A closed coffin")
+        stateful_item.add_state_description("open", "An open coffin")
+
+        def spawn_skeleton(player, game_state):
+            return "A skeleton rises from the coffin!"
+
+        stateful_item.add_interaction(
+            verb="open",
+            from_state="closed",
+            target_state="open",
+            message="You push the heavy lid aside.",
+            effect_fn=spawn_skeleton,
+        )
+        self.current_room.items = [stateful_item]
+        self.current_room.get_items.return_value = [stateful_item]
+
+        cmd = {"verb": "open", "subject": "coffin", "subject_object": stateful_item}
+
+        # Act
+        with patch("commands.interaction.broadcast_room", new_callable=AsyncMock):
+            result = await handle_interaction(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert
+        self.assertIn("You push the heavy lid aside.", result)
+        self.assertIn("A skeleton rises from the coffin!", result)
+
+    async def test_handle_interaction_effect_fn_returns_none(self):
+        """Test effect_fn returning None doesn't add extra message."""
+        # Arrange
+        stateful_item = StatefulItem(
+            name="lever", id="lever_1", description="A rusty lever", state="up"
+        )
+        stateful_item.add_state_description("up", "A lever in up position")
+        stateful_item.add_state_description("down", "A lever in down position")
+
+        def silent_effect(player, game_state):
+            return None  # No additional message
+
+        stateful_item.add_interaction(
+            verb="pull",
+            from_state="up",
+            target_state="down",
+            message="You pull the lever down.",
+            effect_fn=silent_effect,
+        )
+        self.current_room.items = [stateful_item]
+        self.current_room.get_items.return_value = [stateful_item]
+
+        cmd = {"verb": "pull", "subject": "lever", "subject_object": stateful_item}
+
+        # Act
+        with patch("commands.interaction.broadcast_room", new_callable=AsyncMock):
+            result = await handle_interaction(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert
+        self.assertEqual(result, "You pull the lever down.")
+
+    async def test_handle_interaction_effect_fn_exception_handled(self):
+        """Test effect_fn exception is caught and logged, interaction succeeds."""
+        # Arrange
+        stateful_item = StatefulItem(
+            name="orb", id="orb_1", description="A glowing orb", state="dormant"
+        )
+        stateful_item.add_state_description("dormant", "A dormant orb")
+        stateful_item.add_state_description("active", "An active orb")
+
+        def buggy_effect(player, game_state):
+            raise ValueError("Something went wrong!")
+
+        stateful_item.add_interaction(
+            verb="touch",
+            from_state="dormant",
+            target_state="active",
+            message="The orb activates.",
+            effect_fn=buggy_effect,
+        )
+        self.current_room.items = [stateful_item]
+        self.current_room.get_items.return_value = [stateful_item]
+
+        cmd = {"verb": "touch", "subject": "orb", "subject_object": stateful_item}
+
+        # Act
+        with patch("commands.interaction.broadcast_room", new_callable=AsyncMock):
+            with patch("commands.interaction.logger") as mock_logger:
+                result = await handle_interaction(
+                    cmd,
+                    self.player,
+                    self.game_state,
+                    self.player_manager,
+                    self.online_sessions,
+                    self.sio,
+                    self.utils,
+                )
+
+        # Assert - interaction succeeds despite effect_fn error
+        self.assertEqual(stateful_item.state, "active")
+        self.assertIn("The orb activates.", result)
+        # Error should be logged
+        mock_logger.error.assert_called()
+        logged_message = mock_logger.error.call_args[0][0]
+        self.assertIn("effect_fn", logged_message)
+
+    async def test_handle_interaction_effect_fn_receives_correct_params(self):
+        """Test effect_fn receives player and game_state as parameters."""
+        # Arrange
+        stateful_item = StatefulItem(
+            name="altar", id="altar_1", description="A stone altar", state="inactive"
+        )
+        stateful_item.add_state_description("inactive", "An inactive altar")
+        stateful_item.add_state_description("active", "A glowing altar")
+
+        received_params = {}
+
+        def capture_params(player, game_state):
+            received_params["player"] = player
+            received_params["game_state"] = game_state
+            return "The altar glows."
+
+        stateful_item.add_interaction(
+            verb="pray",
+            from_state="inactive",
+            target_state="active",
+            message="You pray at the altar.",
+            effect_fn=capture_params,
+        )
+        self.current_room.items = [stateful_item]
+        self.current_room.get_items.return_value = [stateful_item]
+
+        cmd = {"verb": "pray", "subject": "altar", "subject_object": stateful_item}
+
+        # Act
+        with patch("commands.interaction.broadcast_room", new_callable=AsyncMock):
+            await handle_interaction(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert
+        self.assertEqual(received_params["player"], self.player)
+        self.assertEqual(received_params["game_state"], self.game_state)
+
+    async def test_handle_interaction_effect_fn_with_state_change(self):
+        """Test effect_fn runs after state change."""
+        # Arrange
+        stateful_item = StatefulItem(
+            name="chest", id="chest_1", description="A wooden chest", state="closed"
+        )
+        stateful_item.add_state_description("closed", "A closed chest")
+        stateful_item.add_state_description("open", "An open chest")
+
+        state_during_effect = {}
+
+        def check_state(player, game_state):
+            state_during_effect["item_state"] = stateful_item.state
+            return "You find treasure inside!"
+
+        stateful_item.add_interaction(
+            verb="open",
+            from_state="closed",
+            target_state="open",
+            message="You open the chest.",
+            effect_fn=check_state,
+        )
+        self.current_room.items = [stateful_item]
+        self.current_room.get_items.return_value = [stateful_item]
+
+        cmd = {"verb": "open", "subject": "chest", "subject_object": stateful_item}
+
+        # Act
+        with patch("commands.interaction.broadcast_room", new_callable=AsyncMock):
+            result = await handle_interaction(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert - state should be "open" when effect_fn runs
+        self.assertEqual(state_during_effect["item_state"], "open")
+        self.assertIn("You find treasure inside!", result)
+
+
 class RegisterInteractionVerbsTest(unittest.TestCase):
     """Test register_interaction_verbs functionality."""
 

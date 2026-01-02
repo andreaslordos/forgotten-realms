@@ -254,5 +254,186 @@ class InventoryValueTest(unittest.TestCase):
         self.assertEqual(weapon.value, 75)
 
 
+class LockedContainerTest(unittest.TestCase):
+    """Test locked container functionality.
+
+    Tests cover:
+    - Creating containers with "locked" state
+    - Transitioning between locked/open states
+    - Custom state descriptions for locked containers
+    - Content visibility based on locked state
+    """
+
+    def setUp(self):
+        """Set up a locked container with custom state descriptions."""
+        self.safe = ContainerItem(
+            name="safe",
+            id="test_safe",
+            description="A small iron safe",
+            state="locked",
+            takeable=False,
+            capacity_limit=5,
+            capacity_weight=20,
+        )
+        # Add custom state descriptions
+        self.safe.add_state_description("locked", "A small iron safe is locked tight.")
+        self.safe.add_state_description("open", "The wall safe stands open.")
+        # Add items inside
+        self.key = Item("key", "key_1", "A brass key", weight=0, value=5)
+        self.safe.items.append(self.key)
+        self.safe.update_description()
+
+    def test_container_starts_in_locked_state(self):
+        """Test that container can be initialized with locked state."""
+        self.assertEqual(self.safe.state, "locked")
+
+    def test_set_state_locked_to_open_succeeds(self):
+        """Test transitioning from locked to open state."""
+        # Act
+        success = self.safe.set_state("open")
+
+        # Assert
+        self.assertTrue(success)
+        self.assertEqual(self.safe.state, "open")
+
+    def test_set_state_open_to_locked_succeeds(self):
+        """Test transitioning from open back to locked state."""
+        # Arrange
+        self.safe.set_state("open")
+
+        # Act
+        success = self.safe.set_state("locked")
+
+        # Assert
+        self.assertTrue(success)
+        self.assertEqual(self.safe.state, "locked")
+
+    def test_set_state_invalid_state_fails(self):
+        """Test that setting an invalid state returns False."""
+        success = self.safe.set_state("broken")
+
+        self.assertFalse(success)
+        self.assertEqual(self.safe.state, "locked")  # Unchanged
+
+    def test_locked_container_uses_custom_state_description(self):
+        """Test that locked state uses custom state description."""
+        description = self.safe.description
+
+        self.assertIn("locked tight", description)
+
+    def test_open_container_uses_custom_state_description(self):
+        """Test that open state uses custom state description."""
+        self.safe.set_state("open")
+
+        description = self.safe.description
+
+        self.assertIn("stands open", description)
+
+    def test_locked_container_hides_contents(self):
+        """Test that locked containers don't reveal item names."""
+        description = self.safe.get_contained()
+
+        self.assertIn("something", description)
+        self.assertNotIn("key", description)
+
+    def test_open_container_shows_contents(self):
+        """Test that open containers reveal item names."""
+        self.safe.set_state("open")
+
+        description = self.safe.get_contained()
+
+        self.assertIn("key", description)
+        self.assertNotIn("something", description)
+
+    def test_container_without_custom_state_descriptions_uses_init_desc(self):
+        """Test containers use init description when no custom state desc added."""
+        # Arrange - container with state but no additional state descriptions
+        # Note: StatefulItem.__init__ auto-adds state_descriptions[state] = description
+        container = ContainerItem(
+            name="box",
+            id="box_1",
+            description="A wooden box, closed",
+            state="closed",
+        )
+
+        # Assert - uses the description from __init__ (which was added to state_descriptions)
+        self.assertIn("wooden box, closed", container.description)
+
+    def test_unlock_container_with_interaction(self):
+        """Test unlocking container through interaction system."""
+        # Arrange - clear default interactions and add custom unlock
+        self.safe.interactions = {}
+        self.safe.add_interaction(
+            verb="open",
+            from_state="locked",
+            target_state="open",
+            message="The safe clicks open!",
+            required_instrument="lockpick",
+        )
+
+        # Verify interaction was registered
+        self.assertIn("open", self.safe.interactions)
+        interactions = self.safe.interactions["open"]
+        self.assertEqual(len(interactions), 1)
+        self.assertEqual(interactions[0]["from_state"], "locked")
+        self.assertEqual(interactions[0]["target_state"], "open")
+        self.assertEqual(interactions[0]["required_instrument"], "lockpick")
+
+    def test_locked_container_description_includes_contained_text(self):
+        """Test that locked container description includes contained info."""
+        description = self.safe.description
+
+        # Should show "contains something" when locked
+        self.assertIn("contains something", description)
+
+    def test_open_container_description_includes_item_names(self):
+        """Test that open container description lists item names."""
+        self.safe.set_state("open")
+
+        description = self.safe.description
+
+        self.assertIn("key", description)
+
+
+class ContainerStateDescriptionTest(unittest.TestCase):
+    """Test custom state descriptions in containers."""
+
+    def test_update_description_prefers_state_descriptions(self):
+        """Test that update_description uses state_descriptions when available."""
+        # Arrange
+        container = ContainerItem(
+            name="chest",
+            id="chest_1",
+            description="A chest",
+            state="closed",
+        )
+        container.add_state_description("closed", "The chest is firmly shut.")
+
+        # Act
+        container.update_description()
+
+        # Assert
+        self.assertIn("firmly shut", container.description)
+
+    def test_update_description_falls_back_to_default_format(self):
+        """Test fallback to default format when state not in state_descriptions."""
+        # Arrange - create container, then clear state_descriptions
+        container = ContainerItem(
+            name="box",
+            id="box_1",
+            description="A simple box",
+            state="closed",
+        )
+        # Clear state_descriptions to test fallback path
+        container.state_descriptions = {}
+
+        # Act
+        container.update_description()
+
+        # Assert - uses default format: "<base_description>, <state>."
+        self.assertIn("simple box", container.description)
+        self.assertIn("closed", container.description)
+
+
 if __name__ == "__main__":
     unittest.main()

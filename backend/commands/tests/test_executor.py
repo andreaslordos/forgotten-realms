@@ -580,6 +580,368 @@ class BuildLookDescriptionTest(unittest.TestCase):
             self.assertEqual(len(player_lines), 0)
 
 
+class ExecuteCommandSpeechTriggerTest(unittest.IsolatedAsyncioTestCase):
+    """Test execute_command speech trigger functionality."""
+
+    def setUp(self):
+        """Set up common test fixtures."""
+        self.player = Mock()
+        self.player.name = "TestPlayer"
+        self.player.current_room = "room1"
+
+        self.room = Room(
+            room_id="room1",
+            name="Test Room",
+            description="A test room",
+        )
+
+        self.game_state = Mock()
+        self.game_state.get_room.return_value = self.room
+
+        self.player_manager = Mock()
+        self.sio = AsyncMock()
+        self.utils = Mock()
+        self.online_sessions = {}
+
+    async def test_speech_trigger_matches_keyword_in_input(self):
+        """Test speech trigger fires when keyword is in input."""
+        self.room.add_speech_trigger(
+            keyword="lathander",
+            message="The sacred name echoes!",
+        )
+
+        with patch("commands.executor.command_registry.get_handler", return_value=None):
+            cmd = {"verb": "lathander", "original": "lathander"}
+
+            result = await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            self.assertEqual(result, "The sacred name echoes!")
+
+    async def test_speech_trigger_keyword_case_insensitive(self):
+        """Test speech trigger matching is case-insensitive."""
+        self.room.add_speech_trigger(
+            keyword="lathander",
+            message="The sacred name echoes!",
+        )
+
+        with patch("commands.executor.command_registry.get_handler", return_value=None):
+            cmd = {"verb": "lathander", "original": "LATHANDER"}
+
+            result = await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            self.assertEqual(result, "The sacred name echoes!")
+
+    async def test_speech_trigger_one_time_only_fires_once(self):
+        """Test one-time speech trigger only fires once."""
+        self.room.add_speech_trigger(
+            keyword="abracadabra",
+            message="Magic happens!",
+            one_time=True,
+        )
+
+        with patch("commands.executor.command_registry.get_handler", return_value=None):
+            cmd = {"verb": "abracadabra", "original": "abracadabra"}
+
+            # First trigger
+            result1 = await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            # Second trigger should not fire
+            result2 = await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            self.assertEqual(result1, "Magic happens!")
+            self.assertIn("don't know", result2.lower())
+
+    async def test_speech_trigger_not_one_time_fires_multiple(self):
+        """Test non-one-time trigger fires multiple times."""
+        self.room.add_speech_trigger(
+            keyword="hello",
+            message="Hello back!",
+            one_time=False,
+        )
+
+        with patch("commands.executor.command_registry.get_handler", return_value=None):
+            cmd = {"verb": "hello", "original": "hello"}
+
+            result1 = await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            result2 = await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            self.assertEqual(result1, "Hello back!")
+            self.assertEqual(result2, "Hello back!")
+
+    async def test_speech_trigger_conditional_fn_passes(self):
+        """Test speech trigger fires when conditional_fn returns True."""
+        self.room.add_speech_trigger(
+            keyword="open sesame",
+            message="The door opens!",
+            conditional_fn=lambda player, game_state: True,
+        )
+
+        with patch("commands.executor.command_registry.get_handler", return_value=None):
+            cmd = {"verb": "open", "original": "open sesame"}
+
+            result = await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            self.assertEqual(result, "The door opens!")
+
+    async def test_speech_trigger_conditional_fn_fails_skips_trigger(self):
+        """Test speech trigger skipped when conditional_fn returns False."""
+        self.room.add_speech_trigger(
+            keyword="open sesame",
+            message="The door opens!",
+            conditional_fn=lambda player, game_state: False,
+        )
+
+        with patch("commands.executor.command_registry.get_handler", return_value=None):
+            cmd = {"verb": "open", "original": "open sesame"}
+
+            result = await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            # Should fall through to unknown command
+            self.assertIn("don't know", result.lower())
+
+    async def test_speech_trigger_multiple_triggers_first_matching_wins(self):
+        """Test first matching trigger wins when multiple exist for keyword."""
+        # Add trigger that fails condition first
+        self.room.add_speech_trigger(
+            keyword="lathander",
+            message="Already parted!",
+            conditional_fn=lambda player, game_state: False,
+        )
+        # Add trigger that passes condition second
+        self.room.add_speech_trigger(
+            keyword="lathander",
+            message="The mists part!",
+            conditional_fn=lambda player, game_state: True,
+        )
+
+        with patch("commands.executor.command_registry.get_handler", return_value=None):
+            cmd = {"verb": "lathander", "original": "lathander"}
+
+            result = await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            # Second trigger should fire since first's condition failed
+            self.assertEqual(result, "The mists part!")
+
+    async def test_speech_trigger_fallback_when_no_condition(self):
+        """Test trigger without conditional_fn acts as fallback."""
+        # Add conditional trigger first
+        self.room.add_speech_trigger(
+            keyword="xyzzy",
+            message="Special effect!",
+            conditional_fn=lambda player, game_state: False,
+        )
+        # Add fallback trigger (no conditional_fn)
+        self.room.add_speech_trigger(
+            keyword="xyzzy",
+            message="Nothing happens.",
+        )
+
+        with patch("commands.executor.command_registry.get_handler", return_value=None):
+            cmd = {"verb": "xyzzy", "original": "xyzzy"}
+
+            result = await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            self.assertEqual(result, "Nothing happens.")
+
+    async def test_speech_trigger_effect_fn_called(self):
+        """Test effect_fn is called when trigger fires."""
+        effect_called = {"count": 0}
+
+        async def my_effect(
+            player, game_state, player_manager, online_sessions, sio, utils
+        ):
+            effect_called["count"] += 1
+
+        self.room.add_speech_trigger(
+            keyword="activate",
+            message="Activated!",
+            effect_fn=my_effect,
+        )
+
+        with patch("commands.executor.command_registry.get_handler", return_value=None):
+            cmd = {"verb": "activate", "original": "activate"}
+
+            await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            self.assertEqual(effect_called["count"], 1)
+
+    async def test_speech_trigger_effect_fn_receives_correct_params(self):
+        """Test effect_fn receives all expected parameters."""
+        received_params = {}
+
+        async def capture_params(
+            player, game_state, player_manager, online_sessions, sio, utils
+        ):
+            received_params["player"] = player
+            received_params["game_state"] = game_state
+            received_params["player_manager"] = player_manager
+            received_params["online_sessions"] = online_sessions
+            received_params["sio"] = sio
+            received_params["utils"] = utils
+
+        self.room.add_speech_trigger(
+            keyword="test",
+            message="Tested!",
+            effect_fn=capture_params,
+        )
+
+        with patch("commands.executor.command_registry.get_handler", return_value=None):
+            cmd = {"verb": "test", "original": "test"}
+
+            await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            self.assertEqual(received_params["player"], self.player)
+            self.assertEqual(received_params["game_state"], self.game_state)
+            self.assertEqual(received_params["player_manager"], self.player_manager)
+            self.assertEqual(received_params["online_sessions"], self.online_sessions)
+            self.assertEqual(received_params["sio"], self.sio)
+            self.assertEqual(received_params["utils"], self.utils)
+
+    async def test_speech_trigger_keyword_substring_match(self):
+        """Test speech trigger matches keyword as substring in input."""
+        self.room.add_speech_trigger(
+            keyword="magic",
+            message="You feel magical!",
+        )
+
+        with patch("commands.executor.command_registry.get_handler", return_value=None):
+            cmd = {"verb": "say", "original": "say the magic word"}
+
+            result = await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            self.assertEqual(result, "You feel magical!")
+
+    async def test_speech_trigger_no_match_falls_through(self):
+        """Test unmatched keyword falls through to command handler."""
+        self.room.add_speech_trigger(
+            keyword="specific_word",
+            message="Triggered!",
+        )
+
+        mock_handler = AsyncMock(return_value="handler result")
+        with patch(
+            "commands.executor.command_registry.get_handler", return_value=mock_handler
+        ):
+            cmd = {"verb": "look", "original": "look around"}
+
+            result = await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            self.assertEqual(result, "handler result")
+
+
 class ExecuteCommandRespawnTest(unittest.IsolatedAsyncioTestCase):
     """Test execute_command handling respawn choices."""
 

@@ -9,10 +9,10 @@ until solved.
 
 Rooms: ~35-40 total
 Mobs: Non-aggressive NPCs (peasant, barkeep, priest)
-Transition to L2: Mist barrier requires mist_token from cellar OR priest's blessing
+Transition to L2: Mist barrier requires BOTH mist_token AND priest's blessing + speaking "Lathander"
 """
 
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 from models.Room import Room
 from models.Item import Item
 from models.StatefulItem import StatefulItem
@@ -39,10 +39,9 @@ class Level1Village(LevelGenerator):
         square = Room(
             "square",
             "Village Square",
-            "A bleak village square choked with perpetual mist. A gallows stands "
-            "in the center, its rope swaying despite the still air. A weathered notice "
-            "board stands near the gallows and a rusty bucket lies overturned by a "
-            "cracked fountain. The church lies north, the tavern east, the mercantile "
+            "Perpetual mist chokes this bleak village square. A gallows stands in "
+            "the center, its rope swaying despite the still air. A cracked fountain "
+            "stands dry nearby. The church lies north, the tavern east, the mercantile "
             "southwest, the manor west, and a dirt road leads south.",
             is_outdoor=True,
         )
@@ -50,19 +49,16 @@ class Level1Village(LevelGenerator):
         tavern = Room(
             "tavern",
             "Blood of the Vine Tavern",
-            "The tavern's interior is dim and smoky. A worn rug lies near the back "
-            "wall, its edges curled with age. A faded painting hangs crooked on the "
-            "wall above scratched tables and a cold hearth. The village square is "
-            "visible through grimy windows to the west.",
+            "The tavern's interior is dim and smoky. Scratched tables surround a "
+            "cold hearth, and the village square is visible through grimy windows "
+            "to the west.",
         )
 
         cellar = Room(
             "cellar",
             "Tavern Cellar",
-            "Dusty wine barrels line the walls of this cold cellar. A locked chest "
-            "sits in the dusty corner with strange symbols scratched into the nearby "
-            "wall. An old crate has been pushed against the far wall, as if to hide "
-            "something.",
+            "Dusty wine barrels line the walls of this cold cellar. Strange symbols "
+            "are scratched into the stone. The trapdoor leads back up to the tavern.",
             is_dark=True,
         )
 
@@ -70,44 +66,39 @@ class Level1Village(LevelGenerator):
             "church",
             "Village Church",
             "This small stone church has seen better days. Cracked pews face a simple "
-            "altar beneath what remains of stained glass. An iron grate is set into "
-            "the floor and a donation box sits by the entrance. Despite the decay, "
-            "something here feels safer. The square lies south, graveyard west.",
+            "altar beneath what remains of stained glass. Despite the decay, something "
+            "here feels safer. The square lies south, graveyard west.",
         )
 
         undercroft = Room(
             "undercroft",
             "Church Undercroft",
-            "A cramped stone chamber beneath the church. Holy symbols scratched into "
-            "the walls, some in what looks like dried blood. A torn prayer book lies "
-            "on the floor near an old reliquary with cracked glass. Scratching sounds "
-            "echo from somewhere in the shadows.",
+            "Holy symbols are scratched into the walls of this cramped stone chamber, "
+            "some in what looks like dried blood. Scratching sounds echo from somewhere "
+            "in the shadows. Stone steps lead back up to the church.",
             is_dark=True,
         )
 
         shop = Room(
             "shop",
             "Bildrath's Mercantile",
-            "A cramped general store crammed with overpriced goods. Dusty shelves hold "
-            "basic supplies - rope, torches, rations. A locked display case contains "
-            "more valuable items. A sign reads 'NO CREDIT'. The square lies northeast.",
+            "Dusty shelves hold overpriced goods in this cramped general store. A sign "
+            "reads 'NO CREDIT'. The square lies northeast.",
         )
 
         manor = Room(
             "manor",
             "Burgomaster's Manor",
             "Once grand, this manor now shows signs of siege. Claw marks score the "
-            "wooden door and dust covers everything. A coat rack stands by the door "
-            "and a silver mirror lies on a side table. The blocked staircase leads "
-            "nowhere. A study lies north, the square east.",
+            "wooden door and dust covers everything. A blocked staircase leads nowhere. "
+            "A study lies north, the square east.",
         )
 
         study = Room(
             "study",
             "Manor Study",
             "Books line the walls, many dealing with the history of Barovia. A desk "
-            "sits by a shuttered window, covered in papers and a half-finished letter. "
-            "An ornate silver opener gleams beside an old globe. A portrait of a young "
+            "sits by a shuttered window, an old globe beside it. A portrait of a young "
             "woman named Ireena watches from the wall. The manor's main hall lies south.",
         )
 
@@ -124,10 +115,10 @@ class Level1Village(LevelGenerator):
         crypt = Room(
             "crypt",
             "Family Crypt",
-            "Stone sarcophagi line the walls. Names are carved into the stone - "
-            "Kolyanovich, Dilisnya, Wachter. A stone coffin dominates the center "
-            "amid wilted flowers. Claw marks score the inside of the crypt door. "
-            "The graveyard lies through the iron gate.",
+            "Stone sarcophagi line the walls with names carved into the stone - "
+            "Kolyanovich, Dilisnya, Wachter. Wilted flowers lie scattered on the floor. "
+            "Claw marks score the inside of the crypt door. The graveyard lies through "
+            "the iron gate.",
             is_dark=True,
         )
 
@@ -147,10 +138,9 @@ class Level1Village(LevelGenerator):
         gatehouse = Room(
             "gatehouse",
             "Village Gatehouse",
-            "A crumbling stone gatehouse marks the village's southern boundary. Beyond "
-            "the rusted iron gates, an impenetrable mist blocks the road. A stone bench "
-            "and ancient torch bracket stand by the gate. Strange symbols score the "
-            "gateposts. The road leads north.",
+            "This crumbling stone gatehouse marks the village's southern boundary. Beyond "
+            "the rusted iron gates, an impenetrable mist blocks the road. Strange symbols "
+            "score the gateposts. The road leads north.",
             is_outdoor=True,
         )
 
@@ -166,8 +156,8 @@ class Level1Village(LevelGenerator):
             "rooftop",
             "Crooked Rooftop",
             "From this sagging rooftop you can see most of the village. A broken "
-            "weathervane spins slowly. Someone left a crude telescope here aimed at "
-            "the distant castle. The ladder leads down to the alley.",
+            "weathervane spins slowly atop the chimney. The ladder leads down to "
+            "the alley.",
         )
 
         cottage1 = Room(
@@ -181,35 +171,34 @@ class Level1Village(LevelGenerator):
         cottage2 = Room(
             "cottage2",
             "Herbalist's Cottage",
-            "Bundles of dried herbs hang from the ceiling. A mortar and pestle sits "
-            "on a workbench beside a leather journal of remedies. A small cauldron "
-            "hangs over a cold fire pit. The village square lies north.",
+            "Bundles of dried herbs hang from the ceiling, filling the air with a "
+            "pungent aroma. A workbench dominates one wall and a small cauldron hangs "
+            "over a cold fire pit. The village square lies north.",
         )
 
         well = Room(
             "well",
             "Village Well",
             "An old stone well stands in a small courtyard. The water below reflects "
-            "nothing - not even the grey sky. Coins glint at the bottom, wishes never "
-            "granted. Paths lead to the church east and the manor south.",
+            "nothing — not even the grey sky. Paths lead to the church east and the "
+            "manor south.",
             is_outdoor=True,
         )
 
         garden = Room(
             "garden",
             "Overgrown Garden",
-            "What was once a garden is now choked with weeds. A rusty fork is stuck "
-            "in the earth and a scarecrow watches with button eyes, stuffing leaking "
-            "from its chest. The manor lies south, a tool shed west.",
+            "What was once a garden is now choked with weeds. A scarecrow watches "
+            "with button eyes, stuffing leaking from its chest. The manor lies south, "
+            "a tool shed west.",
             is_outdoor=True,
         )
 
         shed = Room(
             "shed",
             "Tool Shed",
-            "A rickety shed filled with rusted implements and spiderwebs. An axe "
-            "leans against the wall, its blade still sharp. Coils of rope hang from "
-            "hooks. The garden is visible through the doorway.",
+            "Rusted implements and spiderwebs fill this rickety shed. Coils of rope "
+            "hang from hooks on the wall. The garden is visible through the doorway.",
         )
 
         stable = Room(
@@ -228,16 +217,15 @@ class Level1Village(LevelGenerator):
             "smithy",
             "Cold Smithy",
             "The forge has been cold for months. Tools lie scattered as if the smith "
-            "left mid-work and a half-finished horseshoe sits on the anvil. Soot covers "
-            "everything. The village square lies north.",
+            "left mid-work. Soot covers everything. The village square lies north.",
         )
 
         fountain = Room(
             "fountain",
             "Broken Fountain",
             "A cracked fountain stands dry, its central statue defaced beyond "
-            "recognition. Dead leaves gather in the basin beside a green copper "
-            "coin. The inscription has been scratched out. The church lies northeast.",
+            "recognition. Dead leaves gather in the basin and the inscription has "
+            "been scratched out. The church lies northeast.",
             is_outdoor=True,
         )
 
@@ -264,9 +252,9 @@ class Level1Village(LevelGenerator):
         cellar_tunnel = Room(
             "cellar_tunnel",
             "Secret Tunnel",
-            "A cramped earthen tunnel dug in secret over many years. Tool marks score "
-            "the walls and roots dangle from the ceiling. A lantern stub lies discarded "
-            "in the dirt. The tunnel leads back to the cellar.",
+            "Tool marks score the walls of this cramped earthen tunnel, dug in secret "
+            "over many years. Roots dangle from the ceiling. The tunnel leads back to "
+            "the cellar.",
             is_dark=True,
         )
 
@@ -274,9 +262,8 @@ class Level1Village(LevelGenerator):
             "watchtower",
             "Crumbling Watchtower",
             "This small watchtower once guarded the village's southern approach. The "
-            "roof has collapsed and stairs are treacherous. A guard's logbook lies "
-            "open, pages blank for years. A brass spyglass rests on the windowsill. "
-            "Stairs lead down to the gatehouse.",
+            "roof has collapsed and the stairs are treacherous. Stairs lead down to "
+            "the gatehouse.",
         )
 
         # =====================================================================
@@ -544,6 +531,30 @@ class Level1Village(LevelGenerator):
             message="You lift the edge of the rug, revealing a trapdoor hidden beneath!",
             add_exit=("down", "cellar"),
         )
+
+        # rug back into place
+        rug.add_interaction(
+            verb="move",
+            from_state="moved",
+            target_state="flat",
+            message="You move the rug back into place, hiding the trapdoor beneath.",
+            remove_exit="down",
+        )
+        rug.add_interaction(
+            verb="pull",
+            from_state="moved",
+            target_state="flat",
+            message="You pull the rug back into place, hiding the trapdoor beneath.",
+            remove_exit="down",
+        )
+        rug.add_interaction(
+            verb="lower",
+            from_state="moved",
+            target_state="flat",
+            message="You lower the edge of the rug, hiding the trapdoor beneath.",
+            remove_exit="down",
+        )
+
         rug.add_interaction(
             verb="examine",
             message="A worn rug with faded patterns. The edges are curled, and there seems to be "
@@ -575,22 +586,35 @@ class Level1Village(LevelGenerator):
             message="You swing the painting aside, revealing a small wall safe hidden behind it!",
         )
         painting.add_interaction(
+            verb="move",
+            from_state="moved",
+            target_state="hanging",
+            message="You swing the painting back into place, hiding the wall safe.",
+        )
+        painting.add_interaction(
             verb="examine",
             message="A faded oil painting depicting nobles on a hunt. It hangs slightly crooked, "
             "as if it's been moved recently. The frame seems loose.",
         )
         self._rooms["tavern"].add_item(painting)
 
-        # Wall safe
-        safe = StatefulItem(
+        # Wall safe (container that can hold items)
+        safe = ContainerItem(
             name="safe",
             id="tavern_safe",
-            description="A small iron safe set into the wall.",
+            description="A small iron safe set into the wall",
             state="locked",
             takeable=False,
-            synonyms=["wall safe", "iron safe", "strongbox"],
+            capacity_limit=5,
+            capacity_weight=20,
         )
+        safe.synonyms = ["wall safe", "iron safe", "strongbox"]
         safe.set_room_id("tavern")
+
+        # Clear default open/close interactions (they're for closed/open states)
+        safe.interactions = {}
+
+        # Add custom interactions for locked/open states
         safe.add_state_description(
             "locked", "A small iron safe is set into the wall. It's locked tight."
         )
@@ -602,7 +626,7 @@ class Level1Village(LevelGenerator):
             verb="open",
             from_state="locked",
             target_state="open",
-            message="The safe clicks open, revealing a small pouch of coins and an old key!",
+            message="The safe clicks open!",
             required_instrument="opener",
         )
         safe.add_interaction(
@@ -611,46 +635,42 @@ class Level1Village(LevelGenerator):
             message="The safe is locked tight.",
         )
         safe.add_interaction(
+            verb="close",
+            from_state="open",
+            target_state="locked",
+            message="You close the safe and it locks automatically.",
+        )
+        safe.add_interaction(
             verb="examine",
             message="A sturdy iron safe. The lock mechanism looks simple enough - something "
             "thin and pointed might do the trick.",
         )
 
-        # Safe contents as hidden items
-        def safe_opened(game_state: Any) -> bool:
-            room = game_state.get_room("tavern")
-            if not room:
-                return False
-            # Check hidden_items directly to avoid recursion
-            if "tavern_safe" in room.hidden_items:
-                item, _ = room.hidden_items["tavern_safe"]
-                return getattr(item, "state", None) == "open"
-            # Also check regular items
-            for item in room.items:
-                if getattr(item, "id", None) == "tavern_safe":
-                    return getattr(item, "state", None) == "open"
-            return False
-
-        safe_coins = ContainerItem(
+        # Add contents directly to the safe container
+        safe_pouch = ContainerItem(
             name="pouch",
-            id="safe_coins",
-            description="A small leather pouch containing a handful of gold coins.",
+            id="safe_pouch",
+            description="A small leather pouch lies here",
             weight=1,
-            value=50,
+            value=0,
             takeable=True,
         )
-        self._rooms["tavern"].add_hidden_item(safe_coins, safe_opened)
 
         cellar_key = Item(
             name="key",
             id="cellar_key",
-            description="A tarnished brass key with teeth worn smooth by age.",
+            description="A tarnished brass key lies here, its teeth worn smooth by age.",
             weight=0,
             value=5,
             takeable=True,
             synonyms=["old key", "brass key", "tarnished key", "cellar key"],
         )
-        self._rooms["tavern"].add_hidden_item(cellar_key, safe_opened)
+
+        # Put items inside the safe
+        safe.items.append(cellar_key)
+        safe.items.append(safe_pouch)
+        safe.update_weight()
+        safe.update_description()
 
         # Only add safe as hidden until painting moved
         def painting_moved(game_state: Any) -> bool:
@@ -668,33 +688,36 @@ class Level1Village(LevelGenerator):
         # CELLAR - Chest with mist token, crate hiding tunnel
         # =====================================================================
 
-        cellar_chest = StatefulItem(
+        cellar_chest = ContainerItem(
             name="chest",
             id="cellar_chest",
-            description="A dusty wooden chest bound with iron bands.",
+            description="A dusty wooden chest bound with iron bands",
             state="locked",
             takeable=False,
-            synonyms=["wooden chest", "locked chest", "dusty chest"],
+            capacity_limit=10,
+            capacity_weight=50,
         )
+        cellar_chest.synonyms = ["wooden chest", "locked chest", "dusty chest"]
         cellar_chest.set_room_id("cellar")
+
+        # Clear default open/close interactions
+        cellar_chest.interactions = {}
+
+        # Three states: locked, closed (unlocked), open
         cellar_chest.add_state_description(
             "locked", "A dusty wooden chest sits in the corner, locked tight."
         )
+        cellar_chest.add_state_description(
+            "closed", "A dusty wooden chest sits in the corner, closed but unlocked."
+        )
         cellar_chest.add_state_description("open", "The wooden chest stands open.")
 
+        # Opening interactions
         cellar_chest.add_interaction(
             verb="open",
             from_state="locked",
             target_state="open",
-            message="The old key turns in the lock with a satisfying click. Inside, you find "
-            "a strange silver token and some old documents!",
-            required_instrument="cellar_key",
-        )
-        cellar_chest.add_interaction(
-            verb="unlock",
-            from_state="locked",
-            target_state="open",
-            message="The key fits perfectly! The chest creaks open, revealing its hidden contents!",
+            message="The old key turns in the lock with a satisfying click. The chest creaks open!",
             required_instrument="cellar_key",
         )
         cellar_chest.add_interaction(
@@ -703,47 +726,132 @@ class Level1Village(LevelGenerator):
             message="The chest is locked. You need a key.",
         )
         cellar_chest.add_interaction(
+            verb="open",
+            from_state="closed",
+            target_state="open",
+            message="You lift the lid and the chest creaks open.",
+        )
+
+        # Unlocking interactions
+        cellar_chest.add_interaction(
+            verb="unlock",
+            from_state="locked",
+            target_state="closed",
+            message="The key fits perfectly! You hear the lock click open.",
+            required_instrument="cellar_key",
+        )
+        cellar_chest.add_interaction(
+            verb="unlock",
+            from_state="locked",
+            message="You need a key to unlock this chest.",
+        )
+        cellar_chest.add_interaction(
+            verb="unlock",
+            from_state="closed",
+            message="The chest is already unlocked.",
+        )
+        cellar_chest.add_interaction(
+            verb="unlock",
+            from_state="open",
+            message="The chest is already open.",
+        )
+
+        # Closing interactions
+        cellar_chest.add_interaction(
+            verb="close",
+            from_state="open",
+            target_state="closed",
+            message="You close the chest lid. It remains unlocked.",
+        )
+        cellar_chest.add_interaction(
+            verb="close",
+            from_state="open",
+            target_state="locked",
+            message="You close the chest and lock it with the key.",
+            required_instrument="cellar_key",
+        )
+        cellar_chest.add_interaction(
+            verb="close",
+            from_state="closed",
+            message="The chest is already closed.",
+        )
+        cellar_chest.add_interaction(
+            verb="close",
+            from_state="locked",
+            message="The chest is already closed and locked.",
+        )
+
+        # Locking interactions
+        cellar_chest.add_interaction(
+            verb="lock",
+            from_state="closed",
+            target_state="locked",
+            message="You turn the key and the chest locks with a click.",
+            required_instrument="cellar_key",
+        )
+        cellar_chest.add_interaction(
+            verb="lock",
+            from_state="closed",
+            message="You need a key to lock this chest.",
+        )
+        cellar_chest.add_interaction(
+            verb="lock",
+            from_state="open",
+            message="You need to close the chest before you can lock it.",
+        )
+        cellar_chest.add_interaction(
+            verb="lock",
+            from_state="locked",
+            message="The chest is already locked.",
+        )
+
+        # Other interactions
+        cellar_chest.add_interaction(
             verb="break",
             message="The iron bands are too sturdy. You'd need a key to open this properly.",
         )
-        self._rooms["cellar"].add_item(cellar_chest)
+        cellar_chest.add_interaction(
+            verb="examine",
+            message="A sturdy wooden chest bound with iron bands. It has a keyhole on the front.",
+        )
 
-        # Mist token - hidden until chest is opened
-        def chest_opened(game_state: Any) -> bool:
-            room = game_state.get_room("cellar")
-            if not room:
-                return False
-            for item in room.items:
-                if getattr(item, "id", None) == "cellar_chest":
-                    return getattr(item, "state", None) == "open"
-            return False
-
+        # Add contents directly to the chest
         mist_token = Item(
             name="token",
             id="mist_token",
-            description="A silver token inscribed with swirling runes. It pulses with faint "
-            "otherworldly light. The mists seem to recoil from it.",
+            description="A silver token inscribed with swirling runes that pulse "
+            "with faint otherworldly light.",
             weight=0,
             value=100,
             takeable=True,
-            synonyms=["mist token", "silver token", "rune token"],
         )
-        self._rooms["cellar"].add_hidden_item(mist_token, chest_opened)
 
         old_documents = StatefulItem(
             name="documents",
             id="old_documents",
-            description="Yellowed documents lie here, worn by time.",
+            description="Yellow documents are deposited here, worn by time.",
             weight=0,
             value=10,
             takeable=True,
-            synonyms=["old documents", "papers", "yellowed papers"],
+            synonyms=["papers"],
         )
-        self._rooms["cellar"].add_hidden_item(old_documents, chest_opened)
+
+        # Put items inside the chest
+        cellar_chest.items.append(mist_token)
+        cellar_chest.items.append(old_documents)
+        cellar_chest.update_weight()
+        cellar_chest.update_description()
+
+        self._rooms["cellar"].add_item(cellar_chest)
 
         old_documents.add_interaction(
             verb="read",
-            message="One passage reads: 'The token grants passage, but the Morning Lord's blessing may also part the mists.'",
+            message="The yellowed pages describe the curse upon Barovia. One passage reads:\n"
+            "'The mists that imprison us are of Strahd's making, yet even his darkness "
+            "cannot stand against the Morning Lord's light. To escape, one must possess "
+            "BOTH the silver token of passage AND the blessing of the faithful.'\n"
+            "A marginal note in different handwriting adds: 'Hold the token before the mist "
+            "and speak His true name. Not the Morning Lord - his REAL name.'",
         )
 
         # Crate hiding tunnel
@@ -775,6 +883,21 @@ class Level1Village(LevelGenerator):
             from_state="blocking",
             target_state="moved",
             message="With effort, you shove the crate away from the wall. A secret tunnel lies behind it!",
+            add_exit=("north", "cellar_tunnel"),
+        )
+
+        crate.add_interaction(
+            verb="move",
+            from_state="moved",
+            target_state="blocking",
+            message="You push the heavy crate back into place, blocking the tunnel entrance.",
+            add_exit=("north", "cellar_tunnel"),
+        )
+        crate.add_interaction(
+            verb="push",
+            from_state="moved",
+            target_state="blocking",
+            message="With effort, you shove the crate back into place, blocking the tunnel entrance.",
             add_exit=("north", "cellar_tunnel"),
         )
         crate.add_interaction(
@@ -880,7 +1003,7 @@ class Level1Village(LevelGenerator):
         candle = Item(
             name="candle",
             id="church_candle",
-            description="A tallow candle that provides dim but steady light.",
+            description="A tallow candle lies here, ready to provide dim but steady light.",
             weight=0,
             value=2,
             takeable=True,
@@ -892,68 +1015,73 @@ class Level1Village(LevelGenerator):
         # UNDERCROFT - Holy bones, prayer book
         # =====================================================================
 
-        reliquary = StatefulItem(
-            name="reliquary",
-            id="undercroft_reliquary",
-            description="An old wooden reliquary with cracked glass.",
+        phylactery = StatefulItem(
+            name="phylactery",
+            id="undercroft_phylactery",
+            description="An old wooden phylactery is here.",
             state="closed",
             takeable=False,
-            synonyms=["box", "wooden reliquary", "glass case"],
+            synonyms=["box"],
         )
-        reliquary.set_room_id("undercroft")
-        reliquary.add_state_description(
-            "closed", "An old reliquary stands against the wall, its glass cracked."
+        phylactery.set_room_id("undercroft")
+        phylactery.add_state_description(
+            "closed", "An old phylactery stands against the wall, its glass cracked."
         )
-        reliquary.add_state_description(
+        phylactery.add_state_description(
             "open",
-            "The reliquary stands open, revealing sacred bones wrapped in velvet.",
+            "The phylactery stands open.",
         )
 
-        reliquary.add_interaction(
+        phylactery.add_interaction(
             verb="open",
             from_state="closed",
             target_state="open",
-            message="You carefully open the cracked reliquary. Inside, wrapped in faded velvet, "
+            message="You carefully open the cracked phylactery. Inside, wrapped in faded velvet, "
             "are the sacred bones of St. Andral! They radiate gentle warmth.",
         )
-        reliquary.add_interaction(
+        phylactery.add_interaction(
             verb="examine",
-            message="A wooden reliquary for holding sacred relics. Through the cracked glass, "
+            message="A wooden phylactery for holding sacred relics. Through the cracked glass, "
             "you can see something wrapped in velvet within.",
         )
-        self._rooms["undercroft"].add_item(reliquary)
+        self._rooms["undercroft"].add_item(phylactery)
 
-        # Bones - hidden until reliquary opened
-        def reliquary_opened(game_state: Any) -> bool:
+        # Bones - hidden until phylactery opened
+        def phylactery_opened(game_state: Any) -> bool:
             room = game_state.get_room("undercroft")
             if not room:
                 return False
             for item in room.items:
-                if getattr(item, "id", None) == "undercroft_reliquary":
+                if getattr(item, "id", None) == "undercroft_phylactery":
                     return getattr(item, "state", None) == "open"
             return False
 
         holy_bones = Item(
             name="bones",
             id="holy_bones",
-            description="The sacred bones of St. Andral, wrapped in faded velvet. They radiate "
-            "warmth and seem to glow faintly in the darkness.",
+            description="The sacred bones of St. Andral lie here, wrapped in faded velvet and "
+            "radiating a faint warmth.",
             weight=2,
             value=200,
             takeable=True,
             synonyms=["holy bones", "sacred bones", "st andral bones", "relics"],
         )
-        self._rooms["undercroft"].add_hidden_item(holy_bones, reliquary_opened)
+        self._rooms["undercroft"].add_hidden_item(holy_bones, phylactery_opened)
 
-        prayerbook = Item(
+        prayerbook = StatefulItem(
             name="prayerbook",
             id="prayer_book",
-            description="A torn prayer book. One passage is circled: 'The Morning Lord's blessing "
-            "grants safe passage through the mists of evil.'",
+            description="A torn prayer book lies here, its pages yellowed and worn.",
+            state="default",
             weight=1,
             value=5,
             takeable=True,
             synonyms=["prayer book", "book", "torn book"],
+        )
+        prayerbook.add_interaction(
+            verb="read",
+            message="One passage is circled in faded ink: 'The Morning Lord's blessing "
+            "grants safe passage through the mists of evil.'",
         )
         self._rooms["undercroft"].add_item(prayerbook)
 
@@ -964,18 +1092,17 @@ class Level1Village(LevelGenerator):
         opener = Item(
             name="opener",
             id="opener",
-            description="An ornate silver opener with a wickedly sharp point.",
+            description="An ornate silver letter opener lies here, its point wickedly sharp.",
             weight=0,
             value=15,
             takeable=True,
-            synonyms=["silver opener", "knife"],
         )
         self._rooms["study"].add_item(opener)
 
         unfinished_letter = StatefulItem(
             name="letter",
             id="unfinished_letter",
-            description="A half-finished letter lies here.",
+            description="A half-finished letter lies here, the ink faded with age.",
             state="default",
             weight=0,
             value=10,
@@ -1018,7 +1145,7 @@ class Level1Village(LevelGenerator):
         mirror = StatefulItem(
             name="mirror",
             id="manor_mirror",
-            description="A tarnished silver hand mirror lying on the side table.",
+            description="A tarnished silver hand mirror lies here, its surface clouded with age.",
             state="face_down",
             takeable=True,
             weight=1,
@@ -1038,20 +1165,52 @@ class Level1Village(LevelGenerator):
         )
         self._rooms["manor"].add_item(mirror)
 
-        old_coat = Item(
-            name="coat",
-            id="old_coat",
-            description="A dusty old coat hanging from the rack. It might provide some warmth.",
-            weight=2,
-            value=5,
-            takeable=True,
-            synonyms=["old coat", "dusty coat", "jacket"],
-        )
-        self._rooms["manor"].add_item(old_coat)
-
         # =====================================================================
         # GATEHOUSE - Mist barrier (level transition puzzle)
+        # Requires BOTH priest's blessing AND mist token + speaking "Lathander"
         # =====================================================================
+
+        # Helper function to check if player has the blessing
+        def has_blessing(player: Any, game_state: Any) -> bool:
+            """Check if player has received the Morning Lord's blessing."""
+            # Find player's session
+            try:
+                from globals import online_sessions
+
+                for sid, session in online_sessions.items():
+                    if session.get("player") == player:
+                        blessings = session.get("blessings", set())
+                        return "morning_lord" in blessings
+            except ImportError:
+                pass
+            return False
+
+        def has_no_blessing(player: Any, game_state: Any) -> bool:
+            """Check if player does NOT have the blessing."""
+            return not has_blessing(player, game_state)
+
+        def has_token(player: Any, game_state: Any) -> bool:
+            """Check if player is holding the mist token."""
+            for item in player.inventory:
+                if getattr(item, "id", None) == "mist_token":
+                    return True
+            return False
+
+        def has_blessing_and_token(player: Any, game_state: Any) -> bool:
+            """Check if player has BOTH blessing and token."""
+            return has_blessing(player, game_state) and has_token(player, game_state)
+
+        def has_token_but_no_blessing(player: Any, game_state: Any) -> bool:
+            """Check if player has token but NOT blessing."""
+            return has_token(player, game_state) and not has_blessing(
+                player, game_state
+            )
+
+        def has_blessing_but_no_token(player: Any, game_state: Any) -> bool:
+            """Check if player has blessing but NOT token."""
+            return has_blessing(player, game_state) and not has_token(
+                player, game_state
+            )
 
         mist_barrier = StatefulItem(
             name="mist",
@@ -1065,45 +1224,41 @@ class Level1Village(LevelGenerator):
         mist_barrier.add_state_description(
             "blocking",
             "An impenetrable wall of mist blocks the road south. Tendrils reach toward you, "
-            "then recoil. There must be a way through...",
+            "then recoil as if sensing something. There must be a way through...",
         )
         mist_barrier.add_state_description(
             "parted",
             "The mist has parted, revealing the road south into the Svalich Woods.",
         )
 
-        # Mist token allows passage
-        mist_barrier.add_interaction(
-            verb="enter",
-            from_state="blocking",
-            target_state="parted",
-            message="You hold up the mist token. It flares with silver light! The mists shriek "
-            "and part before you, revealing the road south. The way is now open!",
-            required_instrument="mist_token",
-            add_exit=("south", "road_south"),  # Connects to Level 2
-        )
+        # === Using token directly (doesn't work - need to speak the word) ===
         mist_barrier.add_interaction(
             verb="use",
             from_state="blocking",
-            target_state="parted",
-            message="The token blazes with light as you approach the mist! The dark tendrils "
-            "recoil and part, revealing the road beyond!",
+            message="The token flickers as you hold it toward the mist, but nothing happens. "
+            "Perhaps speaking a word of power while holding it would help... something "
+            "related to the god of light?",
             required_instrument="mist_token",
-            add_exit=("south", "road_south"),
         )
+
+        # === Entering without preparation ===
         mist_barrier.add_interaction(
             verb="enter",
             from_state="blocking",
             message="You step into the mist. Cold fingers grasp at you, turning you around. "
             "No matter which way you push, you end up back at the gatehouse. "
-            "You need something to pierce this barrier.",
+            "This darkness requires both divine blessing and an artifact of passage.",
         )
+
         mist_barrier.add_interaction(
             verb="examine",
-            message="The mist is unnaturally thick and dark. It almost seems alive, watching you. "
-            "The wards carved into the gateposts might once have kept it at bay, but they've "
-            "faded with time. You'll need something special to pass through.",
+            message="The mist is unnaturally thick and dark - Strahd's curse made manifest. "
+            "It almost seems alive, watching you hungrily.\n"
+            "Faded runes on the gateposts read: 'By the Morning Lord's name, the darkness "
+            "parts. Token and blessing together light the way.'\n"
+            "You'll need the priest's blessing AND a token of passage to escape Barovia.",
         )
+
         self._rooms["gatehouse"].add_item(mist_barrier)
 
         # Torch bracket
@@ -1132,6 +1287,100 @@ class Level1Village(LevelGenerator):
         )
         self._rooms["gatehouse"].add_item(torch_bracket)
 
+        # === SPEECH TRIGGERS FOR MIST BARRIER ===
+        # Speaking "Lathander" with both blessing and token parts the mists
+
+        def mists_already_parted(player: Any, game_state: Any) -> bool:
+            """Check if the mists have already been parted."""
+            gatehouse_room = game_state.get_room("gatehouse")
+            if gatehouse_room:
+                for item in gatehouse_room.items:
+                    if hasattr(item, "id") and item.id == "mist_barrier":
+                        return getattr(item, "state", None) == "parted"
+            return False
+
+        async def part_the_mists(
+            player: Any,
+            game_state: Any,
+            player_manager: Any,
+            online_sessions: Any,
+            sio: Any,
+            utils: Any,
+        ) -> None:
+            """Part the mists and open the way south."""
+            # Open the exit
+            gatehouse_room = game_state.get_room("gatehouse")
+            if gatehouse_room and "south" not in gatehouse_room.exits:
+                gatehouse_room.exits["south"] = "road_south"
+
+            # Update mist barrier state
+            for item in gatehouse_room.items:
+                if hasattr(item, "id") and item.id == "mist_barrier":
+                    item.state = "parted"
+                    if hasattr(item, "state_descriptions"):
+                        item.description = item.state_descriptions.get(
+                            "parted", item.description
+                        )
+                    break
+
+            # Award points (add_points handles notification automatically)
+            player.add_points(200, sio, online_sessions)
+            player_manager.save_players()
+
+        # Already parted: Check this first
+        self._rooms["gatehouse"].add_speech_trigger(
+            keyword="lathander",
+            message="The Morning Lord's name echoes through the parted mists.\n"
+            "The way south already lies open before you.",
+            conditional_fn=mists_already_parted,
+            one_time=False,
+        )
+
+        # Success: Has both blessing and token
+        self._rooms["gatehouse"].add_speech_trigger(
+            keyword="lathander",
+            message="You raise the mist token high and cry out: 'LATHANDER!'\n"
+            "The token blazes with golden light! The Morning Lord's blessing flows "
+            "through you, channeling divine power into the artifact!\n"
+            "The mists SHRIEK as they're torn asunder, parting before you like a "
+            "curtain of shadow fleeing the dawn!\n"
+            "The way south to the Svalich Woods lies open!",
+            effect_fn=part_the_mists,
+            conditional_fn=has_blessing_and_token,
+            one_time=True,
+        )
+
+        # Partial: Has token but no blessing
+        self._rooms["gatehouse"].add_speech_trigger(
+            keyword="lathander",
+            message="You hold up the token and speak the sacred name: 'Lathander!'\n"
+            "The token flickers weakly, but the mists remain unmoved.\n"
+            "You feel the word should have power, but something is missing... "
+            "Perhaps you need the Morning Lord's blessing to truly invoke his name?",
+            conditional_fn=has_token_but_no_blessing,
+            one_time=False,
+        )
+
+        # Partial: Has blessing but no token
+        self._rooms["gatehouse"].add_speech_trigger(
+            keyword="lathander",
+            message="As you speak the Morning Lord's true name, warmth fills your heart - "
+            "the priest's blessing responds! But the divine power has no focus...\n"
+            "You need the mist token to channel the light against this darkness.",
+            conditional_fn=has_blessing_but_no_token,
+            one_time=False,
+        )
+
+        # Failure: Has neither
+        self._rooms["gatehouse"].add_speech_trigger(
+            keyword="lathander",
+            message="You speak the name 'Lathander' but your words are hollow, "
+            "swallowed by the hungry mist.\n"
+            "Without the priest's blessing and the token of passage, "
+            "the sacred name holds no power here.",
+            one_time=False,
+        )
+
         # =====================================================================
         # SQUARE - Notice board, bucket, fountain
         # =====================================================================
@@ -1147,9 +1396,9 @@ class Level1Village(LevelGenerator):
         notice_board.set_room_id("square")
         notice_board.add_interaction(
             verb="read",
-            message="Most notices are illegible, but one stands out:\n\n"
+            message="Most notices are illegible, but one stands out:\n"
             "'WANTED: News of the Holy Bones of St. Andral. The church offers blessing "
-            "to any who return them to Father Donavich.'\n\n"
+            "to any who return them to Father Donavich.'\n"
             "Another reads: 'BEWARE THE MISTS - None who enter return.'",
         )
         notice_board.add_interaction(
@@ -1159,44 +1408,76 @@ class Level1Village(LevelGenerator):
         )
         self._rooms["square"].add_item(notice_board)
 
-        rusty_bucket = Item(
-            name="bucket",
-            id="rusty_bucket",
-            description="A rusty iron bucket with a hole in the bottom.",
-            weight=2,
-            value=1,
-            takeable=True,
-            synonyms=["rusty bucket", "iron bucket"],
-        )
-        self._rooms["square"].add_item(rusty_bucket)
-
         # =====================================================================
-        # CRYPT - Coffin container, scratch marks
+        # CRYPT - Coffin with skeleton guardian
         # =====================================================================
 
-        crypt_coffin = ContainerItem(
+        # Track whether skeleton has been spawned
+        coffin_opened_once = {"spawned": False}
+
+        def spawn_skeleton_guardian(player: Any, game_state: Any) -> Optional[str]:
+            """Spawn a skeleton when the coffin is opened for the first time."""
+            if coffin_opened_once["spawned"]:
+                return None
+
+            coffin_opened_once["spawned"] = True
+
+            # Get mob_manager from utils module (runtime attached)
+            import utils as utils_module
+
+            mob_manager = getattr(utils_module, "mob_manager", None)
+            if not mob_manager:
+                return None
+
+            # Spawn skeleton in the crypt
+            mob_manager.spawn_mob("skeleton", "crypt", game_state)
+
+            return (
+                "As the lid grinds open, the skeletal remains suddenly lurch upright! "
+                "Empty eye sockets blaze with unholy light as it rises from its resting "
+                "place, ancient bones rattling with malevolent purpose!"
+            )
+
+        crypt_coffin = StatefulItem(
             name="coffin",
             id="crypt_coffin",
             description="A stone coffin with a heavy lid.",
-            weight=500,
-            value=0,
-            capacity_limit=5,
-            capacity_weight=50,
+            state="closed",
             takeable=False,
+            synonyms=["stone coffin", "sarcophagus"],
         )
-        crypt_coffin.synonyms = ["stone coffin", "sarcophagus"]
+        crypt_coffin.set_room_id("crypt")
+        crypt_coffin.add_state_description(
+            "closed",
+            "A stone coffin dominates the chamber, its heavy lid firmly in place.",
+        )
+        crypt_coffin.add_state_description(
+            "open",
+            "The stone coffin stands open, its lid pushed aside.",
+        )
         crypt_coffin.add_interaction(
             verb="open",
             target_state="open",
-            message="You push the heavy stone lid aside with a grinding sound. Inside lies "
-            "the desiccated remains of a noble, clutching a silver pendant.",
+            message="You push the heavy stone lid aside with a grinding sound.",
             from_state="closed",
+            effect_fn=spawn_skeleton_guardian,
         )
         crypt_coffin.add_interaction(
             verb="close",
             target_state="closed",
             message="You slide the heavy lid back into place.",
             from_state="open",
+        )
+        crypt_coffin.add_interaction(
+            verb="examine",
+            from_state="closed",
+            message="The coffin is carved from a single block of stone. Strange symbols "
+            "are etched around its edges. The lid looks heavy but movable.",
+        )
+        crypt_coffin.add_interaction(
+            verb="examine",
+            from_state="open",
+            message="The coffin is empty now, save for dust and ancient cobwebs.",
         )
         self._rooms["crypt"].add_item(crypt_coffin)
 
@@ -1207,7 +1488,7 @@ class Level1Village(LevelGenerator):
         angel_statue = StatefulItem(
             name="statue",
             id="graveyard_statue",
-            description="A weathered angel statue, one wing broken, watching over the graves.",
+            description="A weathered angel statue with one wing broken is watching over the graves.",
             state="default",
             takeable=False,
             synonyms=["angel statue", "angel", "stone angel", "weathered statue"],
@@ -1258,20 +1539,31 @@ class Level1Village(LevelGenerator):
             """Check if Bildrath is dead (not in shop)."""
             return not bildrath_is_alive(player, game_state)
 
-        display_case = StatefulItem(
+        display_case = ContainerItem(
             name="case",
             id="shop_case",
-            description="A locked display case containing valuable items.",
+            description="A locked display case containing valuable items",
             state="locked",
             takeable=False,
-            synonyms=["display case", "glass case", "locked case"],
+            capacity_limit=10,
+            capacity_weight=30,
         )
+        display_case.synonyms = ["display case", "glass case", "locked case"]
         display_case.set_room_id("shop")
+
+        # Clear default open/close interactions
+        display_case.interactions = {}
+
+        # Three states: locked, closed (unlocked), open
         display_case.add_state_description(
-            "locked", "A locked display case contains more valuable items."
+            "locked", "A locked display case contains valuable items."
+        )
+        display_case.add_state_description(
+            "closed", "The display case is closed but unlocked."
         )
         display_case.add_state_description("open", "The display case stands open.")
 
+        # === OPENING INTERACTIONS ===
         # If Bildrath is alive, he blocks opening
         display_case.add_interaction(
             verb="open",
@@ -1286,7 +1578,7 @@ class Level1Village(LevelGenerator):
             from_state="locked",
             target_state="open",
             message="With Bildrath out of the way, you use the key to unlock the display case. "
-            "The glass door swings open, revealing the valuable merchandise!",
+            "The glass door swings open!",
             required_instrument="cellar_key",
             conditional_fn=bildrath_is_dead,
         )
@@ -1297,12 +1589,20 @@ class Level1Village(LevelGenerator):
             message="The display case is locked. You'll need a key to open it.",
             conditional_fn=bildrath_is_dead,
         )
+        # Open from closed (unlocked) state
+        display_case.add_interaction(
+            verb="open",
+            from_state="closed",
+            target_state="open",
+            message="You open the display case.",
+        )
+
+        # === UNLOCKING INTERACTIONS ===
         display_case.add_interaction(
             verb="unlock",
             from_state="locked",
-            target_state="open",
-            message="With Bildrath out of the way, you use the key to unlock the display case. "
-            "The glass door swings open, revealing the valuable merchandise!",
+            target_state="closed",
+            message="With Bildrath out of the way, you use the key to unlock the display case.",
             required_instrument="cellar_key",
             conditional_fn=bildrath_is_dead,
         )
@@ -1314,28 +1614,89 @@ class Level1Village(LevelGenerator):
             conditional_fn=bildrath_is_alive,
         )
         display_case.add_interaction(
+            verb="unlock",
+            from_state="locked",
+            message="The display case is locked. You'll need a key.",
+            conditional_fn=bildrath_is_dead,
+        )
+        display_case.add_interaction(
+            verb="unlock",
+            from_state="closed",
+            message="The display case is already unlocked.",
+        )
+        display_case.add_interaction(
+            verb="unlock",
+            from_state="open",
+            message="The display case is already open.",
+        )
+
+        # === CLOSING INTERACTIONS ===
+        display_case.add_interaction(
+            verb="close",
+            from_state="open",
+            target_state="closed",
+            message="You close the display case. It remains unlocked.",
+        )
+        display_case.add_interaction(
+            verb="close",
+            from_state="open",
+            target_state="locked",
+            message="You close the display case and lock it with the key.",
+            required_instrument="cellar_key",
+        )
+        display_case.add_interaction(
+            verb="close",
+            from_state="closed",
+            message="The display case is already closed.",
+        )
+        display_case.add_interaction(
+            verb="close",
+            from_state="locked",
+            message="The display case is already closed and locked.",
+        )
+
+        # === LOCKING INTERACTIONS ===
+        display_case.add_interaction(
+            verb="lock",
+            from_state="closed",
+            target_state="locked",
+            message="You turn the key and the display case locks with a click.",
+            required_instrument="cellar_key",
+        )
+        display_case.add_interaction(
+            verb="lock",
+            from_state="closed",
+            message="You need a key to lock the display case.",
+        )
+        display_case.add_interaction(
+            verb="lock",
+            from_state="open",
+            message="You need to close the display case before you can lock it.",
+        )
+        display_case.add_interaction(
+            verb="lock",
+            from_state="locked",
+            message="The display case is already locked.",
+        )
+
+        # === OTHER INTERACTIONS ===
+        display_case.add_interaction(
             verb="examine",
             message="Through the glass, you can see a silver shiv, an elixir, "
             "and what looks like a lantern that never goes out. All absurdly expensive, "
             "no doubt.",
         )
-        self._rooms["shop"].add_item(display_case)
+        display_case.add_interaction(
+            verb="break",
+            message="The glass is surprisingly thick. Bildrath must have paid extra "
+            "for reinforced glass.",
+        )
 
-        # Display case contents - hidden until case is opened
-        def display_case_opened(game_state: Any) -> bool:
-            room = game_state.get_room("shop")
-            if not room:
-                return False
-            for item in room.items:
-                if getattr(item, "id", None) == "shop_case":
-                    return getattr(item, "state", None) == "open"
-            return False
-
+        # Add contents directly to the display case
         shiv = Weapon(
             name="shiv",
             id="silver_shiv",
-            description="A finely crafted silver shiv with intricate engravings. "
-            "Effective against creatures of darkness.",
+            description="A finely crafted silver shiv, its blade intricately engraved.",
             weight=1,
             value=75,
             takeable=True,
@@ -1344,34 +1705,40 @@ class Level1Village(LevelGenerator):
             min_strength=0,
             min_dexterity=8,
         )
-        self._rooms["shop"].add_hidden_item(shiv, display_case_opened)
 
         elixir = Item(
             name="elixir",
             id="healing_elixir",
-            description="A small vial of red liquid that restores health when consumed.",
+            description="A small vial of red liquid, promising restored health.",
             weight=1,
             value=50,
             takeable=True,
         )
-        self._rooms["shop"].add_hidden_item(elixir, display_case_opened)
 
         lantern = Item(
             name="lantern",
             id="everburning_lantern",
-            description="A magical lantern that never goes out, providing eternal light.",
+            description="A magical lantern, its flame burning eternally.",
             weight=1,
             value=100,
             takeable=True,
             emits_light=True,
         )
-        self._rooms["shop"].add_hidden_item(lantern, display_case_opened)
+
+        # Put items inside the display case
+        display_case.items.append(shiv)
+        display_case.items.append(elixir)
+        display_case.items.append(lantern)
+        display_case.update_weight()
+        display_case.update_description()
+
+        self._rooms["shop"].add_item(display_case)
 
         # Basic supplies
         torch = Item(
             name="torch",
             id="shop_torch",
-            description="A wooden torch wrapped in oil-soaked rags.",
+            description="A wooden torch lies here, wrapped in oil-soaked rags.",
             weight=1,
             value=10,  # Overpriced
             takeable=True,
@@ -1382,7 +1749,7 @@ class Level1Village(LevelGenerator):
         rope = Item(
             name="rope",
             id="shop_rope",
-            description="A coil of sturdy hemp rope, useful for climbing or binding.",
+            description="A coil of sturdy hemp rope lies here.",
             weight=3,
             value=15,
             takeable=True,
@@ -1396,7 +1763,7 @@ class Level1Village(LevelGenerator):
         axe = Weapon(
             name="axe",
             id="woodcutter_axe",
-            description="A heavy woodcutter's axe. The blade is still sharp despite its age.",
+            description="A heavy woodcutter's axe lies here, its blade still sharp despite its age.",
             weight=5,
             value=20,
             takeable=True,
@@ -1415,11 +1782,10 @@ class Level1Village(LevelGenerator):
         telescope = StatefulItem(
             name="telescope",
             id="rooftop_telescope",
-            description="A crude brass telescope aimed at the distant castle.",
+            description="A crude brass telescope lies here, dented and scratched.",
             state="default",
             takeable=True,
             weight=2,
-            synonyms=["spyglass", "brass telescope"],
         )
         telescope.set_room_id("rooftop")
         telescope.add_interaction(
@@ -1457,7 +1823,7 @@ class Level1Village(LevelGenerator):
         )
         well_bucket.add_state_description(
             "raised_treasure",
-            "The bucket hangs above the well, dripping water. Some coins glint in the bucket.",
+            "The bucket hangs above the well, dripping water.",
         )
         well_bucket.add_state_description(
             "down_second", "The bucket has been lowered into the well again."
@@ -1510,8 +1876,8 @@ class Level1Village(LevelGenerator):
         well_coins = Item(
             name="coins",
             id="well_coins",
-            description="A handful of tarnished copper and silver coins, old wishes "
-            "tossed into the well by hopeful villagers long ago.",
+            description="A handful of tarnished copper and silver coins lie here, old wishes "
+            "long forgotten.",
             weight=1,
             value=15,
             takeable=True,
@@ -1523,23 +1889,28 @@ class Level1Village(LevelGenerator):
         # COTTAGE2 (Herbalist) - Remedies and hints
         # =====================================================================
 
-        journal = Item(
+        journal = StatefulItem(
             name="journal",
             id="herb_journal",
-            description="A leather journal containing herbal recipes. One entry reads: "
-            "'The hag at the windmill fears her true name spoken in her kitchen. "
-            "They call her Morgantha, though she has not used that name in centuries.'",
+            description="A leather journal lies here, filled with herbal recipes and notes.",
+            state="default",
             weight=1,
             value=15,
             takeable=True,
             synonyms=["leather journal", "recipe book", "herbalist journal"],
+        )
+        journal.add_interaction(
+            verb="read",
+            message="Most entries detail herbal remedies, but one passage catches your eye: "
+            "'The hag at the windmill fears her true name spoken in her kitchen. "
+            "They call her Morgantha, though she has not used that name in centuries.'",
         )
         self._rooms["cottage2"].add_item(journal)
 
         mortar = Item(
             name="mortar",
             id="herb_mortar",
-            description="A stone mortar and pestle, stained with various herbs.",
+            description="A stone mortar and pestle sits here, stained with various herbs.",
             weight=3,
             value=5,
             takeable=True,
@@ -1551,30 +1922,22 @@ class Level1Village(LevelGenerator):
         # WATCHTOWER - Spyglass, guard log
         # =====================================================================
 
-        spyglass = Item(
-            name="spyglass",
-            id="tower_spyglass",
-            description="A brass spyglass in good condition. Through it, the mist barrier "
-            "seems to shimmer with strange symbols.",
-            weight=1,
-            value=30,
-            takeable=True,
-            synonyms=["brass spyglass", "telescope"],
-        )
-        self._rooms["watchtower"].add_item(spyglass)
-
-        guard_log = Item(
+        guard_log = StatefulItem(
             name="logbook",
             id="guard_log",
-            description="A guard's logbook. The last entry, dated years ago, reads: "
-            "'The mists grow thicker. No one has passed through in months. I fear "
-            "we are truly trapped. There are rumors of a token that can part the "
-            "mists, hidden somewhere in the village. I must find it before-' "
-            "The entry ends abruptly.",
+            description="A guard's logbook lies here, its last entry dated years ago.",
+            state="default",
             weight=1,
             value=5,
             takeable=True,
             synonyms=["log", "guard book", "journal"],
+        )
+        guard_log.add_interaction(
+            verb="read",
+            message="The last entry reads: 'The mists grow thicker. No one has passed "
+            "through in months. I fear we are truly trapped. There are rumors of a "
+            "token that can part the mists, hidden somewhere in the village. I must "
+            "find it before—' The entry ends abruptly.",
         )
         self._rooms["watchtower"].add_item(guard_log)
 
@@ -1646,22 +2009,21 @@ class Level1Village(LevelGenerator):
                     if "blessings" not in session:
                         session["blessings"] = set()
                     session["blessings"].add("morning_lord")
-
-                    # Open the mist barrier
-                    gatehouse = game_state.get_room("gatehouse")
-                    if gatehouse:
-                        gatehouse.exits["south"] = "road_south"
+                    # Blessing granted - but player still needs token and keyword!
 
             priest.accepts_item = {
                 "bones": {
                     "message": (
-                        "Father Donavich gasps as you hand him the holy bones.\n\n"
+                        "Father Donavich gasps as you hand him the holy bones.\n"
                         "'The bones of St. Andral! You've found them! The church is "
-                        "protected once more!'\n\n"
-                        "He clasps your hands, tears streaming down his face.\n\n"
-                        "'Bless you, brave soul. May the Morning Lord's light guide you. "
-                        "I grant you his blessing - the mists shall not bar your way. "
-                        "Go south from the gatehouse, and the darkness will part before you.'"
+                        "protected once more!'\n"
+                        "He clasps your hands, tears streaming down his face.\n"
+                        "'Bless you, brave soul. I grant you the Morning Lord's blessing!'\n"
+                        "Warmth flows through you as divine light briefly surrounds you.\n"
+                        "'To escape these mists, you'll need more than my blessing alone. "
+                        "Seek the token of passage, and when you stand before the mist, "
+                        "hold it high and speak His true name - Lathander. "
+                        "Together, blessing and token will part the darkness.'"
                     ),
                     "one_time": True,
                     "triggered": False,
@@ -1710,10 +2072,19 @@ class Level1Village(LevelGenerator):
                     return None
                 donation_blessing_granted["value"] = True
 
-                # Open the mist barrier (same effect as priest blessing)
-                gatehouse = game_state.get_room("gatehouse")
-                if gatehouse:
-                    gatehouse.exits["south"] = "road_south"
+                # Grant the blessing to the player (need to find their session)
+                try:
+                    from globals import online_sessions
+
+                    for sid, session in online_sessions.items():
+                        # Find all players in church and grant blessing
+                        player = session.get("player")
+                        if player and player.current_room == "church":
+                            if "blessings" not in session:
+                                session["blessings"] = set()
+                            session["blessings"].add("morning_lord")
+                except ImportError:
+                    pass
 
                 # Check if priest is alive for appropriate message
                 priest_alive = False
@@ -1724,18 +2095,20 @@ class Level1Village(LevelGenerator):
 
                 if priest_alive:
                     return (
-                        "\nFather Donavich sees the bones and gasps.\n\n"
-                        "'The bones of St. Andral! The church is protected once more!'\n\n"
-                        "He makes the sign of the Morning Lord over you.\n\n"
-                        "'May his light guide you through the mists. "
-                        "Go south from the gatehouse - the darkness will part before you.'"
+                        "\nFather Donavich sees the bones and gasps.\n"
+                        "'The bones of St. Andral! The church is protected once more!'\n"
+                        "He makes the sign of the Morning Lord over you.\n"
+                        "'I grant you his blessing! But to escape the mists, you'll need "
+                        "the token of passage as well. Hold it before the mist and speak "
+                        "the Morning Lord's true name - Lathander!'"
                     )
                 else:
                     return (
                         "\nAs the holy bones settle into the donation box, "
-                        "a warm light briefly fills the church.\n\n"
-                        "Though the priest is gone, St. Andral's blessing flows through you.\n\n"
-                        "You sense the mists to the south will no longer bar your way."
+                        "a warm light briefly fills the church.\n"
+                        "Though the priest is gone, St. Andral's blessing flows through you.\n"
+                        "Ancient words echo in your mind: 'Token and blessing together... "
+                        "speak the name of light before the darkness...'"
                     )
 
             donation_box.no_removal_condition = check_priest_alive
@@ -1747,13 +2120,16 @@ class Level1Village(LevelGenerator):
             barkeep.accepts_item = {
                 "coin": {
                     "message": (
-                        "The barkeep palms the coin and leans in conspiratorially.\n\n"
-                        "'Looking to leave, are you? Can't say I blame you.'\n\n"
-                        "'There's a token, they say. Hidden in a chest in MY cellar, of all "
-                        "places. How it got there, I don't know. But the cellar's locked up "
-                        "tight. The old burgomaster had a key - check his manor study.'\n\n"
-                        "'Or if you're the religious type, Father Donavich might help. "
-                        "He's been asking about some stolen bones...'"
+                        "The barkeep palms the coin and leans in conspiratorially.\n"
+                        "'Looking to leave, are you? Can't say I blame you.'\n"
+                        "'The mists won't let you go easy. You'll need TWO things: "
+                        "a silver token hidden in MY cellar - locked up tight, old burgomaster "
+                        "had the key, check his study in the manor - AND the priest's blessing.'\n"
+                        "'Father Donavich's been distracted lately, muttering about stolen bones. "
+                        "Help him with that, he might bless you.'\n"
+                        "'Once you have both, go to the gatehouse. Hold up the token and... "
+                        'speak the god\'s name, I think? Not "Morning Lord" - his REAL name. '
+                        "Something with an L...'"
                     ),
                     "one_time": True,
                     "triggered": False,

@@ -54,10 +54,10 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         takeable=True,
     )
 
-    bone = Item(
-        name="bone",
-        id="bone",
-        description="A yellowed human bone.",
+    skull = Item(
+        name="skull",
+        id="skull",
+        description="A yellowed human skull is here, its empty eye sockets staring at you.",
         weight=1,
         value=3,
         takeable=True,
@@ -186,7 +186,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "patrol_rooms": ["graveyard"],
             "movement_interval": 0,
             "loot_table": [
-                {"item": bone, "chance": 0.6},
+                {"item": skull, "chance": 0.6},
                 {"item": coin, "chance": 0.2},
             ],
             "instant_death": False,
@@ -612,7 +612,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "description": "A brittle skeleton rattles to life, ancient bones held together by dark magic.",
             "strength": 20,
             "dexterity": 15,
-            "max_stamina": 1,
+            "max_stamina": 10,
             "damage": 6,
             "aggressive": True,
             "aggro_delay_min": 1,
@@ -620,7 +620,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "patrol_rooms": [],
             "movement_interval": 0,
             "loot_table": [
-                {"item": bone, "chance": 0.9},
+                {"item": skull, "chance": 0.9},
                 {"item": coin, "chance": 0.3},
             ],
             "instant_death": True,

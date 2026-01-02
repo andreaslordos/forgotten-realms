@@ -18,7 +18,9 @@ class Room:
     is_dark: bool
     is_outdoor: bool
     swamp_direction: Optional[str]
-    speech_triggers: Dict[str, Dict[str, Any]]  # Maps keywords to trigger configs
+    speech_triggers: Dict[
+        str, List[Dict[str, Any]]
+    ]  # Maps keywords to list of triggers
 
     def __init__(
         self,
@@ -38,7 +40,7 @@ class Room:
         self.is_dark = is_dark  # Whether room requires light source to see
         self.is_outdoor = is_outdoor  # Whether room is outdoors (for swamp command)
         self.swamp_direction: Optional[str] = None  # Precomputed direction to swamp
-        self.speech_triggers: Dict[str, Dict[str, Any]] = {}  # Keyword triggers
+        self.speech_triggers: Dict[str, List[Dict[str, Any]]] = {}  # Keyword triggers
 
     def add_speech_trigger(
         self,
@@ -50,6 +52,7 @@ class Room:
     ) -> None:
         """
         Add a speech trigger that activates when a player types a keyword in this room.
+        Multiple triggers can be added for the same keyword with different conditions.
 
         Args:
             keyword: The word/phrase that triggers the effect (case-insensitive)
@@ -60,13 +63,19 @@ class Room:
                            return True for trigger to activate
             one_time: If True, trigger only fires once per game session
         """
-        self.speech_triggers[keyword.lower()] = {
-            "message": message,
-            "effect_fn": effect_fn,
-            "conditional_fn": conditional_fn,
-            "one_time": one_time,
-            "triggered": False,
-        }
+        key = keyword.lower()
+        if key not in self.speech_triggers:
+            self.speech_triggers[key] = []
+
+        self.speech_triggers[key].append(
+            {
+                "message": message,
+                "effect_fn": effect_fn,
+                "conditional_fn": conditional_fn,
+                "one_time": one_time,
+                "triggered": False,
+            }
+        )
 
     def add_item(self, item: Any) -> None:  # item: "Item"
         """Add a visible item to the room."""
