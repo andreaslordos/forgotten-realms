@@ -14,9 +14,12 @@ Afflictions (DEAF, BLIND, DUMB, CRIPPLE) last 60 seconds by default.
 import logging
 import os
 import random
+from collections import defaultdict
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, TypedDict
+
+from models.ContainerItem import ContainerItem
 
 from commands.registry import command_registry
 from commands.natural_language_parser import vocabulary_manager
@@ -692,6 +695,7 @@ async def handle_where(
 
     Syntax: where <item/player>
     Sovereigns and Archmages have 100% success.
+    Lists all locations with counts in MUD1 format.
     """
     spell_def = SPELL_DEFINITIONS["where"]
 
@@ -714,36 +718,73 @@ async def handle_where(
 
     target_lower = target.lower()
 
-    # Search for player
+    # Search for player first (single result)
     for sid, session in online_sessions.items():
         other_player = session.get("player")
         if other_player and target_lower in other_player.name.lower():
             room = game_state.get_room(other_player.current_room)
             room_name = room.name if room else "an unknown location"
-            return f"{other_player.name} is at {room_name}."
+            return f"1 in the room described as {room_name}.\n" f"Your spell worked!"
 
-    # Search for item in all rooms
+    # Search mobs first (single result per mob type)
+    mob_manager = getattr(utils, "mob_manager", None)
+    if mob_manager:
+        mob_locations: Dict[str, int] = defaultdict(int)
+        for mob in mob_manager.mobs.values():
+            if target_lower in mob.name.lower():
+                room = game_state.get_room(mob.current_room)
+                room_name = room.name if room else "an unknown location"
+                mob_locations[f"in the room described as {room_name}"] += 1
+
+        if mob_locations:
+            lines = [f"{count} {desc}." for desc, count in mob_locations.items()]
+            lines.append("Your spell worked!")
+            return "\n".join(lines)
+
+    # Search for items - collect all locations with counts
+    locations: Dict[str, int] = defaultdict(int)
+
+    # Search items in all rooms
     for room_id, room in game_state.rooms.items():
         for item in room.get_items(game_state):
             if target_lower in item.name.lower():
-                return f"The {item.name} is at {room.name}."
+                locations[f"in the room described as {room.name}"] += 1
+            # Check if item is a container
+            if isinstance(item, ContainerItem):
+                for contained in item.items:
+                    if target_lower in contained.name.lower():
+                        loc = f"inside the {item.name} in the room described as {room.name}"
+                        locations[loc] += 1
 
     # Search player inventories
     for sid, session in online_sessions.items():
         other_player = session.get("player")
         if other_player:
+            player_room = game_state.get_room(other_player.current_room)
+            room_name = player_room.name if player_room else "an unknown location"
+            player_desc = f"{other_player.name} the {other_player.level}"
+
             for item in other_player.inventory:
                 if target_lower in item.name.lower():
-                    return f"The {item.name} is being carried by {other_player.name}."
+                    loc = (
+                        f"carried by {player_desc} in the room described as {room_name}"
+                    )
+                    locations[loc] += 1
+                # Check if item is a container
+                if isinstance(item, ContainerItem):
+                    for contained in item.items:
+                        if target_lower in contained.name.lower():
+                            loc = (
+                                f"inside the {item.name} carried by {player_desc} "
+                                f"in the room described as {room_name}"
+                            )
+                            locations[loc] += 1
 
-    # Search mobs
-    mob_manager = getattr(utils, "mob_manager", None)
-    if mob_manager:
-        for mob in mob_manager.mobs.values():
-            if target_lower in mob.name.lower():
-                room = game_state.get_room(mob.current_room)
-                room_name = room.name if room else "an unknown location"
-                return f"{mob.name} is at {room_name}."
+    # Format output
+    if locations:
+        lines = [f"{count} {desc}." for desc, count in locations.items()]
+        lines.append("Your spell worked!")
+        return "\n".join(lines)
 
     return f"You cannot locate '{target}'."
 
@@ -969,8 +1010,6 @@ async def handle_wish(
             await utils.send_message(sio, sid, f"[WISH from {player.name}]: {message}")
             archmage_count += 1
 
-    if archmage_count > 0:
-        return f"Your wish has been heard by {archmage_count} Archmage(s)."
     return "Your wish has been heard by the powers that be."
 
 
@@ -1529,6 +1568,7 @@ def register_spell_commands() -> None:
         "force", handle_force, "Force a player to execute a command."
     )
     command_registry.register("where", handle_where, "Locate an item or player.")
+    command_registry.register_aliases(["wh"], "where")
     command_registry.register("change", handle_change, "Change target's sex.")
     command_registry.register("wish", handle_wish, "Send a message to Archmages.")
     command_registry.register("deafen", handle_deafen, "Make target unable to hear.")

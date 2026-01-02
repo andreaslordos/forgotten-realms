@@ -406,7 +406,7 @@ class HandleWhereTest(unittest.IsolatedAsyncioTestCase):
         self.utils.mob_manager.mobs = {}
 
     async def test_where_finds_online_player(self):
-        """Test WHERE locates online player."""
+        """Test WHERE locates online player with MUD1 format."""
         online_sessions = {"target_sid": {"player": self.target}}
 
         cmd = {"verb": "where", "subject": "Target"}
@@ -421,8 +421,8 @@ class HandleWhereTest(unittest.IsolatedAsyncioTestCase):
             self.utils,
         )
 
-        self.assertIn("Target", result)
-        self.assertIn("Town Square", result)
+        self.assertIn("1 in the room described as The Town Square.", result)
+        self.assertIn("Your spell worked!", result)
 
     async def test_where_sovereign_always_succeeds(self):
         """Test Sovereign has 100% success on WHERE."""
@@ -443,7 +443,8 @@ class HandleWhereTest(unittest.IsolatedAsyncioTestCase):
                 self.utils,
             )
 
-        self.assertIn("Target", result)
+        self.assertIn("in the room described as", result)
+        self.assertIn("Your spell worked!", result)
 
     async def test_where_returns_not_found(self):
         """Test WHERE returns message when target not found."""
@@ -462,6 +463,191 @@ class HandleWhereTest(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertIn("cannot locate", result.lower())
+
+    async def test_where_finds_multiple_items_different_rooms(self):
+        """Test WHERE finds same item in multiple rooms with counts."""
+        # Create two swords in two different rooms
+        sword1 = Mock(spec=["name"])
+        sword1.name = "sword"
+        sword2 = Mock(spec=["name"])
+        sword2.name = "sword"
+
+        room1 = Mock()
+        room1.name = "The Armory"
+        room1.get_items = Mock(return_value=[sword1])
+
+        room2 = Mock()
+        room2.name = "The Barracks"
+        room2.get_items = Mock(return_value=[sword2])
+
+        self.game_state.rooms = {"room1": room1, "room2": room2}
+
+        online_sessions = {}
+        cmd = {"verb": "where", "subject": "sword"}
+
+        result = await handle_where(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("in the room described as The Armory", result)
+        self.assertIn("in the room described as The Barracks", result)
+        self.assertIn("Your spell worked!", result)
+
+    async def test_where_counts_multiple_items_same_room(self):
+        """Test WHERE counts multiple items of same type in one room."""
+        sword1 = Mock(spec=["name"])
+        sword1.name = "sword"
+        sword2 = Mock(spec=["name"])
+        sword2.name = "sword"
+
+        room1 = Mock()
+        room1.name = "The Armory"
+        room1.get_items = Mock(return_value=[sword1, sword2])
+
+        self.game_state.rooms = {"room1": room1}
+
+        online_sessions = {}
+        cmd = {"verb": "where", "subject": "sword"}
+
+        result = await handle_where(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("2 in the room described as The Armory.", result)
+        self.assertIn("Your spell worked!", result)
+
+    async def test_where_finds_item_carried_by_player(self):
+        """Test WHERE finds item carried by player with MUD1 format."""
+        carrier = Mock()
+        carrier.name = "Bob"
+        carrier.level = "Novice"
+        carrier.current_room = "room1"
+
+        sword = Mock(spec=["name"])
+        sword.name = "sword"
+        carrier.inventory = [sword]
+
+        room1 = Mock()
+        room1.name = "The Tavern"
+        room1.get_items = Mock(return_value=[])
+
+        self.game_state.rooms = {"room1": room1}
+        self.game_state.get_room = Mock(return_value=room1)
+
+        online_sessions = {"carrier_sid": {"player": carrier}}
+        cmd = {"verb": "where", "subject": "sword"}
+
+        result = await handle_where(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("carried by Bob the Novice", result)
+        self.assertIn("in the room described as The Tavern", result)
+        self.assertIn("Your spell worked!", result)
+
+    async def test_where_finds_item_inside_container_in_room(self):
+        """Test WHERE finds item inside container in room."""
+        from models.ContainerItem import ContainerItem
+
+        # Create real ContainerItem for proper isinstance check
+        chest = ContainerItem(
+            name="chest",
+            id="chest_1",
+            description="A wooden chest",
+            state="open",
+        )
+        key = Mock(spec=["name", "id", "weight"])
+        key.name = "key"
+        key.id = "key_1"
+        key.weight = 1
+        chest.items = [key]
+
+        room1 = Mock()
+        room1.name = "The Treasury"
+        room1.get_items = Mock(return_value=[chest])
+
+        self.game_state.rooms = {"room1": room1}
+
+        online_sessions = {}
+        cmd = {"verb": "where", "subject": "key"}
+
+        result = await handle_where(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("inside the chest in the room described as The Treasury", result)
+        self.assertIn("Your spell worked!", result)
+
+    async def test_where_finds_item_inside_container_carried_by_player(self):
+        """Test WHERE finds item inside container carried by player."""
+        from models.ContainerItem import ContainerItem
+
+        # Create real ContainerItem for proper isinstance check
+        bag = ContainerItem(
+            name="bag",
+            id="bag_1",
+            description="A leather bag",
+            state="open",
+        )
+        key = Mock(spec=["name", "id", "weight"])
+        key.name = "key"
+        key.id = "key_1"
+        key.weight = 1
+        bag.items = [key]
+
+        carrier = Mock()
+        carrier.name = "Alice"
+        carrier.level = "Scholar"
+        carrier.current_room = "room1"
+        carrier.inventory = [bag]
+
+        room1 = Mock()
+        room1.name = "The Library"
+        room1.get_items = Mock(return_value=[])
+
+        self.game_state.rooms = {"room1": room1}
+        self.game_state.get_room = Mock(return_value=room1)
+
+        online_sessions = {"carrier_sid": {"player": carrier}}
+        cmd = {"verb": "where", "subject": "key"}
+
+        result = await handle_where(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        self.assertIn("inside the bag carried by Alice the Scholar", result)
+        self.assertIn("in the room described as The Library", result)
+        self.assertIn("Your spell worked!", result)
 
 
 class HandleWishTest(unittest.IsolatedAsyncioTestCase):
@@ -2027,7 +2213,7 @@ class HandleWhereSuccessTest(unittest.IsolatedAsyncioTestCase):
         self.utils.mob_manager.mobs = {}
 
     async def test_where_finds_player(self):
-        """Test where spell finds player location."""
+        """Test where spell finds player location with MUD1 format."""
         self.game_state.rooms = {}  # Empty rooms dict
         online_sessions = {
             "caster_sid": {"player": self.player},
@@ -2048,10 +2234,12 @@ class HandleWhereSuccessTest(unittest.IsolatedAsyncioTestCase):
             self.utils,
         )
 
-        self.assertIn("inn", result.lower())
+        self.assertIn("in the room described as", result)
+        self.assertIn("Inn", result)
+        self.assertIn("Your spell worked!", result)
 
     async def test_where_finds_mob(self):
-        """Test where spell finds mob location."""
+        """Test where spell finds mob location with MUD1 format."""
         mock_mob = Mock()
         mock_mob.name = "Goblin"
         mock_mob.current_room = "room2"
@@ -2073,11 +2261,13 @@ class HandleWhereSuccessTest(unittest.IsolatedAsyncioTestCase):
             self.utils,
         )
 
-        self.assertIn("inn", result.lower())
+        self.assertIn("1 in the room described as", result)
+        self.assertIn("Inn", result)
+        self.assertIn("Your spell worked!", result)
 
     async def test_where_finds_item_in_room(self):
-        """Test where spell finds item in a room."""
-        mock_item = Mock()
+        """Test where spell finds item in a room with MUD1 format."""
+        mock_item = Mock(spec=["name"])  # Spec ensures no ContainerItem attributes
         mock_item.name = "sword"
 
         room1 = Mock()
@@ -2101,7 +2291,8 @@ class HandleWhereSuccessTest(unittest.IsolatedAsyncioTestCase):
             self.utils,
         )
 
-        self.assertIn("marketplace", result.lower())
+        self.assertIn("1 in the room described as The Marketplace.", result)
+        self.assertIn("Your spell worked!", result)
 
 
 class HandleFodSuccessTest(unittest.IsolatedAsyncioTestCase):
