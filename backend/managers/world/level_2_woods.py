@@ -535,7 +535,7 @@ class Level2Woods(LevelGenerator):
         milestone = StatefulItem(
             name="milestone",
             id="road_milestone",
-            description="A weathered stone milestone, its inscription worn by time.",
+            description="A weathered stone milestone stands here, its inscription worn by time.",
             state="unread",
             takeable=False,
             synonyms=["stone", "marker", "signpost", "post"],
@@ -579,7 +579,7 @@ class Level2Woods(LevelGenerator):
         signpost = StatefulItem(
             name="signpost",
             id="crossroads_signpost",
-            description="A carved wooden signpost with four pointing arms.",
+            description="A carved wooden signpost with four pointing arms stands here.",
             state="default",
             takeable=False,
             synonyms=["sign", "post", "wooden post"],
@@ -614,7 +614,7 @@ class Level2Woods(LevelGenerator):
         brass_bell = StatefulItem(
             name="bell",
             id="crossroads_bell",
-            description="A tarnished brass bell hanging from the signpost.",
+            description="A tarnished brass bell hangs from the signpost.",
             state="silent",
             takeable=False,
             synonyms=["brass bell", "tarnished bell"],
@@ -739,7 +739,7 @@ class Level2Woods(LevelGenerator):
         eastern_stone = StatefulItem(
             name="sunstone",
             id="eastern_stone",
-            description="A massive standing stone carved with a sun rising over mountains.",
+            description="A massive standing stone stands here, carved with a sun rising over mountains.",
             state="default",
             takeable=False,
             synonyms=["eastern stone", "east stone", "sunrise stone"],
@@ -809,7 +809,7 @@ class Level2Woods(LevelGenerator):
         western_stone = StatefulItem(
             name="duskstone",
             id="western_stone",
-            description="A massive standing stone carved with a sun setting into the sea.",
+            description="A massive standing stone stands here, carved with a sun setting into the sea.",
             state="default",
             takeable=False,
             synonyms=["western stone", "west stone", "sunset stone"],
@@ -878,7 +878,7 @@ class Level2Woods(LevelGenerator):
         northern_stone = StatefulItem(
             name="noonstone",
             id="northern_stone",
-            description="A massive standing stone carved with a blazing sun overhead.",
+            description="A massive standing stone stands here, carved with a blazing sun overhead.",
             state="default",
             takeable=False,
             synonyms=["northern stone", "north stone", "noon stone"],
@@ -1022,7 +1022,7 @@ class Level2Woods(LevelGenerator):
         bone_pile = StatefulItem(
             name="bones",
             id="wolf_bones",
-            description="A grisly pile of gnawed bones - animal and human alike.",
+            description="A grisly pile of gnawed bones lies here - animal and human alike.",
             state="unsearched",
             takeable=False,
             synonyms=["pile of bones", "bone pile", "gnawed bones"],
@@ -1105,7 +1105,7 @@ class Level2Woods(LevelGenerator):
         satchel = StatefulItem(
             name="satchel",
             id="wolf_satchel",
-            description="An old leather satchel, half-buried in debris.",
+            description="An old leather satchel lies here, half-buried in debris.",
             state="closed",
             takeable=False,
             synonyms=["leather satchel", "bag", "old satchel"],
@@ -1286,7 +1286,7 @@ class Level2Woods(LevelGenerator):
         iron_gates = StatefulItem(
             name="gates",
             id="castle_gates_item",
-            description="Massive iron gates covered in frost and glowing runes.",
+            description="Massive iron gates stand here, covered in frost and glowing runes.",
             state="sealed",
             takeable=False,
             synonyms=["iron gates", "castle gates", "massive gates"],
@@ -1346,7 +1346,7 @@ class Level2Woods(LevelGenerator):
         brass_plate = StatefulItem(
             name="plate",
             id="gates_plate",
-            description="A brass plate mounted beside the castle gates.",
+            description="A brass plate is mounted beside the castle gates.",
             state="default",
             takeable=False,
             synonyms=["brass plate", "inscription", "sign"],
@@ -1450,7 +1450,7 @@ class Level2Woods(LevelGenerator):
         weapon_rack = StatefulItem(
             name="rack",
             id="merchant_rack",
-            description="A wooden rack displaying several weapons for sale.",
+            description="A wooden rack displays several weapons for sale.",
             state="default",
             takeable=False,
             synonyms=["weapon rack", "weapons", "display"],
@@ -1475,7 +1475,7 @@ class Level2Woods(LevelGenerator):
         strongbox = StatefulItem(
             name="strongbox",
             id="merchant_strongbox",
-            description="A locked iron strongbox under the merchant's table.",
+            description="A locked iron strongbox sits under the merchant's table.",
             state="locked",
             takeable=False,
             synonyms=["box", "locked box", "iron box"],
@@ -1504,7 +1504,7 @@ class Level2Woods(LevelGenerator):
         dock_post = StatefulItem(
             name="post",
             id="dock_post",
-            description="A weathered post at the end of the dock.",
+            description="A weathered post stands at the end of the dock.",
             state="default",
             takeable=False,
             synonyms=["dock post", "wooden post"],
@@ -1531,7 +1531,7 @@ class Level2Woods(LevelGenerator):
         rowboat = StatefulItem(
             name="rowboat",
             id="dock_rowboat",
-            description="A small rowboat tied to the dock, half full of rainwater.",
+            description="A small rowboat is tied to the dock, half full of rainwater.",
             state="tied",
             takeable=False,
             synonyms=["boat", "small boat"],
@@ -1582,7 +1582,7 @@ class Level2Woods(LevelGenerator):
         sarcophagus = StatefulItem(
             name="sarcophagus",
             id="barrow_sarcophagus",
-            description="A stone sarcophagus carved with the image of a sleeping warrior.",
+            description="A stone sarcophagus sits here, carved with the image of a sleeping warrior.",
             state="closed",
             takeable=False,
             synonyms=["tomb", "coffin", "stone coffin"],
@@ -1725,7 +1725,7 @@ class Level2Woods(LevelGenerator):
         lockbox = StatefulItem(
             name="lockbox",
             id="grove_lockbox",
-            description="A small iron lockbox with a rusted lock.",
+            description="A small iron lockbox sits here, with a rusted lock.",
             state="locked",
             takeable=False,
             synonyms=["iron lockbox", "box", "chest"],
@@ -1897,7 +1897,7 @@ class Level2Woods(LevelGenerator):
         fairy_ring = StatefulItem(
             name="mushrooms",
             id="fairy_ring",
-            description="A perfect circle of pale mushrooms in the glade.",
+            description="A perfect circle of pale mushrooms forms a ring in the glade.",
             state="intact",
             takeable=False,
             synonyms=["mushroom ring", "fairy ring", "mushroom circle"],
@@ -2063,7 +2063,7 @@ class Level2Woods(LevelGenerator):
         banded_raven = StatefulItem(
             name="raven",
             id="banded_raven",
-            description="A large raven wearing a silver band on its leg.",
+            description="A large raven wearing a silver band on its leg perches here.",
             state="watching",
             takeable=False,
             synonyms=["banded raven", "large raven", "bird"],

@@ -496,7 +496,7 @@ class Level1Village(LevelGenerator):
         rug = StatefulItem(
             name="rug",
             id="tavern_rug",
-            description="A worn rug with faded patterns, curled at the edges from years of foot traffic.",
+            description="A worn rug with faded patterns covers the floor, curled at the edges from years of foot traffic.",
             state="flat",
             takeable=False,
             synonyms=["carpet", "mat", "worn rug", "floor rug"],
@@ -557,7 +557,7 @@ class Level1Village(LevelGenerator):
 
         rug.add_interaction(
             verb="examine",
-            message="A worn rug with faded patterns. The edges are curled, and there seems to be "
+            message="A worn rug with faded patterns covers the floor. The edges are curled, and there seems to be "
             "something uneven underneath. It looks like it could be moved.",
         )
         self._rooms["tavern"].add_item(rug)
@@ -566,7 +566,7 @@ class Level1Village(LevelGenerator):
         painting = StatefulItem(
             name="painting",
             id="tavern_painting",
-            description="A faded oil painting of a hunting scene, hanging crooked on the wall.",
+            description="A faded oil painting of a hunting scene hangs crooked on the wall.",
             state="hanging",
             takeable=False,
             synonyms=["faded painting", "oil painting", "picture", "art"],
@@ -602,7 +602,7 @@ class Level1Village(LevelGenerator):
         safe = ContainerItem(
             name="safe",
             id="tavern_safe",
-            description="A small iron safe set into the wall",
+            description="A small iron safe is set into the wall.",
             state="locked",
             takeable=False,
             capacity_limit=5,
@@ -691,7 +691,7 @@ class Level1Village(LevelGenerator):
         cellar_chest = ContainerItem(
             name="chest",
             id="cellar_chest",
-            description="A dusty wooden chest bound with iron bands",
+            description="A dusty wooden chest bound with iron bands sits here.",
             state="locked",
             takeable=False,
             capacity_limit=10,
@@ -858,7 +858,7 @@ class Level1Village(LevelGenerator):
         crate = StatefulItem(
             name="crate",
             id="cellar_crate",
-            description="An old wooden crate pushed against the far wall.",
+            description="An old wooden crate is pushed against the far wall.",
             state="blocking",
             takeable=False,
             synonyms=["wooden crate", "old crate", "box"],
@@ -911,7 +911,7 @@ class Level1Village(LevelGenerator):
         wall_symbols = StatefulItem(
             name="symbols",
             id="cellar_symbols",
-            description="Strange symbols scratched into the cellar wall.",
+            description="Strange symbols are scratched into the cellar wall.",
             state="default",
             takeable=False,
             synonyms=["scratches", "markings", "wall symbols", "strange symbols"],
@@ -936,7 +936,7 @@ class Level1Village(LevelGenerator):
         grate = StatefulItem(
             name="grate",
             id="church_grate",
-            description="An iron grate set into the floor near the altar.",
+            description="An iron grate is set into the floor near the altar.",
             state="closed",
             takeable=False,
             synonyms=["iron grate", "floor grate", "trapdoor", "grille"],
@@ -975,7 +975,7 @@ class Level1Village(LevelGenerator):
         donation_box = ContainerItem(
             name="donation box",
             id="donation_box",
-            description="A simple wooden box for offerings to the Morning Lord.",
+            description="A simple wooden box for offerings to the Morning Lord is here.",
             weight=5,
             value=0,
             capacity_limit=10,
@@ -1121,7 +1121,7 @@ class Level1Village(LevelGenerator):
         globe = StatefulItem(
             name="globe",
             id="study_globe",
-            description="An ornate globe showing lands that may no longer exist.",
+            description="An ornate globe sits here, showing lands that may no longer exist.",
             state="default",
             takeable=False,
         )
@@ -1265,7 +1265,7 @@ class Level1Village(LevelGenerator):
         torch_bracket = StatefulItem(
             name="bracket",
             id="gatehouse_bracket",
-            description="An ancient torch bracket mounted beside the gate.",
+            description="An ancient torch bracket is mounted beside the gate.",
             state="empty",
             takeable=False,
             synonyms=["torch bracket", "sconce", "holder"],
@@ -1388,7 +1388,7 @@ class Level1Village(LevelGenerator):
         notice_board = StatefulItem(
             name="notice board",
             id="square_notice",
-            description="A weathered notice board covered in faded postings.",
+            description="A weathered notice board stands here, covered in faded postings.",
             state="default",
             takeable=False,
             synonyms=["board", "notices", "postings"],
@@ -1441,7 +1441,7 @@ class Level1Village(LevelGenerator):
         crypt_coffin = StatefulItem(
             name="coffin",
             id="crypt_coffin",
-            description="A stone coffin with a heavy lid.",
+            description="A stone coffin with a heavy lid sits here.",
             state="closed",
             takeable=False,
             synonyms=["stone coffin", "sarcophagus"],
@@ -1542,7 +1542,7 @@ class Level1Village(LevelGenerator):
         display_case = ContainerItem(
             name="case",
             id="shop_case",
-            description="A locked display case containing valuable items",
+            description="A locked display case containing valuable items sits here.",
             state="locked",
             takeable=False,
             capacity_limit=10,
@@ -1809,7 +1809,7 @@ class Level1Village(LevelGenerator):
         well_bucket = StatefulItem(
             name="well bucket",
             id="well_bucket",
-            description="A bucket hanging from a frayed rope over the well.",
+            description="A bucket hangs from a frayed rope over the well.",
             state="up",
             takeable=False,
             synonyms=["bucket", "rope", "pulley"],
