@@ -30,6 +30,7 @@ htmlcov/
 
 # Storage
 backend/storage/*
+.docs/
 # -----------------------
 # Node.js
 # -----------------------
