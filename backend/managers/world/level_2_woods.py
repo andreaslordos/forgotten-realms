@@ -2456,7 +2456,7 @@ class Level2Woods(LevelGenerator):
 
         def find_mob_in_room(name: str, room_id: str) -> Any:
             for mob_id, mob in mob_manager.mobs.items():
-                if mob.name.lower() == name.lower() and mob.room_id == room_id:
+                if mob.name.lower() == name.lower() and mob.current_room == room_id:
                     return mob
             return None
 
