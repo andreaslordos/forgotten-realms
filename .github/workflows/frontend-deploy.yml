@@ -38,4 +38,4 @@ jobs:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Deploy to Firebase Hosting
-        run: firebase deploy --only hosting --project forgottenrealms
+        run: firebase deploy --only hosting --project forgottenrealms-fb
