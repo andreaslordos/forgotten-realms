@@ -4,12 +4,13 @@ import logging
 import os
 import ssl
 import sys
-from typing import Any
+from typing import Any, List
 
 import socketio
 import utils
 from aiohttp import web
 
+from admin.routes import register_admin_routes
 from event_handlers import register_handlers
 from globals import online_sessions
 from managers.auth import AuthManager
@@ -142,6 +143,27 @@ async def handle_root(request: Any) -> web.Response:
 
 
 app.router.add_get("/", handle_root)
+
+
+def get_admin_publish_checks() -> List[str]:
+    """Read publish checks from env, falling back to focused admin tests."""
+    configured = os.environ.get("ADMIN_PUBLISH_CHECKS", "").strip()
+    if configured:
+        return [check.strip() for check in configured.split(";;") if check.strip()]
+    return [
+        "PYTHONPATH=backend python3 -m unittest "
+        "backend.admin.tests.test_world_builder backend.admin.tests.test_routes -v"
+    ]
+
+
+register_admin_routes(
+    app=app,
+    game_state=game_state,
+    mob_manager=mob_manager,
+    online_sessions=online_sessions,
+    world_factory=generate_world,
+    publish_checks=get_admin_publish_checks(),
+)
 
 if __name__ == "__main__":
     try:

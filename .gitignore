@@ -30,6 +30,8 @@ htmlcov/
 
 # Storage
 backend/storage/*
+!backend/storage/world_builder/
+!backend/storage/world_builder/draft_world.json
 .docs/
 # -----------------------
 # Node.js

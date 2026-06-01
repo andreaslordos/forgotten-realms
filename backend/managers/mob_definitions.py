@@ -226,7 +226,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "aggressive": True,
             "aggro_delay_min": 1,
             "aggro_delay_max": 3,
-            "patrol_rooms": ["woods", "clearing", "road", "crossroads"],
+            "patrol_rooms": ["woods_path", "clearing", "road", "crossroads"],
             "movement_interval": 60,
             "loot_table": [
                 {"item": pelt, "chance": 0.8},

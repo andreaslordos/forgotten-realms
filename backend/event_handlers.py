@@ -11,6 +11,7 @@ and dispatches in-game commands.
 import asyncio
 from datetime import datetime
 from typing import Any, Dict
+from admin.routes import ADMIN_USERNAME, create_admin_token
 from commands.executor import build_look_description
 from commands.combat import handle_combat_disconnect, is_in_combat
 from services.notifications import (
@@ -59,6 +60,11 @@ def register_handlers(
 
         # Send updated stats to the client.
         await utils.send_stats_update(sio, sid, player)
+
+        if player.name.lower() == ADMIN_USERNAME:
+            token = create_admin_token()
+            online_sessions[sid]["admin_token"] = token
+            await sio.emit("adminToken", {"token": token}, room=sid)
 
         # Build and send the initial room description.
         mob_manager = (
