@@ -10,6 +10,7 @@ jest.mock('@xyflow/react', () => ({
     edges = [],
     onNodeClick,
     onNodeDragStop,
+    onNodesChange,
     onSelectionChange,
     children,
   }) => {
@@ -39,6 +40,21 @@ jest.mock('@xyflow/react', () => ({
           }}
         >
           Drag first flow node
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (nodes[0]) {
+              onNodesChange?.([{
+                id: nodes[0].id,
+                type: 'position',
+                position: { x: 555, y: 333 },
+                dragging: true,
+              }]);
+            }
+          }}
+        >
+          Move first flow node
         </button>
         <button
           type="button"
@@ -197,6 +213,26 @@ test('captures adminToken from the socket and loads world data with bearer auth'
   expect(screen.getByTestId('flow-controls')).toBeInTheDocument();
   expect(screen.getByTestId('flow-minimap')).toBeInTheDocument();
   expect(screen.getByText('square')).toBeInTheDocument();
+});
+
+test('clears expired admin tokens and returns to the login panel', async () => {
+  routeTo('/admin/world-builder');
+  localStorage.setItem('adminToken', 'expired-token');
+  global.fetch.mockImplementationOnce(() => Promise.resolve({
+    ok: false,
+    status: 401,
+    json: () => Promise.resolve({
+      error: 'unauthorized',
+      message: 'You must be logged in as stupidgem to use the world builder.',
+    }),
+  }));
+
+  render(<App />);
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('You must be logged in as stupidgem');
+  expect(localStorage.getItem('adminToken')).toBeNull();
+  expect(screen.getByLabelText('Admin login panel')).toBeInTheDocument();
+  expect(screen.getAllByText(/Waiting for stupidgem admin token/i).length).toBeGreaterThan(0);
 });
 
 test('edits a selected room and saves the changed world payload', async () => {
@@ -363,6 +399,33 @@ test('drags a React Flow room node and saves updated layout coordinates', async 
       x: 444,
       y: 222,
       layout: expect.objectContaining({ x: 444, y: 222, pinned: true }),
+    })
+  );
+});
+
+test('syncs React Flow controlled node position changes while dragging', async () => {
+  routeTo('/admin/world-builder');
+  localStorage.setItem('adminToken', 'stored-token');
+  global.fetch
+    .mockImplementationOnce(() => okJson({ world: sampleWorld }))
+    .mockImplementationOnce(() => okJson({
+      validation: { ok: true, errors: [], warnings: [] },
+      saved: { path: 'storage/world_builder/draft_world.json' },
+    }));
+
+  render(<App />);
+  await screen.findAllByText('Village Square');
+
+  fireEvent.click(screen.getByRole('button', { name: /move first flow node/i }));
+  fireEvent.click(screen.getByRole('button', { name: /save draft/i }));
+
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  const payload = JSON.parse(global.fetch.mock.calls[1][1].body);
+  expect(payload.world.rooms[0]).toEqual(
+    expect.objectContaining({
+      x: 555,
+      y: 333,
+      layout: expect.objectContaining({ x: 555, y: 333, pinned: true }),
     })
   );
 });

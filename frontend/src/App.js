@@ -388,6 +388,11 @@ function App() {
     };
   }, []);
 
+  const clearAdminToken = useCallback(() => {
+    localStorage.removeItem('adminToken');
+    setAdminToken('');
+  }, []);
+
   // Handle command submission
   const handleCommandSubmit = (e) => {
     e.preventDefault();
@@ -505,6 +510,7 @@ function App() {
     return (
       <AdminRouteShell
         adminToken={adminToken}
+        onAdminTokenInvalid={clearAdminToken}
         messages={messages}
         messagesEndRef={messagesEndRef}
         command={command}
@@ -539,6 +545,7 @@ function App() {
 
 function AdminRouteShell({
   adminToken,
+  onAdminTokenInvalid,
   messages,
   messagesEndRef,
   command,
@@ -551,7 +558,7 @@ function AdminRouteShell({
 }) {
   return (
     <>
-      <AdminWorldBuilder adminToken={adminToken} />
+      <AdminWorldBuilder adminToken={adminToken} onAdminTokenInvalid={onAdminTokenInvalid} />
       {!adminToken ? (
         <AdminLoginPanel
           messages={messages}
@@ -670,7 +677,7 @@ function GameTerminal({
   );
 }
 
-function AdminWorldBuilder({ adminToken }) {
+function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
   const [world, setWorld] = useState(emptyWorld());
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [selectedRoomIds, setSelectedRoomIds] = useState([]);
@@ -710,11 +717,14 @@ function AdminWorldBuilder({ adminToken }) {
 
     if (!response.ok) {
       const message = payload.message || payload.error || `Admin API failed with ${response.status}`;
+      if (response.status === 401) {
+        onAdminTokenInvalid?.();
+      }
       throw new Error(message);
     }
 
     return payload;
-  }, [adminToken]);
+  }, [adminToken, onAdminTokenInvalid]);
 
   const loadWorld = useCallback(async () => {
     if (!adminToken) {
@@ -775,7 +785,10 @@ function AdminWorldBuilder({ adminToken }) {
 
   useEffect(() => {
     const roomIds = new Set(world.rooms.map((room) => room.id));
-    setSelectedRoomIds((current) => current.filter((roomId) => roomIds.has(roomId)));
+    setSelectedRoomIds((current) => {
+      const nextRoomIds = current.filter((roomId) => roomIds.has(roomId));
+      return sameStringArray(current, nextRoomIds) ? current : nextRoomIds;
+    });
   }, [world.rooms]);
 
   useEffect(() => {
@@ -859,12 +872,56 @@ function AdminWorldBuilder({ adminToken }) {
     }
   }, [world.rooms]);
 
-  function handleMoveRoom(roomId, position) {
+  const handleGraphNodeChanges = useCallback((changes) => {
+    const positionChanges = changes.filter((change) => (
+      change.type === 'position' && change.position && change.id
+    ));
+    if (positionChanges.length === 0) {
+      return;
+    }
+
+    const positionByRoomId = new Map(positionChanges.map((change) => [change.id, change.position]));
+    setWorld((currentWorld) => {
+      let didChange = false;
+      const rooms = currentWorld.rooms.map((room) => {
+        const nextPosition = positionByRoomId.get(room.id);
+        if (!nextPosition) {
+          return room;
+        }
+
+        const x = finiteNumber(nextPosition.x, finiteNumber(room.layout?.x, room.x));
+        const y = finiteNumber(nextPosition.y, finiteNumber(room.layout?.y, room.y));
+        if (finiteNumber(room.layout?.x, room.x) === x && finiteNumber(room.layout?.y, room.y) === y) {
+          return room;
+        }
+
+        didChange = true;
+        return setRoomPosition(room, x, y);
+      });
+
+      return didChange ? { ...currentWorld, rooms } : currentWorld;
+    });
+  }, []);
+
+  const handleMoveRoom = useCallback((roomId, position = {}) => {
     const x = finiteNumber(position.x, 0);
     const y = finiteNumber(position.y, 0);
-    updateRoom(roomId, (room) => setRoomPosition(room, x, y));
+    setWorld((currentWorld) => {
+      let didChange = false;
+      const rooms = currentWorld.rooms.map((room) => {
+        if (room.id !== roomId) {
+          return room;
+        }
+        if (finiteNumber(room.layout?.x, room.x) === x && finiteNumber(room.layout?.y, room.y) === y) {
+          return room;
+        }
+        didChange = true;
+        return setRoomPosition(room, x, y);
+      });
+      return didChange ? { ...currentWorld, rooms } : currentWorld;
+    });
     handleSelectRoom(roomId);
-  }
+  }, [handleSelectRoom]);
 
   function handleRoomField(field, value) {
     if (!selectedRoom) {
@@ -1271,6 +1328,7 @@ function AdminWorldBuilder({ adminToken }) {
             selectedRoomIds={effectiveSelectedRoomIds}
             onSelectRoom={handleSelectRoom}
             onSelectionChange={handleGraphSelection}
+            onNodesChange={handleGraphNodeChanges}
             onMoveRoom={handleMoveRoom}
           />
         </section>
@@ -1359,7 +1417,16 @@ function LayerControls({ layers, visibleLayerIds, onToggleLayer }) {
   );
 }
 
-function WorldGraph({ rooms, world, selectedRoomId, selectedRoomIds, onSelectRoom, onSelectionChange, onMoveRoom }) {
+function WorldGraph({
+  rooms,
+  world,
+  selectedRoomId,
+  selectedRoomIds,
+  onSelectRoom,
+  onSelectionChange,
+  onNodesChange,
+  onMoveRoom,
+}) {
   const selectedRoomIdSet = useMemo(() => new Set(selectedRoomIds), [selectedRoomIds]);
   const roomIdSet = useMemo(() => new Set(rooms.map((room) => room.id)), [rooms]);
   const regionById = useMemo(() => (
@@ -1421,6 +1488,7 @@ function WorldGraph({ rooms, world, selectedRoomId, selectedRoomIds, onSelectRoo
           onNodeClick={handleNodeClick}
           onNodeDragStop={handleNodeDragStop}
           onSelectionChange={handleSelectionChange}
+          onNodesChange={onNodesChange}
         >
           <MiniMap pannable zoomable />
           <Controls />
