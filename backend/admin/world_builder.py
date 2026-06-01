@@ -2,9 +2,11 @@ import copy
 import json
 import math
 import os
+import re
 import subprocess
 from collections import Counter, deque
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import (
     Any,
@@ -39,6 +41,7 @@ DEFAULT_REGION_ID = "world"
 DEFAULT_REGION_COLOR = "#8b5a3c"
 DEFAULT_LAYER_ID = "surface"
 DEFAULT_GRID_SIZE = 24
+DRAFT_MANIFEST_VERSION = 1
 
 
 @dataclass(frozen=True)
@@ -439,6 +442,238 @@ def run_git_publish(
     return PublishResult(ok=True, step="push", output="\n".join(output_parts))
 
 
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace(
+        "+00:00", "Z"
+    )
+
+
+def _slugify(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", str(value).lower()).strip("-")
+    return slug or "draft"
+
+
+def _world_room_count(world_data: Mapping[str, Any]) -> int:
+    return len(_room_entries(world_data))
+
+
+class DraftWorldStore:
+    def __init__(
+        self,
+        *,
+        data_path: PathLike,
+        export_current: Callable[[], JsonDict],
+    ) -> None:
+        self.legacy_path = Path(data_path)
+        self.root = self.legacy_path.parent
+        self.drafts_dir = self.root / "drafts"
+        self.manifest_path = self.drafts_dir / "manifest.json"
+        self.export_current = export_current
+
+    def list(self) -> JsonDict:
+        return self.ensure_manifest()
+
+    def ensure_manifest(self) -> JsonDict:
+        if self.manifest_path.exists():
+            return self._load_manifest()
+
+        self.drafts_dir.mkdir(parents=True, exist_ok=True)
+        if self.legacy_path.exists():
+            draft_id = "current-draft"
+            draft_name = "Current Draft"
+            source = "legacy_draft"
+            world_data = load_world_data(self.legacy_path)
+        else:
+            draft_id = "live-baseline"
+            draft_name = "Live Baseline"
+            source = "live"
+            world_data = self.export_current()
+
+        now = _utc_now()
+        summary = self._summary(
+            draft_id=draft_id,
+            name=draft_name,
+            source=source,
+            created_at=now,
+            updated_at=now,
+            room_count=_world_room_count(world_data),
+            description="",
+        )
+        manifest = {
+            "version": DRAFT_MANIFEST_VERSION,
+            "active_draft_id": draft_id,
+            "drafts": [summary],
+        }
+        save_world_data(world_data, self._path_for_known_draft(draft_id))
+        save_world_data(world_data, self.legacy_path)
+        self._save_manifest(manifest)
+        return manifest
+
+    def load(self, draft_id: Optional[str] = None) -> JsonDict:
+        manifest = self.ensure_manifest()
+        effective_draft_id = draft_id or str(manifest.get("active_draft_id") or "")
+        return load_world_data(self._path_for_manifest_draft(effective_draft_id, manifest))
+
+    def create(
+        self,
+        *,
+        name: str,
+        source: str = "active",
+        source_draft_id: Optional[str] = None,
+        description: str = "",
+    ) -> JsonDict:
+        manifest = self.ensure_manifest()
+        if source == "live":
+            world_data = self.export_current()
+        elif source_draft_id:
+            world_data = self.load(source_draft_id)
+        else:
+            world_data = self.load(str(manifest.get("active_draft_id") or ""))
+
+        draft_name = str(name or "New Draft").strip() or "New Draft"
+        draft_id = self._unique_draft_id(draft_name, manifest)
+        now = _utc_now()
+        summary = self._summary(
+            draft_id=draft_id,
+            name=draft_name,
+            source=str(source or "active"),
+            created_at=now,
+            updated_at=now,
+            room_count=_world_room_count(world_data),
+            description=str(description or ""),
+        )
+        manifest["drafts"].append(summary)
+        save_world_data(world_data, self._path_for_known_draft(draft_id))
+        self._save_manifest(manifest)
+        return {"draft": summary, "world": world_data, "manifest": manifest}
+
+    def save(self, draft_id: Optional[str], world_data: Mapping[str, Any]) -> JsonDict:
+        manifest = self.ensure_manifest()
+        effective_draft_id = draft_id or str(manifest.get("active_draft_id") or "")
+        summary = self._find_draft(manifest, effective_draft_id)
+        path = self._path_for_manifest_draft(effective_draft_id, manifest)
+        save_world_data(world_data, path)
+
+        summary["updated_at"] = _utc_now()
+        summary["room_count"] = _world_room_count(world_data)
+        self._save_manifest(manifest)
+        if effective_draft_id == manifest.get("active_draft_id"):
+            save_world_data(world_data, self.legacy_path)
+        return {"path": str(path), "draft": dict(summary), "manifest": manifest}
+
+    def rename(
+        self,
+        draft_id: str,
+        *,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> JsonDict:
+        manifest = self.ensure_manifest()
+        summary = self._find_draft(manifest, draft_id)
+        if name is not None:
+            summary["name"] = str(name).strip() or summary["name"]
+        if description is not None:
+            summary["description"] = str(description)
+        summary["updated_at"] = _utc_now()
+        self._save_manifest(manifest)
+        return {"draft": dict(summary), "manifest": manifest}
+
+    def delete(self, draft_id: str) -> JsonDict:
+        manifest = self.ensure_manifest()
+        self._find_draft(manifest, draft_id)
+        drafts = list(manifest.get("drafts", []))
+        if len(drafts) <= 1:
+            raise ValueError("Cannot delete the final draft.")
+
+        path = self._path_for_manifest_draft(draft_id, manifest)
+        manifest["drafts"] = [draft for draft in drafts if draft.get("id") != draft_id]
+        if path.exists():
+            path.unlink()
+        if manifest.get("active_draft_id") == draft_id:
+            fallback = max(
+                manifest["drafts"],
+                key=lambda draft: str(draft.get("updated_at") or draft.get("created_at") or ""),
+            )
+            manifest["active_draft_id"] = fallback["id"]
+            save_world_data(self.load(fallback["id"]), self.legacy_path)
+        self._save_manifest(manifest)
+        return manifest
+
+    def activate(self, draft_id: str) -> JsonDict:
+        manifest = self.ensure_manifest()
+        self._find_draft(manifest, draft_id)
+        manifest["active_draft_id"] = draft_id
+        world_data = self.load(draft_id)
+        save_world_data(world_data, self.legacy_path)
+        self._save_manifest(manifest)
+        return manifest
+
+    def _load_manifest(self) -> JsonDict:
+        manifest = load_world_data(self.manifest_path)
+        if not isinstance(manifest.get("drafts"), list):
+            raise ValueError("Draft manifest must contain a drafts list.")
+        if not manifest.get("active_draft_id") and manifest["drafts"]:
+            manifest["active_draft_id"] = manifest["drafts"][0].get("id")
+            self._save_manifest(manifest)
+        return manifest
+
+    def _save_manifest(self, manifest: Mapping[str, Any]) -> None:
+        save_world_data(manifest, self.manifest_path)
+
+    def _path_for_manifest_draft(self, draft_id: str, manifest: Mapping[str, Any]) -> Path:
+        self._find_draft(manifest, draft_id)
+        return self._path_for_known_draft(draft_id)
+
+    def _path_for_known_draft(self, draft_id: str) -> Path:
+        safe_draft_id = str(draft_id or "")
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", safe_draft_id):
+            raise KeyError(safe_draft_id)
+        return self.drafts_dir / f"{safe_draft_id}.json"
+
+    def _find_draft(self, manifest: Mapping[str, Any], draft_id: str) -> JsonDict:
+        if not draft_id or not re.fullmatch(r"[a-z0-9][a-z0-9-]*", str(draft_id)):
+            raise KeyError(str(draft_id))
+        for draft in manifest.get("drafts", []):
+            if isinstance(draft, Mapping) and draft.get("id") == draft_id:
+                return draft  # type: ignore[return-value]
+        raise KeyError(str(draft_id))
+
+    def _unique_draft_id(self, name: str, manifest: Mapping[str, Any]) -> str:
+        existing_ids = {
+            str(draft.get("id"))
+            for draft in manifest.get("drafts", [])
+            if isinstance(draft, Mapping)
+        }
+        base = _slugify(name) or "draft"
+        draft_id = base
+        suffix = 2
+        while draft_id in existing_ids:
+            draft_id = f"{base}-{suffix}"
+            suffix += 1
+        return draft_id
+
+    def _summary(
+        self,
+        *,
+        draft_id: str,
+        name: str,
+        source: str,
+        created_at: str,
+        updated_at: str,
+        room_count: int,
+        description: str,
+    ) -> JsonDict:
+        return {
+            "id": draft_id,
+            "name": name,
+            "source": source,
+            "created_at": created_at,
+            "updated_at": updated_at,
+            "room_count": room_count,
+            "description": description,
+        }
+
+
 class WorldBuilder:
     def __init__(
         self,
@@ -454,6 +689,10 @@ class WorldBuilder:
         self.data_path = Path(data_path)
         self.repo_path = Path(repo_path)
         self.spawn_room_id = spawn_room_id
+        self.drafts = DraftWorldStore(
+            data_path=self.data_path,
+            export_current=self.export_current,
+        )
 
     def export_current(self, metadata: Optional[Mapping[str, Any]] = None) -> JsonDict:
         return export_live_world(
@@ -467,18 +706,16 @@ class WorldBuilder:
         return load_world_data(self.data_path)
 
     def load_or_export(self) -> JsonDict:
-        if self.data_path.exists():
-            return self.load()
-        return self.export_current()
+        return self.drafts.load()
 
     def validate(self, world_data: Mapping[str, Any]) -> ValidationResult:
         return validate_world_data(world_data, spawn_room_id=self.spawn_room_id)
 
     def save(self, world_data: Mapping[str, Any]) -> JsonDict:
-        save_world_data(world_data, self.data_path)
+        save_result = self.drafts.save(None, world_data)
         script_paths = save_script_files(world_data, self.repo_path)
         return {
-            "path": str(self.data_path),
+            **save_result,
             "scripts": [str(path) for path in script_paths],
         }
 
@@ -501,6 +738,100 @@ class WorldBuilder:
         world_data = self.export_current(metadata={"source": "baseline_reset"})
         self.save(world_data)
         return world_data
+
+    def export_baseline(
+        self, world_factory: Callable[..., Dict[str, Room]]
+    ) -> JsonDict:
+        baseline_state = GameState()
+        baseline_mob_manager = None
+        if self.mob_manager is not None:
+            baseline_mob_manager = MobManager()
+            baseline_mob_manager.mob_definitions = copy.deepcopy(
+                getattr(self.mob_manager, "mob_definitions", {})
+            )
+            generated_rooms = world_factory(mob_manager=baseline_mob_manager)
+        else:
+            generated_rooms = world_factory()
+
+        for room in generated_rooms.values():
+            baseline_state.add_room(room)
+
+        return export_live_world(
+            baseline_state,
+            baseline_mob_manager,
+            spawn_room_id=self.spawn_room_id,
+            metadata={"source": "baseline_reset"},
+        )
+
+    def list_drafts(self) -> JsonDict:
+        return self.drafts.list()
+
+    def create_draft(
+        self,
+        *,
+        name: str,
+        source: str = "active",
+        source_draft_id: Optional[str] = None,
+        description: str = "",
+    ) -> JsonDict:
+        return self.drafts.create(
+            name=name,
+            source=source,
+            source_draft_id=source_draft_id,
+            description=description,
+        )
+
+    def load_draft(self, draft_id: str) -> JsonDict:
+        return self.drafts.load(draft_id)
+
+    def save_draft(self, draft_id: str, world_data: Mapping[str, Any]) -> JsonDict:
+        save_result = self.drafts.save(draft_id, world_data)
+        script_paths = save_script_files(world_data, self.repo_path)
+        return {
+            **save_result,
+            "scripts": [str(path) for path in script_paths],
+        }
+
+    def rename_draft(
+        self,
+        draft_id: str,
+        *,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> JsonDict:
+        return self.drafts.rename(draft_id, name=name, description=description)
+
+    def delete_draft(self, draft_id: str) -> JsonDict:
+        return self.drafts.delete(draft_id)
+
+    def activate_draft(self, draft_id: str) -> JsonDict:
+        return self.drafts.activate(draft_id)
+
+    def reset_draft_from_baseline(
+        self, draft_id: str, world_factory: Callable[..., Dict[str, Room]]
+    ) -> JsonDict:
+        world_data = self.export_baseline(world_factory)
+        return {
+            "world": world_data,
+            "saved": self.save_draft(draft_id, world_data),
+        }
+
+    def apply_draft(
+        self, draft_id: str, world_data: Mapping[str, Any]
+    ) -> ValidationResult:
+        self.drafts.save(draft_id, world_data)
+        return self.apply(world_data)
+
+    def publish_draft(
+        self,
+        draft_id: str,
+        world_data: Mapping[str, Any],
+        *,
+        message: Optional[str] = None,
+        checks: Optional[Sequence[Sequence[str]]] = None,
+    ) -> PublishResult:
+        self.drafts.save(draft_id, world_data)
+        return self.publish(world_data, message=message, checks=checks)
 
     def publish(
         self,

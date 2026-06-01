@@ -302,6 +302,14 @@ function summarizePayload(payload) {
   return 'Action complete';
 }
 
+function formatDraftOption(draft) {
+  const roomCount = Number.isFinite(Number(draft.room_count))
+    ? `${Number(draft.room_count)} rooms`
+    : 'unknown rooms';
+  const updatedAt = draft.updated_at ? ` - ${draft.updated_at}` : '';
+  return `${draft.name} - ${roomCount}${updatedAt}`;
+}
+
 function App() {
   const isAdminRoute = window.location.pathname === ADMIN_PATH;
 
@@ -707,6 +715,12 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
   const [apiStatus, setApiStatus] = useState(adminToken ? 'Ready' : 'Waiting for stupidgem admin token.');
   const [apiError, setApiError] = useState('');
   const [isBusy, setIsBusy] = useState(false);
+  const [drafts, setDrafts] = useState([]);
+  const [activeDraftId, setActiveDraftId] = useState('');
+  const [selectedDraftId, setSelectedDraftId] = useState('');
+  const [currentDraft, setCurrentDraft] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [draftDialog, setDraftDialog] = useState(null);
 
   const apiRequest = useCallback(async (path, options = {}) => {
     if (!adminToken) {
@@ -745,6 +759,41 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
     return payload;
   }, [adminToken, onAdminTokenInvalid]);
 
+  const applyManifestPayload = useCallback((payload) => {
+    const manifest = payload.manifest || payload;
+    if (Array.isArray(manifest.drafts)) {
+      setDrafts(manifest.drafts);
+    }
+    if (manifest.active_draft_id) {
+      setActiveDraftId(manifest.active_draft_id);
+    }
+  }, []);
+
+  const applyLoadedWorld = useCallback((payload, fallbackDraftId = '') => {
+    const nextWorld = normalizeWorld(payload.world);
+    const nextSelectedRoomId = nextWorld.rooms[0]?.id || '';
+    const nextVisibleLayerIds = nextWorld.layers.filter((layer) => layer.visible !== false).map((layer) => layer.id);
+    const payloadDrafts = payload.drafts || payload.manifest?.drafts || [];
+    const payloadActiveDraftId = payload.active_draft_id || payload.manifest?.active_draft_id || '';
+    const payloadDraft = payload.draft
+      || payloadDrafts.find((draft) => draft.id === fallbackDraftId)
+      || payloadDrafts.find((draft) => draft.id === payloadActiveDraftId)
+      || null;
+
+    setWorld(nextWorld);
+    setSelectedRoomId(nextSelectedRoomId);
+    setSelectedRoomIds(nextSelectedRoomId ? [nextSelectedRoomId] : []);
+    setVisibleLayerIds(nextVisibleLayerIds.length ? nextVisibleLayerIds : nextWorld.layers.map((layer) => layer.id));
+    setBulkRegionId(nextWorld.regions[0]?.id || DEFAULT_REGION_ID);
+    setBulkLayerId(nextWorld.layout?.default_layer_id || nextWorld.layers[0]?.id || DEFAULT_LAYER_ID);
+    applyManifestPayload(payload);
+    setCurrentDraft((previousDraft) => (
+      payloadDraft || (fallbackDraftId && previousDraft?.id === fallbackDraftId ? previousDraft : null)
+    ));
+    setSelectedDraftId(payloadDraft?.id || fallbackDraftId || payloadActiveDraftId || '');
+    setIsDirty(false);
+  }, [applyManifestPayload]);
+
   const loadWorld = useCallback(async () => {
     if (!adminToken) {
       setApiStatus('Waiting for stupidgem admin token.');
@@ -756,15 +805,7 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
     setApiStatus('Loading world...');
     try {
       const payload = await apiRequest('/admin/api/world');
-      const nextWorld = normalizeWorld(payload.world);
-      const nextSelectedRoomId = nextWorld.rooms[0]?.id || '';
-      const nextVisibleLayerIds = nextWorld.layers.filter((layer) => layer.visible !== false).map((layer) => layer.id);
-      setWorld(nextWorld);
-      setSelectedRoomId(nextSelectedRoomId);
-      setSelectedRoomIds(nextSelectedRoomId ? [nextSelectedRoomId] : []);
-      setVisibleLayerIds(nextVisibleLayerIds.length ? nextVisibleLayerIds : nextWorld.layers.map((layer) => layer.id));
-      setBulkRegionId(nextWorld.regions[0]?.id || DEFAULT_REGION_ID);
-      setBulkLayerId(nextWorld.layout?.default_layer_id || nextWorld.layers[0]?.id || DEFAULT_LAYER_ID);
+      applyLoadedWorld(payload);
       if (payload.validation) {
         setValidation(payload.validation);
       }
@@ -775,7 +816,7 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
     } finally {
       setIsBusy(false);
     }
-  }, [adminToken, apiRequest]);
+  }, [adminToken, apiRequest, applyLoadedWorld]);
 
   useEffect(() => {
     if (adminToken) {
@@ -839,6 +880,7 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
   }, [world.layers, world.layout?.default_layer_id, world.regions]);
 
   function updateRoom(roomId, updater) {
+    setIsDirty(true);
     setWorld((currentWorld) => ({
       ...currentWorld,
       rooms: currentWorld.rooms.map((room) => {
@@ -852,6 +894,7 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
 
   function updateRooms(roomIds, updater) {
     const roomIdSet = new Set(roomIds);
+    setIsDirty(true);
     setWorld((currentWorld) => ({
       ...currentWorld,
       rooms: currentWorld.rooms.map((room, index) => {
@@ -899,6 +942,7 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
       return;
     }
 
+    setIsDirty(true);
     const positionByRoomId = new Map(positionChanges.map((change) => [change.id, change.position]));
     setWorld((currentWorld) => {
       let didChange = false;
@@ -925,6 +969,7 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
   const handleMoveRoom = useCallback((roomId, position = {}) => {
     const x = finiteNumber(position.x, 0);
     const y = finiteNumber(position.y, 0);
+    setIsDirty(true);
     setWorld((currentWorld) => {
       let didChange = false;
       const rooms = currentWorld.rooms.map((room) => {
@@ -949,6 +994,7 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
 
     if (field === 'id') {
       const previousRoomId = selectedRoom.id;
+      setIsDirty(true);
       setWorld((currentWorld) => ({
         ...currentWorld,
         rooms: currentWorld.rooms.map((room) => {
@@ -1038,6 +1084,7 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
 
   function addRoom() {
     const nextRoom = makeRoomForWorld(world);
+    setIsDirty(true);
     setWorld({
       ...world,
       rooms: [...world.rooms, nextRoom],
@@ -1054,6 +1101,7 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
     const roomIdsToDelete = new Set(effectiveSelectedRoomIds.length ? effectiveSelectedRoomIds : [selectedRoom.id]);
     const rooms = world.rooms.filter((room) => !roomIdsToDelete.has(room.id));
     const nextSelectedRoomId = rooms[0]?.id || '';
+    setIsDirty(true);
     setWorld({
       ...world,
       rooms,
@@ -1236,13 +1284,142 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
     });
   }
 
+  async function handleDraftSelect(nextDraftId, options = {}) {
+    if (!nextDraftId || nextDraftId === selectedDraftId) {
+      return;
+    }
+    if (!options.force && isDirty && !window.confirm('Switch drafts and discard unsaved changes?')) {
+      return;
+    }
+
+    setIsBusy(true);
+    setApiError('');
+    setApiStatus('Loading draft...');
+    try {
+      const payload = await apiRequest(`/admin/api/world/drafts/${encodeURIComponent(nextDraftId)}`);
+      applyLoadedWorld(payload, nextDraftId);
+      setApiStatus('World loaded');
+    } catch (error) {
+      setApiError(error.message);
+      setApiStatus('Draft load failed');
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  function openDraftDialog(mode, source = 'active') {
+    if (mode === 'rename' && !selectedDraftId) {
+      return;
+    }
+    const defaultName = source === 'live'
+      ? 'Live Clone'
+      : source === 'draft'
+        ? `${currentDraft?.name || 'Draft'} Copy`
+        : 'New Draft';
+    setDraftDialog({
+      mode,
+      source,
+      name: mode === 'rename' ? currentDraft?.name || 'Draft' : defaultName,
+      description: mode === 'rename' ? currentDraft?.description || '' : '',
+    });
+  }
+
+  function updateDraftDialog(field, value) {
+    setDraftDialog((currentDialog) => (
+      currentDialog ? { ...currentDialog, [field]: value } : currentDialog
+    ));
+  }
+
+  async function submitDraftDialog(event) {
+    event.preventDefault();
+    if (!draftDialog) {
+      return;
+    }
+    const name = draftDialog.name.trim();
+    if (!name) {
+      setApiError('Draft name is required.');
+      return;
+    }
+
+    if (
+      draftDialog.mode === 'create'
+      && isDirty
+      && !window.confirm('Create draft and discard unsaved changes?')
+    ) {
+      return;
+    }
+
+    setIsBusy(true);
+    setApiError('');
+    setApiStatus(draftDialog.mode === 'rename' ? 'Renaming draft...' : 'Creating draft...');
+    try {
+      if (draftDialog.mode === 'rename') {
+        const payload = await apiRequest(`/admin/api/world/drafts/${encodeURIComponent(selectedDraftId)}`, {
+          method: 'PATCH',
+          body: { name, description: draftDialog.description },
+        });
+        applyManifestPayload(payload);
+        setCurrentDraft(payload.draft || currentDraft);
+        setApiStatus('Draft renamed');
+      } else {
+        const payload = await apiRequest('/admin/api/world/drafts', {
+          method: 'POST',
+          body: {
+            name,
+            description: draftDialog.description,
+            source: draftDialog.source,
+            source_draft_id: draftDialog.source === 'draft' ? selectedDraftId : undefined,
+          },
+        });
+        applyLoadedWorld(payload, payload.draft?.id || '');
+        setApiStatus('Draft created');
+      }
+      setDraftDialog(null);
+    } catch (error) {
+      setApiError(error.message);
+      setApiStatus(draftDialog.mode === 'rename' ? 'Draft rename failed' : 'Draft create failed');
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function deleteDraft() {
+    if (!selectedDraftId || !window.confirm('Delete this draft project?')) {
+      return;
+    }
+
+    setIsBusy(true);
+    setApiError('');
+    setApiStatus('Deleting draft...');
+    try {
+      const payload = await apiRequest(`/admin/api/world/drafts/${encodeURIComponent(selectedDraftId)}`, {
+        method: 'DELETE',
+      });
+      applyManifestPayload(payload);
+      const fallbackDraftId = payload.active_draft_id || payload.drafts?.[0]?.id || '';
+      if (fallbackDraftId) {
+        await handleDraftSelect(fallbackDraftId, { force: true });
+      } else {
+        setSelectedDraftId('');
+        setCurrentDraft(null);
+      }
+      setApiStatus('Draft deleted');
+    } catch (error) {
+      setApiError(error.message);
+      setApiStatus('Draft delete failed');
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   async function runWorldAction(action) {
+    const draftPath = selectedDraftId ? `/admin/api/world/drafts/${encodeURIComponent(selectedDraftId)}` : '/admin/api/world';
     const configs = {
-      save: { path: '/admin/api/world', method: 'POST', body: { world: buildApiWorld(world) }, busy: 'Saving draft...' },
+      save: { path: draftPath, method: 'POST', body: { world: buildApiWorld(world) }, busy: 'Saving draft...' },
       validate: { path: '/admin/api/world/validate', method: 'POST', body: { world: buildApiWorld(world) }, busy: 'Validating world...' },
-      apply: { path: '/admin/api/world/apply', method: 'POST', body: { world: buildApiWorld(world) }, busy: 'Applying live world...' },
-      reset: { path: '/admin/api/world/reset', method: 'POST', busy: 'Resetting from baseline...' },
-      publish: { path: '/admin/api/world/publish', method: 'POST', body: { world: buildApiWorld(world) }, busy: 'Publishing through Git...' },
+      apply: { path: selectedDraftId ? `${draftPath}/apply` : '/admin/api/world/apply', method: 'POST', body: { world: buildApiWorld(world) }, busy: 'Applying live world...' },
+      reset: { path: selectedDraftId ? `${draftPath}/reset` : '/admin/api/world/reset', method: 'POST', busy: 'Resetting from baseline...' },
+      publish: { path: selectedDraftId ? `${draftPath}/publish` : '/admin/api/world/publish', method: 'POST', body: { world: buildApiWorld(world) }, busy: 'Publishing through Git...' },
     };
     const config = configs[action];
 
@@ -1252,16 +1429,16 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
     try {
       const payload = await apiRequest(config.path, config);
       if (payload.world) {
-        const nextWorld = normalizeWorld(payload.world);
-        const nextSelectedRoomId = nextWorld.rooms[0]?.id || '';
-        const nextVisibleLayerIds = nextWorld.layers.filter((layer) => layer.visible !== false).map((layer) => layer.id);
-        setWorld(nextWorld);
-        setSelectedRoomId(nextSelectedRoomId);
-        setSelectedRoomIds(nextSelectedRoomId ? [nextSelectedRoomId] : []);
-        setVisibleLayerIds(nextVisibleLayerIds.length ? nextVisibleLayerIds : nextWorld.layers.map((layer) => layer.id));
+        applyLoadedWorld(payload, selectedDraftId);
+      }
+      if (payload.saved?.manifest) {
+        applyManifestPayload(payload.saved.manifest);
       }
       if (payload.validation) {
         setValidation(payload.validation);
+      }
+      if (action !== 'validate') {
+        setIsDirty(false);
       }
       setApiStatus(summarizePayload(payload));
     } catch (error) {
@@ -1293,6 +1470,88 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
           <span>{scriptCount} scripts</span>
         </div>
       </header>
+
+      <section className="draft-switcher" aria-label="Draft projects">
+        <label className="draft-switcher__select">
+          Draft project
+          <select
+            value={selectedDraftId}
+            onChange={(event) => handleDraftSelect(event.target.value)}
+            disabled={!adminToken || isBusy || drafts.length === 0}
+          >
+            {drafts.length === 0 ? <option value="">Legacy world</option> : null}
+            {drafts.map((draft) => (
+              <option key={draft.id} value={draft.id}>
+                {formatDraftOption(draft)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="button" onClick={() => openDraftDialog('create', 'active')} disabled={!adminToken || isBusy}>New Draft</button>
+        <button type="button" onClick={() => openDraftDialog('create', 'draft')} disabled={!adminToken || isBusy || !selectedDraftId}>Duplicate Draft</button>
+        <button type="button" onClick={() => openDraftDialog('create', 'live')} disabled={!adminToken || isBusy}>Clone Live</button>
+        <button type="button" onClick={() => openDraftDialog('rename')} disabled={!adminToken || isBusy || !selectedDraftId}>Rename</button>
+        <button type="button" onClick={deleteDraft} disabled={!adminToken || isBusy || drafts.length <= 1}>Delete</button>
+        <div className="draft-switcher__status">
+          <strong>{currentDraft ? `Editing Draft: ${currentDraft.name}` : 'Editing Legacy World'}</strong>
+          <span>{activeDraftId && selectedDraftId === activeDraftId ? 'Active compatibility draft' : 'Live changes only after Apply Live'}</span>
+          {isDirty ? <span className="draft-switcher__dirty">Unsaved changes</span> : null}
+        </div>
+      </section>
+
+      {draftDialog ? (
+        <div className="draft-dialog-backdrop">
+          <form
+            className="draft-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={draftDialog.mode === 'rename' ? 'Rename draft project' : 'Create draft project'}
+            onSubmit={submitDraftDialog}
+          >
+            <div className="draft-dialog__header">
+              <h2>{draftDialog.mode === 'rename' ? 'Rename Draft' : 'New Draft Project'}</h2>
+              <button type="button" onClick={() => setDraftDialog(null)} disabled={isBusy}>Close</button>
+            </div>
+            <label>
+              Draft name
+              <input
+                value={draftDialog.name}
+                onChange={(event) => updateDraftDialog('name', event.target.value)}
+                disabled={isBusy}
+              />
+            </label>
+            <label>
+              Description
+              <textarea
+                value={draftDialog.description}
+                onChange={(event) => updateDraftDialog('description', event.target.value)}
+                disabled={isBusy}
+                rows={3}
+              />
+            </label>
+            {draftDialog.mode === 'create' ? (
+              <label>
+                Draft source
+                <select
+                  value={draftDialog.source}
+                  onChange={(event) => updateDraftDialog('source', event.target.value)}
+                  disabled={isBusy}
+                >
+                  <option value="active">Active draft</option>
+                  <option value="draft" disabled={!selectedDraftId}>Selected draft</option>
+                  <option value="live">Live baseline</option>
+                </select>
+              </label>
+            ) : null}
+            <div className="draft-dialog__actions">
+              <button type="button" onClick={() => setDraftDialog(null)} disabled={isBusy}>Cancel</button>
+              <button type="submit" disabled={isBusy || !draftDialog.name.trim()}>
+                {draftDialog.mode === 'rename' ? 'Rename Draft' : 'Create Draft'}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
 
       <section className="admin-builder__toolbar" aria-label="Runtime controls">
         <button type="button" onClick={loadWorld} disabled={!adminToken || isBusy}>Load World</button>

@@ -592,3 +592,172 @@ test('keeps mob and script room references consistent after room rename and dele
   expect(deletePayload.world.mobs.every((mob) => mob.current_room !== 'market')).toBe(true);
   expect(deletePayload.world.scripts.every((script) => script.room_id !== 'market')).toBe(true);
 });
+
+test('loads draft manifest and switches between independent draft worlds', async () => {
+  routeTo('/admin/world-builder');
+  localStorage.setItem('adminToken', 'stored-token');
+  global.fetch
+    .mockImplementationOnce(() => okJson({
+      world: sampleWorld,
+      draft: { id: 'main', name: 'Main Draft' },
+      active_draft_id: 'main',
+      drafts: [
+        { id: 'main', name: 'Main Draft', room_count: 2, updated_at: '2026-06-01T20:00:00Z' },
+        { id: 'experiment', name: 'Experiment', room_count: 1, updated_at: '2026-06-01T20:10:00Z' },
+      ],
+    }))
+    .mockImplementationOnce(() => okJson({
+      world: {
+        ...sampleWorld,
+        rooms: [{ ...sampleWorld.rooms[0], id: 'crypt', name: 'Crypt' }],
+      },
+      draft: { id: 'experiment', name: 'Experiment' },
+    }));
+
+  render(<App />);
+  await screen.findAllByText('Village Square');
+  expect(screen.getByLabelText('Draft project')).toHaveValue('main');
+
+  fireEvent.change(screen.getByLabelText('Draft project'), { target: { value: 'experiment' } });
+
+  expect(await screen.findByTestId('flow-node-crypt')).toBeInTheDocument();
+  expect(screen.getAllByText('Crypt').length).toBeGreaterThan(0);
+  expect(global.fetch.mock.calls[1][0]).toBe('http://localhost:8080/admin/api/world/drafts/experiment');
+});
+
+test('prompts before switching away from unsaved draft changes', async () => {
+  routeTo('/admin/world-builder');
+  localStorage.setItem('adminToken', 'stored-token');
+  const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);
+  global.fetch
+    .mockImplementationOnce(() => okJson({
+      world: sampleWorld,
+      draft: { id: 'main', name: 'Main Draft' },
+      active_draft_id: 'main',
+      drafts: [
+        { id: 'main', name: 'Main Draft', room_count: 2 },
+        { id: 'experiment', name: 'Experiment', room_count: 1 },
+      ],
+    }));
+
+  render(<App />);
+  await screen.findAllByText('Village Square');
+
+  fireEvent.change(screen.getByLabelText('Room name'), { target: { value: 'Changed Square' } });
+  expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Draft project'), { target: { value: 'experiment' } });
+
+  expect(confirmSpy).toHaveBeenCalledWith('Switch drafts and discard unsaved changes?');
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+  expect(screen.getByLabelText('Draft project')).toHaveValue('main');
+  confirmSpy.mockRestore();
+});
+
+test('creates a new draft from the active draft and saves only the selected draft', async () => {
+  routeTo('/admin/world-builder');
+  localStorage.setItem('adminToken', 'stored-token');
+  global.fetch
+    .mockImplementationOnce(() => okJson({
+      world: sampleWorld,
+      draft: { id: 'main', name: 'Main Draft' },
+      active_draft_id: 'main',
+      drafts: [{ id: 'main', name: 'Main Draft', room_count: 2 }],
+    }))
+    .mockImplementationOnce(() => okJson({
+      draft: { id: 'experiment', name: 'Experiment' },
+      world: sampleWorld,
+      manifest: {
+        active_draft_id: 'main',
+        drafts: [
+          { id: 'main', name: 'Main Draft', room_count: 2 },
+          { id: 'experiment', name: 'Experiment', room_count: 2 },
+        ],
+      },
+    }))
+    .mockImplementationOnce(() => okJson({
+      validation: { ok: true, errors: [], warnings: [] },
+      saved: { path: 'storage/world_builder/drafts/experiment.json' },
+    }));
+
+  render(<App />);
+  await screen.findAllByText('Village Square');
+
+  fireEvent.click(screen.getByRole('button', { name: /new draft/i }));
+  const dialog = await screen.findByRole('dialog', { name: /create draft project/i });
+  expect(dialog).toBeInTheDocument();
+  fireEvent.change(within(dialog).getByLabelText('Draft name'), { target: { value: 'Experiment' } });
+  fireEvent.change(within(dialog).getByLabelText('Description'), { target: { value: 'Test branch' } });
+  fireEvent.change(within(dialog).getByLabelText('Draft source'), { target: { value: 'active' } });
+  fireEvent.click(within(dialog).getByRole('button', { name: /create draft/i }));
+
+  expect(await screen.findByText(/Editing Draft: Experiment/i)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /save draft/i }));
+
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
+  expect(global.fetch.mock.calls[1][0]).toBe('http://localhost:8080/admin/api/world/drafts');
+  expect(JSON.parse(global.fetch.mock.calls[1][1].body)).toEqual(
+    expect.objectContaining({ name: 'Experiment', description: 'Test branch', source: 'active' })
+  );
+  expect(global.fetch.mock.calls[2][0]).toBe('http://localhost:8080/admin/api/world/drafts/experiment');
+});
+
+test('apply and publish target the selected draft project', async () => {
+  routeTo('/admin/world-builder');
+  localStorage.setItem('adminToken', 'stored-token');
+  global.fetch
+    .mockImplementationOnce(() => okJson({
+      world: sampleWorld,
+      draft: { id: 'experiment', name: 'Experiment' },
+      active_draft_id: 'experiment',
+      drafts: [{ id: 'experiment', name: 'Experiment', room_count: 2 }],
+    }))
+    .mockImplementationOnce(() => okJson({
+      applied: { rooms: 2, mobs: 1 },
+      validation: { ok: true, errors: [], warnings: [] },
+    }))
+    .mockImplementationOnce(() => okJson({
+      publish: { ok: true, step: 'push' },
+      validation: { ok: true, errors: [], warnings: [] },
+    }));
+
+  render(<App />);
+  await screen.findAllByText('Village Square');
+
+  fireEvent.click(screen.getByRole('button', { name: /apply live/i }));
+  expect(await screen.findByText(/Applied live/i)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /publish git/i }));
+  expect(await screen.findByText(/Publish complete/i)).toBeInTheDocument();
+
+  expect(global.fetch.mock.calls[1][0]).toBe('http://localhost:8080/admin/api/world/drafts/experiment/apply');
+  expect(global.fetch.mock.calls[2][0]).toBe('http://localhost:8080/admin/api/world/drafts/experiment/publish');
+});
+
+test('reset baseline targets the selected draft project', async () => {
+  routeTo('/admin/world-builder');
+  localStorage.setItem('adminToken', 'stored-token');
+  global.fetch
+    .mockImplementationOnce(() => okJson({
+      world: sampleWorld,
+      draft: { id: 'experiment', name: 'Experiment' },
+      active_draft_id: 'experiment',
+      drafts: [{ id: 'experiment', name: 'Experiment', room_count: 2 }],
+    }))
+    .mockImplementationOnce(() => okJson({
+      world: {
+        ...sampleWorld,
+        rooms: [{ ...sampleWorld.rooms[0], id: 'reset-room', name: 'Reset Room' }],
+      },
+      draft: { id: 'experiment', name: 'Experiment' },
+      active_draft_id: 'experiment',
+      drafts: [{ id: 'experiment', name: 'Experiment', room_count: 1 }],
+      saved: { path: 'storage/world_builder/drafts/experiment.json' },
+    }));
+
+  render(<App />);
+  await screen.findAllByText('Village Square');
+
+  fireEvent.click(screen.getByRole('button', { name: /reset baseline/i }));
+
+  expect(await screen.findByTestId('flow-node-reset-room')).toBeInTheDocument();
+  expect(global.fetch.mock.calls[1][0]).toBe('http://localhost:8080/admin/api/world/drafts/experiment/reset');
+});

@@ -48,7 +48,7 @@ def _cors_headers() -> Dict[str, str]:
     return {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Admin-Token",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
     }
 
 
@@ -107,6 +107,15 @@ class AdminRouteController:
             )
         return world_data
 
+    async def _read_json(self, request: Any) -> Any:
+        try:
+            payload = await request.json()
+        except json.JSONDecodeError:
+            return _error_response("invalid_json", "Request body must be JSON.", 400)
+        if not isinstance(payload, dict):
+            return _error_response("invalid_json", "Request body must be a JSON object.", 400)
+        return payload
+
     def _spawn_room(self) -> Optional[str]:
         return getattr(self.game_state, "spawn_room", None) or "square"
 
@@ -128,7 +137,16 @@ class AdminRouteController:
             return unauthorized
 
         world_data = self.world_builder.load_or_export()
-        return _json_response({"world": world_data})
+        payload = {"world": world_data}
+        if hasattr(self.world_builder, "list_drafts"):
+            manifest = self.world_builder.list_drafts()
+            payload.update(manifest)
+            active_draft_id = manifest.get("active_draft_id")
+            for draft in manifest.get("drafts", []):
+                if draft.get("id") == active_draft_id:
+                    payload["draft"] = draft
+                    break
+        return _json_response(payload)
 
     async def save_world(self, request: Any) -> web.Response:
         unauthorized = self._require_admin(request)
@@ -245,6 +263,261 @@ class AdminRouteController:
             }
         )
 
+    async def list_world_drafts(self, request: Any) -> web.Response:
+        unauthorized = self._require_admin(request)
+        if unauthorized is not None:
+            return unauthorized
+
+        return _json_response(self.world_builder.list_drafts())
+
+    async def create_world_draft(self, request: Any) -> web.Response:
+        unauthorized = self._require_admin(request)
+        if unauthorized is not None:
+            return unauthorized
+
+        payload = await self._read_json(request)
+        if isinstance(payload, web.Response):
+            return payload
+        try:
+            result = self.world_builder.create_draft(
+                name=str(payload.get("name") or "New Draft"),
+                source=str(payload.get("source") or "active"),
+                source_draft_id=payload.get("source_draft_id"),
+                description=str(payload.get("description") or ""),
+            )
+        except KeyError as error:
+            return _error_response("draft_not_found", str(error), 404)
+        except ValueError as error:
+            return _error_response("invalid_draft", str(error), 400)
+        return _json_response(result)
+
+    async def get_world_draft(
+        self, request: Any, draft_id: Optional[str] = None
+    ) -> web.Response:
+        unauthorized = self._require_admin(request)
+        if unauthorized is not None:
+            return unauthorized
+
+        effective_draft_id = self._request_draft_id(request, draft_id)
+        try:
+            loaded = self.world_builder.load_draft(effective_draft_id)
+        except KeyError as error:
+            return _error_response("draft_not_found", str(error), 404)
+        except ValueError as error:
+            return _error_response("invalid_draft", str(error), 400)
+        if isinstance(loaded, dict) and "world" in loaded:
+            return _json_response(loaded)
+        return _json_response({"world": loaded, "draft": self._draft_summary(effective_draft_id)})
+
+    async def save_world_draft(
+        self, request: Any, draft_id: Optional[str] = None
+    ) -> web.Response:
+        unauthorized = self._require_admin(request)
+        if unauthorized is not None:
+            return unauthorized
+
+        world_data = await self._read_world(request)
+        if isinstance(world_data, web.Response):
+            return world_data
+
+        validation = self._validation_to_dict(self.world_builder.validate(world_data))
+        if not validation.get("ok", False):
+            return _json_response(
+                {"error": "validation_failed", "validation": validation},
+                status=400,
+            )
+
+        effective_draft_id = self._request_draft_id(request, draft_id)
+        try:
+            save_result = self.world_builder.save_draft(effective_draft_id, world_data)
+        except KeyError as error:
+            return _error_response("draft_not_found", str(error), 404)
+        except ValueError as error:
+            return _error_response("invalid_draft", str(error), 400)
+        return _json_response({"saved": save_result, "validation": validation})
+
+    async def update_world_draft(
+        self, request: Any, draft_id: Optional[str] = None
+    ) -> web.Response:
+        unauthorized = self._require_admin(request)
+        if unauthorized is not None:
+            return unauthorized
+
+        payload = await self._read_json(request)
+        if isinstance(payload, web.Response):
+            return payload
+        effective_draft_id = self._request_draft_id(request, draft_id)
+        try:
+            result = self.world_builder.rename_draft(
+                effective_draft_id,
+                name=payload.get("name"),
+                description=payload.get("description"),
+            )
+        except KeyError as error:
+            return _error_response("draft_not_found", str(error), 404)
+        except ValueError as error:
+            return _error_response("invalid_draft", str(error), 400)
+        return _json_response(result)
+
+    async def delete_world_draft(
+        self, request: Any, draft_id: Optional[str] = None
+    ) -> web.Response:
+        unauthorized = self._require_admin(request)
+        if unauthorized is not None:
+            return unauthorized
+
+        effective_draft_id = self._request_draft_id(request, draft_id)
+        try:
+            result = self.world_builder.delete_draft(effective_draft_id)
+        except KeyError as error:
+            return _error_response("draft_not_found", str(error), 404)
+        except ValueError as error:
+            return _error_response("invalid_draft", str(error), 400)
+        return _json_response(result)
+
+    async def activate_world_draft(
+        self, request: Any, draft_id: Optional[str] = None
+    ) -> web.Response:
+        unauthorized = self._require_admin(request)
+        if unauthorized is not None:
+            return unauthorized
+
+        effective_draft_id = self._request_draft_id(request, draft_id)
+        try:
+            result = self.world_builder.activate_draft(effective_draft_id)
+        except KeyError as error:
+            return _error_response("draft_not_found", str(error), 404)
+        except ValueError as error:
+            return _error_response("invalid_draft", str(error), 400)
+        return _json_response(result)
+
+    async def reset_world_draft(
+        self, request: Any, draft_id: Optional[str] = None
+    ) -> web.Response:
+        unauthorized = self._require_admin(request)
+        if unauthorized is not None:
+            return unauthorized
+
+        effective_draft_id = self._request_draft_id(request, draft_id)
+        try:
+            result = self.world_builder.reset_draft_from_baseline(
+                effective_draft_id,
+                self.world_factory,
+            )
+        except KeyError as error:
+            return _error_response("draft_not_found", str(error), 404)
+        except ValueError as error:
+            return _error_response("invalid_draft", str(error), 400)
+
+        payload = {
+            "world": result["world"],
+            "saved": result.get("saved", {}),
+        }
+        saved = payload["saved"]
+        if isinstance(saved, dict):
+            manifest = saved.get("manifest")
+            if isinstance(manifest, dict):
+                payload.update(manifest)
+            draft = saved.get("draft")
+            if isinstance(draft, dict):
+                payload["draft"] = draft
+        return _json_response(payload)
+
+    async def apply_world_draft(
+        self, request: Any, draft_id: Optional[str] = None
+    ) -> web.Response:
+        unauthorized = self._require_admin(request)
+        if unauthorized is not None:
+            return unauthorized
+
+        world_data = await self._read_world(request)
+        if isinstance(world_data, web.Response):
+            return world_data
+
+        validation = self._validation_to_dict(self.world_builder.validate(world_data))
+        if not validation.get("ok", False):
+            return _json_response(
+                {"error": "validation_failed", "validation": validation},
+                status=400,
+            )
+
+        effective_draft_id = self._request_draft_id(request, draft_id)
+        try:
+            apply_validation = self._validation_to_dict(
+                self.world_builder.apply_draft(effective_draft_id, world_data)
+            )
+        except KeyError as error:
+            return _error_response("draft_not_found", str(error), 404)
+        except ValueError as error:
+            return _error_response("invalid_draft", str(error), 400)
+        if not apply_validation.get("ok", False):
+            return _json_response(
+                {"error": "validation_failed", "validation": apply_validation},
+                status=400,
+            )
+        return _json_response(
+            {
+                "saved": {"draft_id": effective_draft_id},
+                "applied": self._apply_summary(world_data),
+                "validation": validation,
+            }
+        )
+
+    async def publish_world_draft(
+        self, request: Any, draft_id: Optional[str] = None
+    ) -> web.Response:
+        unauthorized = self._require_admin(request)
+        if unauthorized is not None:
+            return unauthorized
+
+        world_data = await self._read_world(request)
+        if isinstance(world_data, web.Response):
+            return world_data
+
+        validation = self._validation_to_dict(self.world_builder.validate(world_data))
+        if not validation.get("ok", False):
+            return _json_response(
+                {"error": "validation_failed", "validation": validation},
+                status=400,
+            )
+
+        effective_draft_id = self._request_draft_id(request, draft_id)
+        try:
+            publish_result = self.world_builder.publish_draft(
+                effective_draft_id,
+                world_data,
+                checks=self._publish_checks(),
+                message="Publish world data",
+            )
+        except KeyError as error:
+            return _error_response("draft_not_found", str(error), 404)
+        except ValueError as error:
+            return _error_response("invalid_draft", str(error), 400)
+        publish_payload = self._publish_to_dict(publish_result)
+        if not self._publish_ok(publish_payload):
+            message = (
+                publish_payload.get("error")
+                or publish_payload.get("output")
+                or "World publish failed."
+            )
+            return _json_response(
+                {
+                    "error": "publish_failed",
+                    "message": message,
+                    "saved": {"draft_id": effective_draft_id},
+                    "publish": publish_payload,
+                    "validation": validation,
+                },
+                status=500,
+            )
+        return _json_response(
+            {
+                "saved": {"draft_id": effective_draft_id},
+                "publish": publish_payload,
+                "validation": validation,
+            }
+        )
+
     def _validation_to_dict(self, validation: Any) -> Dict[str, Any]:
         if hasattr(validation, "to_dict"):
             return validation.to_dict()
@@ -277,6 +550,17 @@ class AdminRouteController:
             "rooms": len(world_data.get("rooms", [])),
             "mobs": len(world_data.get("mobs", [])),
         }
+
+    def _request_draft_id(self, request: Any, draft_id: Optional[str] = None) -> str:
+        if draft_id:
+            return draft_id
+        return str(getattr(request, "match_info", {}).get("draft_id") or "")
+
+    def _draft_summary(self, draft_id: str) -> Dict[str, Any]:
+        for draft in self.world_builder.list_drafts().get("drafts", []):
+            if draft.get("id") == draft_id:
+                return draft
+        return {"id": draft_id}
 
 
 def register_admin_routes(
@@ -330,6 +614,28 @@ def register_admin_routes(
         },
         "/admin/api/world/publish": {
             "POST": controller.publish_world,
+        },
+        "/admin/api/world/drafts": {
+            "GET": controller.list_world_drafts,
+            "POST": controller.create_world_draft,
+        },
+        "/admin/api/world/drafts/{draft_id}": {
+            "GET": controller.get_world_draft,
+            "POST": controller.save_world_draft,
+            "PATCH": controller.update_world_draft,
+            "DELETE": controller.delete_world_draft,
+        },
+        "/admin/api/world/drafts/{draft_id}/activate": {
+            "POST": controller.activate_world_draft,
+        },
+        "/admin/api/world/drafts/{draft_id}/reset": {
+            "POST": controller.reset_world_draft,
+        },
+        "/admin/api/world/drafts/{draft_id}/apply": {
+            "POST": controller.apply_world_draft,
+        },
+        "/admin/api/world/drafts/{draft_id}/publish": {
+            "POST": controller.publish_world_draft,
         },
     }
 

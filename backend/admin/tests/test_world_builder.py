@@ -891,6 +891,134 @@ class WorldBuilderFacadeTests(unittest.TestCase):
 
         self.assertEqual(loaded["rooms"][0]["id"], "saved")
 
+    def test_draft_store_migrates_legacy_draft_and_saves_independent_drafts(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "world_builder"
+            legacy_path = root / "draft_world.json"
+            save_world_data(
+                {"version": 1, "rooms": [{"id": "legacy"}], "mobs": []},
+                legacy_path,
+            )
+            builder = WorldBuilder(
+                game_state=GameState(),
+                mob_manager=MobManager(),
+                data_path=legacy_path,
+                repo_path=tmpdir,
+                spawn_room_id="legacy",
+            )
+
+            manifest = builder.list_drafts()
+            self.assertEqual(manifest["active_draft_id"], "current-draft")
+            self.assertEqual(manifest["drafts"][0]["name"], "Current Draft")
+            self.assertEqual(builder.load_draft("current-draft")["rooms"][0]["id"], "legacy")
+
+            created = builder.create_draft(name="Experiment", source="active")
+            draft_id = created["draft"]["id"]
+            builder.save_draft(
+                draft_id,
+                {"version": 1, "rooms": [{"id": "experiment"}], "mobs": []},
+            )
+
+            self.assertEqual(builder.load_draft("current-draft")["rooms"][0]["id"], "legacy")
+            self.assertEqual(builder.load_draft(draft_id)["rooms"][0]["id"], "experiment")
+            self.assertEqual(builder.list_drafts()["active_draft_id"], "current-draft")
+
+    def test_draft_store_creates_from_live_and_rejects_unsafe_ids(self):
+        game_state = GameState()
+        game_state.add_room(Room("live-room", "Live Room", "Live."))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            legacy_path = Path(tmpdir) / "world_builder" / "draft_world.json"
+            builder = WorldBuilder(
+                game_state=game_state,
+                mob_manager=MobManager(),
+                data_path=legacy_path,
+                repo_path=tmpdir,
+                spawn_room_id="live-room",
+            )
+
+            created = builder.create_draft(name="Live Copy", source="live")
+
+            self.assertEqual(created["draft"]["id"], "live-copy")
+            self.assertEqual(created["world"]["rooms"][0]["id"], "live-room")
+            with self.assertRaises(KeyError):
+                builder.load_draft("../bad")
+
+    def test_draft_store_rename_activate_and_delete_fallback(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            legacy_path = Path(tmpdir) / "world_builder" / "draft_world.json"
+            builder = WorldBuilder(
+                game_state=GameState(),
+                mob_manager=MobManager(),
+                data_path=legacy_path,
+                repo_path=tmpdir,
+                spawn_room_id="square",
+            )
+            first = builder.create_draft(name="First", source="live")["draft"]["id"]
+            second = builder.create_draft(name="Second", source_draft_id=first)["draft"]["id"]
+
+            renamed = builder.rename_draft(first, name="Renamed", description="New desc")
+            self.assertEqual(renamed["draft"]["name"], "Renamed")
+            self.assertEqual(renamed["draft"]["description"], "New desc")
+
+            activated = builder.activate_draft(second)
+            self.assertEqual(activated["active_draft_id"], second)
+            deleted = builder.delete_draft(second)
+
+            self.assertNotEqual(deleted["active_draft_id"], second)
+            self.assertTrue(any(draft["id"] == first for draft in deleted["drafts"]))
+
+    def test_reset_selected_draft_from_baseline_does_not_mutate_runtime(self):
+        game_state = GameState()
+        game_state.add_room(Room("live", "Live", "Runtime room."))
+
+        def baseline_factory():
+            return {"baseline": Room("baseline", "Baseline", "Generated room.")}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            legacy_path = Path(tmpdir) / "world_builder" / "draft_world.json"
+            builder = WorldBuilder(
+                game_state=game_state,
+                mob_manager=None,
+                data_path=legacy_path,
+                repo_path=tmpdir,
+                spawn_room_id="baseline",
+            )
+            draft_id = builder.create_draft(name="Experiment", source="live")["draft"]["id"]
+
+            result = builder.reset_draft_from_baseline(draft_id, baseline_factory)
+
+            self.assertEqual(result["world"]["rooms"][0]["id"], "baseline")
+            self.assertEqual(builder.load_draft(draft_id)["rooms"][0]["id"], "baseline")
+            self.assertEqual(list(game_state.rooms.keys()), ["live"])
+
+    @patch("admin.world_builder.run_git_publish")
+    def test_apply_and_publish_selected_draft_save_that_draft(self, publish_mock):
+        publish_mock.return_value = {"ok": True, "step": "push"}
+        game_state = GameState()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            legacy_path = Path(tmpdir) / "world_builder" / "draft_world.json"
+            builder = WorldBuilder(
+                game_state=game_state,
+                mob_manager=MobManager(),
+                data_path=legacy_path,
+                repo_path=tmpdir,
+                spawn_room_id="square",
+            )
+            draft_id = builder.create_draft(name="Experiment", source="live")["draft"]["id"]
+            world = {"version": 1, "rooms": [{"id": "experiment", "name": "Experiment"}], "mobs": []}
+
+            apply_result = builder.apply_draft(draft_id, world)
+            publish_result = builder.publish_draft(draft_id, world, checks=[["python3", "-V"]])
+
+            self.assertTrue(apply_result.ok)
+            self.assertEqual(game_state.rooms["experiment"].name, "Experiment")
+            self.assertEqual(builder.load_draft(draft_id)["rooms"][0]["id"], "experiment")
+            self.assertEqual(publish_result["ok"], True)
+            publish_mock.assert_called_once()
+            self.assertEqual(publish_mock.call_args.args[0]["rooms"][0]["id"], "experiment")
+
 
 if __name__ == "__main__":
     unittest.main()

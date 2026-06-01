@@ -7,9 +7,10 @@ from admin.routes import AdminRouteController, create_admin_token, is_admin_sess
 
 
 class FakeRequest:
-    def __init__(self, headers=None, payload=None):
+    def __init__(self, headers=None, payload=None, match_info=None):
         self.headers = headers or {}
         self._payload = payload
+        self.match_info = match_info or {}
 
     async def json(self):
         if self._payload is None:
@@ -25,6 +26,19 @@ class FakeWorldBuilder:
         self.applied = None
         self.reset_called = False
         self.published = None
+        self.active_draft_id = "main"
+        self.drafts = [
+            {
+                "id": "main",
+                "name": "Main Draft",
+                "source": "test",
+                "created_at": "2026-06-01T20:00:00Z",
+                "updated_at": "2026-06-01T20:00:00Z",
+                "room_count": 0,
+                "description": "",
+            }
+        ]
+        self.draft_worlds = {"main": self.world_data}
 
     def load_or_export(self):
         return self.world_data
@@ -45,9 +59,93 @@ class FakeWorldBuilder:
         self.world_data = {"version": 1, "rooms": [{"id": "square"}]}
         return self.world_data
 
+    def reset_draft_from_baseline(self, draft_id, world_factory):
+        if draft_id not in self.draft_worlds:
+            raise KeyError(draft_id)
+        self.reset_called = True
+        self.draft_worlds[draft_id] = {
+            "version": 1,
+            "rooms": [{"id": "draft-baseline"}],
+            "mobs": [],
+        }
+        return {
+            "world": self.draft_worlds[draft_id],
+            "saved": {
+                "path": f"storage/world_builder/drafts/{draft_id}.json",
+                "draft": next(draft for draft in self.drafts if draft["id"] == draft_id),
+                "manifest": self.list_drafts(),
+            },
+        }
+
     def publish(self, world_data, checks=None, message=None):
         self.published = {"world_data": world_data, "checks": checks or []}
         return {"committed": True, "pushed": True, "commit": "abc123"}
+
+    def list_drafts(self):
+        return {"active_draft_id": self.active_draft_id, "drafts": self.drafts}
+
+    def create_draft(self, *, name, source="active", source_draft_id=None, description=""):
+        draft_id = name.lower().replace(" ", "-")
+        draft = {
+            "id": draft_id,
+            "name": name,
+            "source": source,
+            "created_at": "2026-06-01T20:10:00Z",
+            "updated_at": "2026-06-01T20:10:00Z",
+            "room_count": 0,
+            "description": description,
+        }
+        self.drafts.append(draft)
+        self.draft_worlds[draft_id] = dict(self.world_data)
+        return {"draft": draft, "world": self.draft_worlds[draft_id], "manifest": self.list_drafts()}
+
+    def load_draft(self, draft_id):
+        if draft_id not in self.draft_worlds:
+            raise KeyError(draft_id)
+        draft = next(draft for draft in self.drafts if draft["id"] == draft_id)
+        return {"world": self.draft_worlds[draft_id], "draft": draft}
+
+    def save_draft(self, draft_id, world_data):
+        if draft_id not in self.draft_worlds:
+            raise KeyError(draft_id)
+        self.saved = world_data
+        self.draft_worlds[draft_id] = world_data
+        return {"path": f"storage/world_builder/drafts/{draft_id}.json"}
+
+    def rename_draft(self, draft_id, *, name=None, description=None):
+        if draft_id not in self.draft_worlds:
+            raise KeyError(draft_id)
+        draft = next(draft for draft in self.drafts if draft["id"] == draft_id)
+        if name is not None:
+            draft["name"] = name
+        if description is not None:
+            draft["description"] = description
+        return {"draft": draft, "manifest": self.list_drafts()}
+
+    def delete_draft(self, draft_id):
+        if draft_id not in self.draft_worlds:
+            raise KeyError(draft_id)
+        del self.draft_worlds[draft_id]
+        self.drafts = [draft for draft in self.drafts if draft["id"] != draft_id]
+        if self.active_draft_id == draft_id and self.drafts:
+            self.active_draft_id = self.drafts[0]["id"]
+        return self.list_drafts()
+
+    def activate_draft(self, draft_id):
+        if draft_id not in self.draft_worlds:
+            raise KeyError(draft_id)
+        self.active_draft_id = draft_id
+        return self.list_drafts()
+
+    def apply_draft(self, draft_id, world_data):
+        self.save_draft(draft_id, world_data)
+        self.applied = world_data
+        return self.validation
+
+    def publish_draft(self, draft_id, world_data, checks=None, message=None):
+        self.save_draft(draft_id, world_data)
+        self.published = {"world_data": world_data, "checks": checks or []}
+        return {"ok": True, "step": "push"}
 
 
 class AdminRouteControllerTest(unittest.IsolatedAsyncioTestCase):
@@ -198,6 +296,73 @@ class AdminRouteControllerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body["error"], "publish_failed")
         self.assertEqual(body["message"], "tests failed")
         self.assertFalse(body["publish"]["ok"])
+
+    async def test_draft_routes_create_load_save_and_activate(self):
+        response = await self.controller.list_world_drafts(self.request())
+        self.assertEqual(response.status, 200)
+        self.assertEqual(self.decode(response)["active_draft_id"], "main")
+
+        create = await self.controller.create_world_draft(
+            self.request({"name": "Experiment", "source": "active"})
+        )
+        self.assertEqual(create.status, 200)
+        draft_id = self.decode(create)["draft"]["id"]
+
+        load = await self.controller.get_world_draft(self.request(), draft_id)
+        self.assertEqual(load.status, 200)
+        self.assertEqual(self.decode(load)["draft"]["id"], draft_id)
+
+        world = {"version": 1, "rooms": [{"id": "experiment"}], "mobs": []}
+        save = await self.controller.save_world_draft(
+            self.request({"world": world}), draft_id
+        )
+        self.assertEqual(save.status, 200)
+        self.assertEqual(self.builder.saved, world)
+
+        rename = await self.controller.update_world_draft(
+            self.request({"name": "Renamed", "description": "Desc"}), draft_id
+        )
+        self.assertEqual(rename.status, 200)
+        self.assertEqual(self.decode(rename)["draft"]["name"], "Renamed")
+
+        activate = await self.controller.activate_world_draft(self.request(), draft_id)
+        self.assertEqual(activate.status, 200)
+        self.assertEqual(self.decode(activate)["active_draft_id"], draft_id)
+
+    async def test_draft_reset_targets_selected_draft(self):
+        draft_id = self.builder.create_draft(name="Experiment")["draft"]["id"]
+
+        response = await self.controller.reset_world_draft(self.request(), draft_id)
+
+        self.assertEqual(response.status, 200)
+        body = self.decode(response)
+        self.assertTrue(self.builder.reset_called)
+        self.assertEqual(body["world"]["rooms"][0]["id"], "draft-baseline")
+        self.assertEqual(body["draft"]["id"], draft_id)
+        self.assertEqual(self.builder.draft_worlds[draft_id]["rooms"][0]["id"], "draft-baseline")
+
+    async def test_draft_routes_apply_publish_delete_and_missing_draft(self):
+        draft_id = self.builder.create_draft(name="Experiment")["draft"]["id"]
+        world = {"version": 1, "rooms": [{"id": "experiment"}], "mobs": []}
+
+        apply = await self.controller.apply_world_draft(
+            self.request({"world": world}), draft_id
+        )
+        self.assertEqual(apply.status, 200)
+        self.assertEqual(self.builder.applied, world)
+
+        publish = await self.controller.publish_world_draft(
+            self.request({"world": world}), draft_id
+        )
+        self.assertEqual(publish.status, 200)
+        self.assertTrue(self.decode(publish)["publish"]["ok"])
+
+        delete = await self.controller.delete_world_draft(self.request(), draft_id)
+        self.assertEqual(delete.status, 200)
+
+        missing = await self.controller.get_world_draft(self.request(), draft_id)
+        self.assertEqual(missing.status, 404)
+        self.assertEqual(self.decode(missing)["error"], "draft_not_found")
 
 
 if __name__ == "__main__":
