@@ -1,11 +1,13 @@
 name: Deploy Frontend to Firebase Hosting
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
     paths:
       - 'frontend/**'
+      - '.github/workflows/frontend-deploy.yml'
 
 jobs:
   deploy:
