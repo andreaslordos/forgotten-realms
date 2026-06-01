@@ -1,5 +1,5 @@
 // App.js
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import io from 'socket.io-client';
 import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -9,6 +9,8 @@ const ADMIN_PATH = '/admin/world-builder';
 const DEFAULT_LAYER_ID = 'surface';
 const DEFAULT_REGION_ID = 'world';
 const DEFAULT_REGION_COLOR = '#4f8fba';
+const FLOW_FIT_VIEW_OPTIONS = { padding: 0.24 };
+const FLOW_MULTI_SELECTION_KEYS = ['Meta', 'Control', 'Shift'];
 
 function getBackendUrl() {
   return process.env.NODE_ENV === 'production'
@@ -234,6 +236,13 @@ function setRoomPosition(room, x, y) {
       pinned: true,
     },
   };
+}
+
+function sameStringArray(left, right) {
+  if (left.length !== right.length) {
+    return false;
+  }
+  return left.every((value, index) => value === right[index]);
 }
 
 function exitEntries(exits) {
@@ -822,28 +831,33 @@ function AdminWorldBuilder({ adminToken }) {
     }));
   }
 
-  function handleSelectRoom(roomId, additive = false) {
+  const handleSelectRoom = useCallback((roomId, additive = false) => {
     setSelectedRoomId(roomId);
     setSelectedRoomIds((current) => {
       if (!additive) {
-        return roomId ? [roomId] : [];
+        const nextRoomIds = roomId ? [roomId] : [];
+        return sameStringArray(current, nextRoomIds) ? current : nextRoomIds;
       }
       if (current.includes(roomId)) {
         const next = current.filter((selectedId) => selectedId !== roomId);
-        return next.length ? next : [roomId];
+        const nextRoomIds = next.length ? next : [roomId];
+        return sameStringArray(current, nextRoomIds) ? current : nextRoomIds;
       }
-      return [...current, roomId];
+      const nextRoomIds = [...current, roomId];
+      return sameStringArray(current, nextRoomIds) ? current : nextRoomIds;
     });
-  }
+  }, []);
 
-  function handleGraphSelection(roomIds) {
+  const handleGraphSelection = useCallback((roomIds) => {
     const roomIdSet = new Set(world.rooms.map((room) => room.id));
     const nextRoomIds = roomIds.filter((roomId) => roomIdSet.has(roomId));
-    setSelectedRoomIds(nextRoomIds);
+    setSelectedRoomIds((current) => (
+      sameStringArray(current, nextRoomIds) ? current : nextRoomIds
+    ));
     if (nextRoomIds.length > 0) {
-      setSelectedRoomId(nextRoomIds[0]);
+      setSelectedRoomId((current) => (current === nextRoomIds[0] ? current : nextRoomIds[0]));
     }
-  }
+  }, [world.rooms]);
 
   function handleMoveRoom(roomId, position) {
     const x = finiteNumber(position.x, 0);
@@ -1346,10 +1360,12 @@ function LayerControls({ layers, visibleLayerIds, onToggleLayer }) {
 }
 
 function WorldGraph({ rooms, world, selectedRoomId, selectedRoomIds, onSelectRoom, onSelectionChange, onMoveRoom }) {
-  const selectedRoomIdSet = new Set(selectedRoomIds);
-  const roomIdSet = new Set(rooms.map((room) => room.id));
-  const regionById = new Map(world.regions.map((region) => [region.id, region]));
-  const nodes = rooms.map((room, index) => {
+  const selectedRoomIdSet = useMemo(() => new Set(selectedRoomIds), [selectedRoomIds]);
+  const roomIdSet = useMemo(() => new Set(rooms.map((room) => room.id)), [rooms]);
+  const regionById = useMemo(() => (
+    new Map(world.regions.map((region) => [region.id, region]))
+  ), [world.regions]);
+  const nodes = useMemo(() => rooms.map((room, index) => {
     const region = regionById.get(room.region_id);
     const isSelected = selectedRoomIdSet.has(room.id) || room.id === selectedRoomId;
     return {
@@ -1364,8 +1380,8 @@ function WorldGraph({ rooms, world, selectedRoomId, selectedRoomIds, onSelectRoo
         borderColor: region?.color || DEFAULT_REGION_COLOR,
       },
     };
-  });
-  const edges = rooms.flatMap((room) => exitEntries(room.exits).map(([direction, targetId]) => {
+  }), [rooms, regionById, selectedRoomId, selectedRoomIdSet]);
+  const edges = useMemo(() => rooms.flatMap((room) => exitEntries(room.exits).map(([direction, targetId]) => {
     if (!roomIdSet.has(targetId)) {
       return null;
     }
@@ -1376,7 +1392,17 @@ function WorldGraph({ rooms, world, selectedRoomId, selectedRoomIds, onSelectRoo
       label: direction,
       className: 'world-flow__edge',
     };
-  }).filter(Boolean));
+  }).filter(Boolean)), [rooms, roomIdSet]);
+  const handleNodeClick = useCallback((event, node) => {
+    const additive = Boolean(event?.metaKey || event?.ctrlKey || event?.shiftKey);
+    onSelectRoom(node.id, additive);
+  }, [onSelectRoom]);
+  const handleNodeDragStop = useCallback((event, node) => {
+    onMoveRoom(node.id, node.position);
+  }, [onMoveRoom]);
+  const handleSelectionChange = useCallback(({ nodes: selectedNodes = [] }) => {
+    onSelectionChange(selectedNodes.map((node) => node.id));
+  }, [onSelectionChange]);
 
   return (
     <div className="world-flow-shell">
@@ -1387,19 +1413,14 @@ function WorldGraph({ rooms, world, selectedRoomId, selectedRoomIds, onSelectRoo
           nodes={nodes}
           edges={edges}
           fitView
-          fitViewOptions={{ padding: 0.24 }}
+          fitViewOptions={FLOW_FIT_VIEW_OPTIONS}
           nodesDraggable
           panOnDrag
           selectionOnDrag
-          multiSelectionKeyCode={['Meta', 'Control', 'Shift']}
-          onNodeClick={(event, node) => {
-            const additive = Boolean(event?.metaKey || event?.ctrlKey || event?.shiftKey);
-            onSelectRoom(node.id, additive);
-          }}
-          onNodeDragStop={(event, node) => onMoveRoom(node.id, node.position)}
-          onSelectionChange={({ nodes: selectedNodes = [] }) => {
-            onSelectionChange(selectedNodes.map((node) => node.id));
-          }}
+          multiSelectionKeyCode={FLOW_MULTI_SELECTION_KEYS}
+          onNodeClick={handleNodeClick}
+          onNodeDragStop={handleNodeDragStop}
+          onSelectionChange={handleSelectionChange}
         >
           <MiniMap pannable zoomable />
           <Controls />

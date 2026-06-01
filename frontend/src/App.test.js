@@ -12,42 +12,49 @@ jest.mock('@xyflow/react', () => ({
     onNodeDragStop,
     onSelectionChange,
     children,
-  }) => (
-    <div aria-label="World graph" data-edge-count={edges.length}>
-      <button
-        type="button"
-        onClick={() => {
-          if (nodes[0]) {
-            onNodeClick?.({}, nodes[0]);
-          }
-        }}
-      >
-        Select first flow node
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          if (nodes[0]) {
-            onNodeDragStop?.({}, { ...nodes[0], position: { x: 444, y: 222 } });
-          }
-        }}
-      >
-        Drag first flow node
-      </button>
-      <button
-        type="button"
-        onClick={() => onSelectionChange?.({ nodes: nodes.slice(0, 2), edges: [] })}
-      >
-        Select two flow nodes
-      </button>
-      {nodes.map((node) => (
-        <div key={node.id} data-testid={`flow-node-${node.id}`}>
-          {node.data?.label}
-        </div>
-      ))}
-      {children}
-    </div>
-  ),
+  }) => {
+    const React = require('react');
+    React.useEffect(() => {
+      onSelectionChange?.({ nodes: [], edges: [] });
+    }, [onSelectionChange]);
+
+    return (
+      <div aria-label="World graph" data-edge-count={edges.length}>
+        <button
+          type="button"
+          onClick={() => {
+            if (nodes[0]) {
+              onNodeClick?.({}, nodes[0]);
+            }
+          }}
+        >
+          Select first flow node
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (nodes[0]) {
+              onNodeDragStop?.({}, { ...nodes[0], position: { x: 444, y: 222 } });
+            }
+          }}
+        >
+          Drag first flow node
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelectionChange?.({ nodes: nodes.slice(0, 2), edges: [] })}
+        >
+          Select two flow nodes
+        </button>
+        {nodes.map((node) => (
+          <div key={node.id} data-testid={`flow-node-${node.id}`}>
+            {node.data?.label}
+          </div>
+        ))}
+        {children}
+      </div>
+    );
+  },
   Background: () => <div data-testid="flow-background" />,
   Controls: () => <div data-testid="flow-controls" />,
   MiniMap: () => <div data-testid="flow-minimap" />,
