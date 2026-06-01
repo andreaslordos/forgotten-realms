@@ -35,6 +35,10 @@ PathLike = Union[str, Path]
 WORLD_DATA_VERSION = 1
 HEX_DIGITS = set("0123456789abcdefABCDEF")
 WORLD_SCRIPT_ROOT = Path("backend/world_scripts")
+DEFAULT_REGION_ID = "world"
+DEFAULT_REGION_COLOR = "#8b5a3c"
+DEFAULT_LAYER_ID = "surface"
+DEFAULT_GRID_SIZE = 24
 
 
 @dataclass(frozen=True)
@@ -98,8 +102,8 @@ def export_live_world(
     metadata: Optional[Mapping[str, Any]] = None,
 ) -> JsonDict:
     rooms = [
-        _serialize_room(room)
-        for room in game_state.rooms.values()
+        _serialize_room(room, index=index)
+        for index, room in enumerate(game_state.rooms.values())
         if isinstance(room, Room)
     ]
     mobs = [
@@ -111,6 +115,18 @@ def export_live_world(
         "version": WORLD_DATA_VERSION,
         "spawn_room_id": spawn_room_id,
         "metadata": _json_safe(dict(metadata or {})),
+        "regions": [
+            {"id": DEFAULT_REGION_ID, "name": "World", "color": DEFAULT_REGION_COLOR}
+        ],
+        "layers": [
+            {"id": DEFAULT_LAYER_ID, "name": "Surface", "z": 0, "visible": True}
+        ],
+        "tags": [],
+        "layout": {
+            "grid_size": DEFAULT_GRID_SIZE,
+            "snap_to_grid": True,
+            "default_layer_id": DEFAULT_LAYER_ID,
+        },
         "rooms": rooms,
         "mobs": mobs,
     }
@@ -345,6 +361,7 @@ def apply_world_data(
         room.speech_triggers = _strip_unserializable_markers(
             room_data.get("speech_triggers", {}) or {}
         )
+        room.authoring_metadata = _room_authoring_metadata_from_data(room_data)
 
         for item_data in _list_value(room_data.get("items", [])):
             if isinstance(item_data, Mapping):
@@ -501,11 +518,18 @@ class WorldBuilder:
         )
 
 
-def _serialize_room(room: Room) -> JsonDict:
+def _serialize_room(room: Room, *, index: int = 0) -> JsonDict:
+    authoring = _room_authoring_metadata(room, index)
     return {
         "id": room.room_id,
         "name": room.name,
         "description": room.description,
+        "x": authoring["x"],
+        "y": authoring["y"],
+        "z": authoring["z"],
+        "region_id": authoring["region_id"],
+        "tags": authoring["tags"],
+        "layout": authoring["layout"],
         "exits": _json_safe(dict(room.exits)),
         "is_dark": room.is_dark,
         "is_outdoor": room.is_outdoor,
@@ -524,6 +548,76 @@ def _serialize_room(room: Room) -> JsonDict:
             for item_id, (item, condition) in room.hidden_items.items()
         ],
         "speech_triggers": _json_safe(room.speech_triggers),
+    }
+
+
+def _room_authoring_metadata_from_data(room_data: Mapping[str, Any]) -> JsonDict:
+    layout_data = dict(room_data.get("layout") or {})
+    x = _finite_number_value(layout_data.get("x"))
+    if x is None:
+        x = _finite_number_value(room_data.get("x"))
+    y = _finite_number_value(layout_data.get("y"))
+    if y is None:
+        y = _finite_number_value(room_data.get("y"))
+    z = _finite_number_value(room_data.get("z"))
+    if z is None:
+        z = 0
+
+    layout = _json_safe(layout_data)
+    if x is not None:
+        layout["x"] = x
+    if y is not None:
+        layout["y"] = y
+    layout["layer_id"] = str(layout.get("layer_id") or room_data.get("layer_id") or DEFAULT_LAYER_ID)
+    layout["pinned"] = bool(layout.get("pinned", True))
+
+    return {
+        "x": x,
+        "y": y,
+        "z": z,
+        "region_id": str(room_data.get("region_id") or DEFAULT_REGION_ID),
+        "tags": [str(tag) for tag in _list_value(room_data.get("tags", []))],
+        "layout": layout,
+    }
+
+
+def _room_authoring_metadata(room: Room, index: int) -> JsonDict:
+    saved = getattr(room, "authoring_metadata", None)
+    if isinstance(saved, Mapping):
+        metadata = _room_authoring_metadata_from_data(saved)
+        fallback_position = _default_room_position(index)
+        x = metadata["x"] if metadata["x"] is not None else fallback_position["x"]
+        y = metadata["y"] if metadata["y"] is not None else fallback_position["y"]
+        layout = dict(metadata["layout"])
+        layout["x"] = x
+        layout["y"] = y
+        return {
+            **metadata,
+            "x": x,
+            "y": y,
+            "layout": layout,
+        }
+
+    position = _default_room_position(index)
+    return {
+        "x": position["x"],
+        "y": position["y"],
+        "z": 0,
+        "region_id": DEFAULT_REGION_ID,
+        "tags": [],
+        "layout": {
+            "x": position["x"],
+            "y": position["y"],
+            "layer_id": DEFAULT_LAYER_ID,
+            "pinned": True,
+        },
+    }
+
+
+def _default_room_position(index: int) -> JsonDict:
+    return {
+        "x": 120 + (index % 5) * 150,
+        "y": 110 + (index // 5) * 120,
     }
 
 

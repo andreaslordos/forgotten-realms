@@ -132,6 +132,31 @@ class WorldBuilderExportTests(unittest.TestCase):
         self.assertEqual(data["mobs"][0]["id"], "wolf_1")
         self.assertEqual(data["mobs"][0]["type"], "mobile")
 
+    def test_export_live_world_includes_editor_layout_defaults(self):
+        game_state = GameState()
+        game_state.add_room(Room("spawn", "Spawn", "The starting room."))
+        game_state.add_room(Room("hall", "Hall", "A long hallway."))
+
+        data = export_live_world(game_state, spawn_room_id="spawn")
+
+        self.assertEqual(
+            data["regions"],
+            [{"id": "world", "name": "World", "color": "#8b5a3c"}],
+        )
+        self.assertEqual(
+            data["layers"],
+            [{"id": "surface", "name": "Surface", "z": 0, "visible": True}],
+        )
+        self.assertEqual(data["layout"]["default_layer_id"], "surface")
+        self.assertEqual(data["rooms"][0]["x"], 120)
+        self.assertEqual(data["rooms"][0]["y"], 110)
+        self.assertEqual(
+            data["rooms"][0]["layout"],
+            {"x": 120, "y": 110, "layer_id": "surface", "pinned": True},
+        )
+        self.assertEqual(data["rooms"][1]["x"], 270)
+        self.assertEqual(data["rooms"][1]["layout"]["x"], 270)
+
 
 class WorldBuilderGeneratedWorldTests(unittest.TestCase):
     def test_generated_world_exports_without_validation_errors(self):

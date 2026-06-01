@@ -210,6 +210,25 @@ function makeDefaultRoom(index) {
   };
 }
 
+function makeRoomForWorld(world) {
+  const existingRoomIds = new Set((world.rooms || []).map((room) => room.id));
+  let roomNumber = (world.rooms || []).length + 1;
+  while (existingRoomIds.has(`new-room-${roomNumber}`)) {
+    roomNumber += 1;
+  }
+
+  const room = makeDefaultRoom(roomNumber - 1);
+  const defaultLayerId = world.layout?.default_layer_id || world.layers?.[0]?.id || DEFAULT_LAYER_ID;
+  return {
+    ...room,
+    region_id: world.regions?.[0]?.id || DEFAULT_REGION_ID,
+    layout: {
+      ...room.layout,
+      layer_id: defaultLayerId,
+    },
+  };
+}
+
 function getRoomPosition(room, index) {
   const x = finiteNumber(room.layout?.x, finiteNumber(room.x, 120 + (index % 5) * 150));
   const y = finiteNumber(room.layout?.y, finiteNumber(room.y, 110 + Math.floor(index / 5) * 120));
@@ -1018,23 +1037,13 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
   }
 
   function addRoom() {
-    setWorld((currentWorld) => {
-      const defaultLayerId = currentWorld.layout?.default_layer_id || currentWorld.layers[0]?.id || DEFAULT_LAYER_ID;
-      const nextRoom = {
-        ...makeDefaultRoom(currentWorld.rooms.length),
-        region_id: currentWorld.regions[0]?.id || DEFAULT_REGION_ID,
-        layout: {
-          ...makeDefaultRoom(currentWorld.rooms.length).layout,
-          layer_id: defaultLayerId,
-        },
-      };
-      setSelectedRoomId(nextRoom.id);
-      setSelectedRoomIds([nextRoom.id]);
-      return {
-        ...currentWorld,
-        rooms: [...currentWorld.rooms, nextRoom],
-      };
+    const nextRoom = makeRoomForWorld(world);
+    setWorld({
+      ...world,
+      rooms: [...world.rooms, nextRoom],
     });
+    setSelectedRoomId(nextRoom.id);
+    setSelectedRoomIds([nextRoom.id]);
   }
 
   function deleteSelectedRoom() {
@@ -1042,19 +1051,17 @@ function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
       return;
     }
 
-    setWorld((currentWorld) => {
-      const roomIdsToDelete = new Set(effectiveSelectedRoomIds.length ? effectiveSelectedRoomIds : [selectedRoom.id]);
-      const rooms = currentWorld.rooms.filter((room) => !roomIdsToDelete.has(room.id));
-      const nextSelectedRoomId = rooms[0]?.id || '';
-      setSelectedRoomId(nextSelectedRoomId);
-      setSelectedRoomIds(nextSelectedRoomId ? [nextSelectedRoomId] : []);
-      return {
-        ...currentWorld,
-        rooms,
-        mobs: (currentWorld.mobs || []).filter((mob) => !roomIdsToDelete.has(mob.current_room)),
-        scripts: (currentWorld.scripts || []).filter((script) => !roomIdsToDelete.has(script.room_id)),
-      };
+    const roomIdsToDelete = new Set(effectiveSelectedRoomIds.length ? effectiveSelectedRoomIds : [selectedRoom.id]);
+    const rooms = world.rooms.filter((room) => !roomIdsToDelete.has(room.id));
+    const nextSelectedRoomId = rooms[0]?.id || '';
+    setWorld({
+      ...world,
+      rooms,
+      mobs: (world.mobs || []).filter((mob) => !roomIdsToDelete.has(mob.current_room)),
+      scripts: (world.scripts || []).filter((script) => !roomIdsToDelete.has(script.room_id)),
     });
+    setSelectedRoomId(nextSelectedRoomId);
+    setSelectedRoomIds(nextSelectedRoomId ? [nextSelectedRoomId] : []);
   }
 
   function addCollectionItem(field) {

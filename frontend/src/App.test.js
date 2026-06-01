@@ -430,6 +430,53 @@ test('syncs React Flow controlled node position changes while dragging', async (
   );
 });
 
+test('adds rooms with unique ids and saves the selected new room layout', async () => {
+  routeTo('/admin/world-builder');
+  localStorage.setItem('adminToken', 'stored-token');
+  const worldWithExistingGeneratedRoom = {
+    ...sampleWorld,
+    rooms: [
+      sampleWorld.rooms[0],
+      {
+        ...sampleWorld.rooms[1],
+        id: 'new-room-3',
+        name: 'Existing Draft Room',
+      },
+    ],
+  };
+  global.fetch
+    .mockImplementationOnce(() => okJson({ world: worldWithExistingGeneratedRoom }))
+    .mockImplementationOnce(() => okJson({
+      validation: { ok: true, errors: [], warnings: [] },
+      saved: { path: 'storage/world_builder/draft_world.json' },
+    }));
+
+  render(<App />);
+  await screen.findAllByText('Village Square');
+
+  fireEvent.click(screen.getByRole('button', { name: /add room/i }));
+  expect(screen.getByLabelText('Room id')).toHaveValue('new-room-4');
+  expect(screen.getByTestId('flow-node-new-room-4')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: /save draft/i }));
+
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  const payload = JSON.parse(global.fetch.mock.calls[1][1].body);
+  expect(payload.world.rooms.map((room) => room.id)).toEqual([
+    'square',
+    'new-room-3',
+    'new-room-4',
+  ]);
+  expect(payload.world.rooms[2]).toEqual(
+    expect.objectContaining({
+      region_id: 'village',
+      x: 520,
+      y: 140,
+      layout: expect.objectContaining({ x: 520, y: 140, layer_id: 'surface' }),
+    })
+  );
+});
+
 test('bulk edits multi-selected room metadata through rich controls', async () => {
   routeTo('/admin/world-builder');
   localStorage.setItem('adminToken', 'stored-token');
