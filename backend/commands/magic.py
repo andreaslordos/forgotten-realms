@@ -1693,6 +1693,11 @@ async def handle_spells(
     )
     lines.append("")
     lines.append(
+        "Combat spells cost stamina, have cooldowns, and casting mid-combat "
+        "consumes your next swing - choose between the blade and the word."
+    )
+    lines.append("")
+    lines.append(
         "The chance of success for each available spell at your level is shown below."
     )
     lines.append("")
@@ -1718,29 +1723,36 @@ async def handle_spells(
             "CHANGE <player>",
             "Changes the target's sex.",
         ),
+        "bolt": (
+            "BOLT <target>",
+            "Hurls raw force at a player or monster. Cannot be dodged, only "
+            "resisted by magic.",
+        ),
         "sleep": (
-            "SLEEP <player>",
-            "Puts the target into a magical slumber.",
+            "SLEEP <target>",
+            "Puts a player or monster into a magical slumber. Sleepers cannot "
+            "act and are struck unerringly, but damage wakes them.",
         ),
         "wish": (
             "WISH <message>",
             "Sends a message to the Archmages. Always succeeds.",
         ),
         "deafen": (
-            "DEAFEN <player>",
+            "DEAFEN <target>",
             "Makes the target unable to hear any messages.",
         ),
         "blind": (
-            "BLIND <player>",
-            "Makes the target unable to see room descriptions.",
+            "BLIND <target>",
+            "Blinds a player or monster. Blinded fighters miss far more often.",
         ),
         "dumb": (
-            "DUMB <player>",
+            "DUMB <target>",
             "Makes the target unable to speak.",
         ),
         "cripple": (
-            "CRIPPLE <player>",
-            "Makes the target unable to move.",
+            "CRIPPLE <target>",
+            "Cripples a player or monster: half their blows falter, and "
+            "crippled beasts cannot prowl.",
         ),
         "cure": (
             "CURE [player]",
