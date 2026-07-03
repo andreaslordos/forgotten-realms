@@ -9,7 +9,6 @@ from models.Item import Item
 from models.Weapon import Weapon
 from models.StatefulItem import StatefulItem
 
-
 # ============================================================================
 # BASIC ITEMS
 # ============================================================================
@@ -78,11 +77,11 @@ def create_bone() -> Item:
 
 
 def create_holy_bones() -> Item:
-    """Create the holy bones of St. Andral."""
+    """Create the holy bones of St. Maren."""
     return Item(
         name="bones",
         id="bones",
-        description="The sacred bones of St. Andral, wrapped in a velvet cloth. They radiate warmth.",
+        description="The sacred bones of St. Maren, wrapped in a velvet cloth. They radiate warmth.",
         weight=2,
         value=100,
         takeable=True,
@@ -94,7 +93,7 @@ def create_wine() -> Item:
     return Item(
         name="wine",
         id="wine",
-        description="A dusty bottle of purple wine from the Wizard of Wines winery.",
+        description="A dusty bottle of dark purple wine from a vineyard long since lost to the mists.",
         weight=1,
         value=8,
         takeable=True,
@@ -130,7 +129,7 @@ def create_knight_medallion() -> Item:
         id="knight_medallion",
         description=(
             "A silver medallion bearing the crest of a knight's order - "
-            "a dragon coiled around a sword. It feels cold to the touch."
+            "a watchtower wreathed in flame. It feels cold to the touch."
         ),
         weight=0,
         value=40,
@@ -139,7 +138,7 @@ def create_knight_medallion() -> Item:
 
 
 def create_shadow_key() -> Item:
-    """Create the shadow key from the hag's domain."""
+    """Create the shadow key of solidified darkness."""
     return Item(
         name="shadowkey",
         id="shadow_key",

@@ -683,6 +683,66 @@ class ExecuteCommandSpeechTriggerTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result1, "Magic happens!")
             self.assertIn("don't know", result2.lower())
 
+    async def test_speech_trigger_applies_declarative_add_exit(self):
+        """Test a trigger's add_exit opens the exit in the current room."""
+        # Arrange
+        self.room.add_speech_trigger(
+            keyword="dawnfather",
+            message="The mists part!",
+            add_exit=("south", "road_south"),
+        )
+
+        with patch("commands.executor.command_registry.get_handler", return_value=None):
+            cmd = {"verb": "dawnfather", "original": "dawnfather"}
+
+            # Act
+            result = await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            # Assert
+            self.assertEqual(result, "The mists part!")
+            self.assertEqual(self.room.exits.get("south"), "road_south")
+
+    async def test_speech_trigger_applies_reciprocal_exit(self):
+        """Test a trigger's reciprocal_exit opens the return path."""
+        # Arrange
+        other_room = Room(room_id="road_south", name="Road", description="A road.")
+
+        def get_room(room_id):
+            return {"room1": self.room, "road_south": other_room}.get(room_id)
+
+        self.game_state.get_room.side_effect = get_room
+        self.room.add_speech_trigger(
+            keyword="dawnfather",
+            message="The mists part!",
+            add_exit=("south", "road_south"),
+            reciprocal_exit=("road_south", "north", "room1"),
+        )
+
+        with patch("commands.executor.command_registry.get_handler", return_value=None):
+            cmd = {"verb": "dawnfather", "original": "dawnfather"}
+
+            # Act
+            await execute_command(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+            # Assert
+            self.assertEqual(other_room.exits.get("north"), "room1")
+
     async def test_speech_trigger_not_one_time_fires_multiple(self):
         """Test non-one-time trigger fires multiple times."""
         self.room.add_speech_trigger(

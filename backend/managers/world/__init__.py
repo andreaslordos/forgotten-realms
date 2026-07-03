@@ -16,22 +16,13 @@ from .level_base import LevelGenerator
 # Import level generators as they are implemented
 from .level_1_village import Level1Village
 from .level_2_woods import Level2Woods
-
-# from .level_3_bonegrinder import Level3Bonegrinder
-# from .level_4_argynvost_vallaki import Level4ArgynvostVallaki
-# from .level_5_castle_exterior import Level5CastleExterior
-# from .level_6_strahd_domain import Level6StrahdDomain
+from .level_3_citadel import Level3Citadel
 
 # List of all level generators in order
-# NOTE: Keep this empty until ALL levels are implemented to use legacy generator
-# Once all levels are done, add them here and remove the fallback
 LEVEL_GENERATORS: List[LevelGenerator] = [
     Level1Village(),
     Level2Woods(),
-    # Level3Bonegrinder(),
-    # Level4ArgynvostVallaki(),
-    # Level5CastleExterior(),
-    # Level6StrahdDomain(),
+    Level3Citadel(),
 ]
 
 
@@ -53,6 +44,12 @@ def generate_world(mob_manager: Optional[Any] = None) -> Dict[str, Room]:
         Dict mapping room_id to Room objects for the entire world.
     """
     all_rooms: Dict[str, Room] = {}
+
+    # Each world build registers its quest items afresh (levels re-register
+    # in add_items); stale anchors from a prior build must not linger.
+    from services.quest_items import clear_quest_item_registry
+
+    clear_quest_item_registry()
 
     # If no level generators are configured yet, fall back to legacy generator
     if not LEVEL_GENERATORS:

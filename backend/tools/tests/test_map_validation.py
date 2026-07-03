@@ -176,6 +176,25 @@ class CollectLatentExitsTest(unittest.TestCase):
         rooms = make_rooms({"a": {}})
         self.assertEqual(collect_latent_exits(rooms), [])
 
+    def test_collect_latent_exits_finds_speech_trigger_exits(self) -> None:
+        """Test declarative speech-trigger exits are collected."""
+        # Arrange
+        rooms = make_rooms({"gatehouse": {}, "road_south": {"north": "gatehouse"}})
+        rooms["gatehouse"].add_speech_trigger(
+            keyword="dawnfather",
+            message="The mists part!",
+            add_exit=("south", "road_south"),
+        )
+
+        # Act
+        latent = collect_latent_exits(rooms)
+
+        # Assert
+        self.assertEqual(len(latent), 1)
+        self.assertEqual(latent[0].source_room_id, "gatehouse")
+        self.assertEqual(latent[0].direction, "south")
+        self.assertEqual(latent[0].verb, "speak")
+
 
 class AssignCoordinatesTest(unittest.TestCase):
     """Test BFS coordinate assignment."""

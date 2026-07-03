@@ -1,16 +1,18 @@
 # backend/managers/world/level_2_woods.py
 """
-Level 2: Svalich Woods & Tser Pool
+Level 2: The Gloomwood & Mistpool
 
-Dark forest wilderness with Vistani camps and natural dangers.
-Wolves patrol the woods, and the Vistani offer cryptic guidance.
+Dark forest wilderness with Veyra camps and natural dangers.
+Wolves patrol the woods, and the wandering Veyra offer cryptic guidance.
 
 Rooms: ~35-40 total
-Mobs: Wolves (2-3), bats, Vistani (non-aggressive), seer
+Mobs: Wolves (2-3), bats, Veyra folk (non-aggressive), seer
 Transitions:
-  - To Level 3 (Bonegrinder): Standing stones puzzle reveals path
-  - To Level 4 (Argynvostholt): Return knight's medallion to ghostly knight at bridge
-  - Castle gates are LOCKED until beacon is lit (Level 4 completion)
+  - From Level 1 (Gravenmoor): the mist gate at the village gatehouse opens
+    onto the Old Gloomwood Road
+  - To Level 3 (Bleakspire Citadel): return the ghost knight's medallion at the
+    western bridge to earn the Watchfire mark, which unseals the castle gates
+  - The standing stones puzzle opens the barrow of the Gray Watch (treasure)
 
 Design Principles Applied:
   - Room descriptions explicitly name items in the room
@@ -21,28 +23,33 @@ Design Principles Applied:
   - Multi-step puzzle chains with clues
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from models.Room import Room
 from models.Item import Item
 from models.StatefulItem import StatefulItem
 from models.ContainerItem import ContainerItem
 from models.Weapon import Weapon
+from services.quest_items import register_quest_item
 from .level_base import LevelGenerator
 from .shared_items import (
     create_torch,
     create_coin,
 )
-from .shared_conditions import stones_aligned
+from .shared_conditions import (
+    bears_watchfire_mark,
+    item_state_is,
+    stones_aligned,
+)
 
 
 class Level2Woods(LevelGenerator):
-    """Generator for Level 2: Svalich Woods & Tser Pool."""
+    """Generator for Level 2: The Gloomwood & Mistpool."""
 
     level_number = 2
-    level_name = "Svalich Woods"
+    level_name = "The Gloomwood"
 
     def generate_rooms(self) -> Dict[str, Room]:
-        """Generate all rooms for the Svalich Woods."""
+        """Generate all rooms for the Gloomwood."""
 
         # =====================================================================
         # MAIN ROADS - Core pathways through the forest
@@ -51,7 +58,7 @@ class Level2Woods(LevelGenerator):
         # Entry point from Level 1 (gatehouse barrier leads here)
         road_south = Room(
             "road_south",
-            "Old Svalich Road",
+            "Old Gloomwood Road",
             "The road emerges from the mists into gloomy twilight. Ancient oaks loom "
             "on either side, their branches reaching like grasping fingers. To the "
             "south, the road continues toward a crossroads. A narrow trail disappears "
@@ -64,7 +71,7 @@ class Level2Woods(LevelGenerator):
             "Gallows Crossroads",
             "Four roads meet beneath a grim gallows. Crows circle overhead, their "
             "caws echoing across the empty crossroads. The air smells of rot and old "
-            "death. Roads lead north toward the village, south to Tser Pool, east "
+            "death. Roads lead north toward the village, south to Mistpool, east "
             "toward the castle, and west toward a distant bridge.",
             is_outdoor=True,
         )
@@ -78,7 +85,7 @@ class Level2Woods(LevelGenerator):
             "Forest Path",
             "A winding path cuts through dense forest. Wolf tracks press deep into "
             "the mud. An old hollow log lies across the path. The path continues "
-            "east into deeper woods and a game trail branches north.",
+            "east into deeper woods and a narrower trail branches south.",
             is_outdoor=True,
         )
 
@@ -153,18 +160,18 @@ class Level2Woods(LevelGenerator):
         )
 
         # =====================================================================
-        # TSER POOL - Vistani camp area
+        # MISTPOOL - Veyra camp area
         # =====================================================================
 
         tser_pool = Room(
             "tser_pool",
-            "Tser Pool",
+            "Mistpool",
             "A dark pool reflects the grey sky like a tarnished mirror. Colorful "
-            "Vistani wagons are camped on the muddy shore, their painted sides "
+            "Veyra wagons are camped on the muddy shore, their painted sides "
             "a jarring splash of color in this dreary land. Cooking fires burn, "
             "and the smell of spiced meat drifts on the breeze. The crossroads "
-            "lies north, a fortune teller's wagon beckons to the west, a merchant "
-            "has set up to the east, and a dock extends south into the water.",
+            "lies north, a fortune teller's wagon beckons from the camp, a merchant "
+            "has set up to the west, and a dock extends south into the water.",
             is_outdoor=True,
         )
 
@@ -175,16 +182,16 @@ class Level2Woods(LevelGenerator):
             "water. Silken scarves of deep purple and crimson cover every surface, "
             "and strange charms dangle from the ceiling — bones, feathers, glass "
             "eyes. An ancient woman watches from her chair, her milky eyes seeing "
-            "far more than they should. The exit leads back out to Tser Pool.",
+            "far more than they should. The exit leads back out to Mistpool.",
         )
 
         merchant_stall = Room(
             "merchant_stall",
-            "Vistani Merchant's Stall",
+            "Veyra Merchant's Stall",
             "A canvas awning shelters tables laden with curious goods — jewelry "
             "from distant lands, bundles of dried herbs, and stoppered bottles of "
-            "unknown liquids. A Vistani man with gold rings in his ears watches "
-            "you with knowing eyes. Tser Pool lies to the west.",
+            "unknown liquids. A Veyra man with gold rings in his ears watches "
+            "you with knowing eyes. Mistpool lies to the east.",
         )
 
         old_dock = Room(
@@ -193,7 +200,7 @@ class Level2Woods(LevelGenerator):
             "Weathered planks creak beneath your feet as you walk out over the "
             "dark water. The pool is deeper than it looks — you cannot see the "
             "bottom, and something large moves in the depths. The shore and "
-            "Vistani camp lie back to the north.",
+            "Veyra camp lie back to the north.",
         )
 
         # =====================================================================
@@ -221,14 +228,14 @@ class Level2Woods(LevelGenerator):
         )
 
         # =====================================================================
-        # CASTLE APPROACHES (gated until beacon lit)
+        # CASTLE APPROACHES (gated until the Watchfire mark is earned)
         # =====================================================================
 
         castle_road = Room(
             "castle_road",
             "Road to the Castle",
             "The road climbs steeply through the forest toward a dark silhouette "
-            "looming against the grey sky — Castle Ravenloft. Lightning flickers "
+            "looming against the grey sky — Bleakspire Citadel. Lightning flickers "
             "around its spires and the air grows colder with each step. A wayside "
             "shrine stands at the roadside, offerings piled at its base. The "
             "castle gates are visible to the east, the crossroads to the west.",
@@ -241,8 +248,8 @@ class Level2Woods(LevelGenerator):
             "Massive iron gates tower before you, twice the height of a man. "
             "Frost covers every surface despite no visible cold. The castle beyond "
             "looms impossibly large, its spires stabbing at the churning sky. "
-            "Dragon statues flank the entrance, their stone eyes seeming to follow "
-            "your movements. The road leads back west.",
+            "Hooded sentinel statues flank the entrance, their stone eyes seeming "
+            "to follow your movements. The road leads back west.",
             is_outdoor=True,
         )
 
@@ -270,7 +277,7 @@ class Level2Woods(LevelGenerator):
             "Brambles and thorns have nearly consumed this old trail. Scratches "
             "on tree trunks mark the passage of deer — and perhaps wolves hunting "
             "them. A weathered boot lies in the undergrowth, its owner long gone. "
-            "The main road lies west and a clearing opens to the south.",
+            "The main road lies west and a raven-haunted clearing opens to the east.",
             is_outdoor=True,
         )
 
@@ -281,7 +288,7 @@ class Level2Woods(LevelGenerator):
             "some ancient storm. Its root ball forms a wall taller than a man, "
             "and the hollow beneath creates a natural shelter — someone has used "
             "it recently, judging by the ashes of a cook fire. The forest path "
-            "continues north and a hunter's cache is visible to the east.",
+            "continues north and a hunter's cache is visible up in the branches.",
             is_outdoor=True,
         )
 
@@ -291,7 +298,7 @@ class Level2Woods(LevelGenerator):
             "An ancient dead tree stands alone in a small clearing, every branch "
             "covered in ravens. Dozens of the black birds watch you with gleaming "
             "intelligent eyes, seeming to wait for something — or someone. The "
-            "overgrown trail lies north and a path leads west toward a shrine.",
+            "overgrown trail lies west and a path leads north toward a shrine.",
             is_outdoor=True,
         )
 
@@ -303,7 +310,7 @@ class Level2Woods(LevelGenerator):
             "offerings appear at its base — wildflowers, small coins, bits of "
             "bread. Someone still believes. The shrine's guardian statue has lost "
             "its head, but its hands remain cupped as if waiting to receive "
-            "something. The ravens roost lies east.",
+            "something. The raven's roost lies south.",
             is_outdoor=True,
         )
 
@@ -345,7 +352,7 @@ class Level2Woods(LevelGenerator):
             "stream_crossing": stream_crossing,
             "hollow": hollow,
             "mushroom_glade": mushroom_glade,
-            # Tser Pool area
+            # Mistpool area
             "tser_pool": tser_pool,
             "wagon": wagon,
             "merchant_stall": merchant_stall,
@@ -398,13 +405,13 @@ class Level2Woods(LevelGenerator):
         self._rooms["woods_path"].exits = {
             "northwest": "crossroads",
             "east": "clearing",
-            "north": "wolf_territory",
             "south": "fallen_tree",
         }
 
         self._rooms["clearing"].exits = {
             "west": "woods_path",
             "south": "dark_grove",
+            "east": "wolf_territory",
             # "down": "barrow" - hidden, revealed by standing stones puzzle
         }
 
@@ -414,7 +421,8 @@ class Level2Woods(LevelGenerator):
         }
 
         self._rooms["wolf_territory"].exits = {
-            "south": "woods_path",
+            "west": "clearing",
+            "south": "hollow",
             "in": "wolf_den",
         }
 
@@ -429,7 +437,7 @@ class Level2Woods(LevelGenerator):
         }
 
         self._rooms["hollow"].exits = {
-            "north": "woods_path",
+            "north": "wolf_territory",
             "east": "stream_crossing",
             "west": "dark_grove",
         }
@@ -439,13 +447,13 @@ class Level2Woods(LevelGenerator):
         }
 
         # =====================================================================
-        # TSER POOL CONNECTIONS
+        # MISTPOOL CONNECTIONS
         # =====================================================================
 
         self._rooms["tser_pool"].exits = {
             "north": "crossroads",
             "in": "wagon",
-            "east": "merchant_stall",
+            "west": "merchant_stall",
             "south": "old_dock",
         }
 
@@ -454,7 +462,7 @@ class Level2Woods(LevelGenerator):
         }
 
         self._rooms["merchant_stall"].exits = {
-            "west": "tser_pool",
+            "east": "tser_pool",
         }
 
         self._rooms["old_dock"].exits = {
@@ -472,7 +480,7 @@ class Level2Woods(LevelGenerator):
 
         self._rooms["bridge"].exits = {
             "east": "river_approach",
-            # "west": "towngate" - Level 4 transition via ghostly knight
+            # The far bank is lost in the mists; the ghost knight stands here.
         }
 
         self._rooms["castle_road"].exits = {
@@ -482,7 +490,7 @@ class Level2Woods(LevelGenerator):
 
         self._rooms["castle_gates"].exits = {
             "west": "castle_road",
-            # "east": "courtyard" - Level 5, locked until beacon lit
+            # "east": "outer_gate" - Level 3 citadel, unsealed by the Watchfire Brand
         }
 
         # =====================================================================
@@ -499,21 +507,21 @@ class Level2Woods(LevelGenerator):
 
         self._rooms["overgrown_trail"].exits = {
             "west": "road_south",
-            "south": "raven_roost",
+            "east": "raven_roost",
         }
 
         self._rooms["fallen_tree"].exits = {
             "north": "woods_path",
-            "east": "hunters_cache",
+            "up": "hunters_cache",
         }
 
         self._rooms["raven_roost"].exits = {
-            "north": "overgrown_trail",
-            "west": "old_shrine",
+            "west": "overgrown_trail",
+            "north": "old_shrine",
         }
 
         self._rooms["old_shrine"].exits = {
-            "east": "raven_roost",
+            "south": "raven_roost",
         }
 
         self._rooms["ravine_edge"].exits = {
@@ -521,7 +529,6 @@ class Level2Woods(LevelGenerator):
         }
 
         self._rooms["hunters_cache"].exits = {
-            "west": "fallen_tree",
             "down": "fallen_tree",
         }
 
@@ -555,7 +562,7 @@ class Level2Woods(LevelGenerator):
             target_state="read",
             message=(
                 "You trace the worn letters with your finger:\n"
-                "    'Barovia - 1 league North\n"
+                "    'Gravenmoor - 1 league North\n"
                 "     Crossroads - 100 paces South\n"
                 "     Beware the Mists'\n"
                 "Below the official inscription, someone has scratched:\n"
@@ -593,10 +600,10 @@ class Level2Woods(LevelGenerator):
             verb="read",
             message=(
                 "The signpost arms read:\n"
-                "  North: 'BAROVIA - Village of the Damned'\n"
-                "  South: 'TSER POOL - The Vistani Know'\n"
-                "  East:  'RAVENLOFT - Abandon Hope'\n"
-                "  West:  'VALLAKI - Through the Ghost'\n"
+                "  North: 'GRAVENMOOR - Village of the Damned'\n"
+                "  South: 'MISTPOOL - The Veyra Know'\n"
+                "  East:  'BLEAKSPIRE - Abandon Hope'\n"
+                "  West:  'OLD BRIDGE - Through the Ghost to Bleakspire'\n"
                 "Scratched into the post below: 'Ring for luck - if you dare.'"
             ),
         )
@@ -714,9 +721,9 @@ class Level2Woods(LevelGenerator):
                 "The note reads:\n"
                 "'If you read this, I am dead. The ghost on the bridge seeks "
                 "his medallion - stolen by wolves. Their den lies east of the "
-                "game trail. Return it and he may let you pass.\n"
-                "Do not trust the hags. Do not enter the mill. May the "
-                "Morninglord have mercy on your soul.'"
+                "standing stones. Return it and he may let you pass.\n"
+                "Take nothing from the forest shrine. May the "
+                "Dawnfather have mercy on your soul.'"
             ),
         )
 
@@ -1043,7 +1050,7 @@ class Level2Woods(LevelGenerator):
             message=(
                 "You dig through the grisly pile, trying not to think about "
                 "whose bones these might be. Your fingers close around something "
-                "cold and metallic - a silver medallion bearing a dragon crest!"
+                "cold and metallic - a silver medallion bearing a tower crest!"
             ),
         )
         bone_pile.add_interaction(
@@ -1060,7 +1067,7 @@ class Level2Woods(LevelGenerator):
             from_state="searched",
             message=(
                 "The scattered bones reveal their secrets. Among them, you can "
-                "now clearly see a silver medallion with a dragon design."
+                "now clearly see a silver medallion with a tower design."
             ),
         )
         bone_pile.add_interaction(
@@ -1069,7 +1076,7 @@ class Level2Woods(LevelGenerator):
             target_state="searched",
             message=(
                 "You dig through the bones, pushing aside skulls and ribcages. "
-                "There! A silver medallion lies beneath, its dragon crest still "
+                "There! A silver medallion lies beneath, its tower crest still "
                 "bright despite years among the dead."
             ),
         )
@@ -1080,8 +1087,8 @@ class Level2Woods(LevelGenerator):
             name="medallion",
             id="knight_medallion",
             description=(
-                "A silver medallion lies here, bearing a dragon coiled around a "
-                "sword. Despite its time among wolf bones, it gleams as if newly "
+                "A silver medallion lies here, bearing a watchtower wreathed in "
+                "flame. Despite its time among wolf bones, it gleams as if newly "
                 "polished."
             ),
             weight=0,
@@ -1100,6 +1107,14 @@ class Level2Woods(LevelGenerator):
             return False
 
         self._rooms["wolf_den"].add_hidden_item(medallion, bones_searched)
+
+        # The medallion is progression-critical: if it vanishes from the
+        # world before the knight is appeased, restore it here.
+        register_quest_item(
+            medallion,
+            room_id="wolf_den",
+            done_check=item_state_is("bridge", "ghost_knight", "appeased"),
+        )
 
         # Old satchel with clue
         satchel = StatefulItem(
@@ -1127,10 +1142,11 @@ class Level2Woods(LevelGenerator):
                 "You pull the satchel from the debris and open it. Inside you "
                 "find a few copper coins, a dagger, and a water-stained letter:\n"
                 "'Brother,\n"
-                "If the wolves take me, know that I died trying to recover Sir "
-                "Godfrey's medallion. The ghost on the bridge cannot rest until "
-                "it is returned. Search among the bones if you must.\n"
-                "May the Morninglord guide you.\n"
+                "If the wolves take me, know that I died a hunter, not a fool. "
+                "Beware the knight's ghost at the western bridge - he will not "
+                "let honest folk pass, raving about his stolen honor. Whatever "
+                "the wolves took from him lies somewhere among their bones.\n"
+                "May the Dawnfather guide you.\n"
                 "-Edmund'"
             ),
         )
@@ -1180,9 +1196,9 @@ class Level2Woods(LevelGenerator):
             name="knight",
             id="ghost_knight",
             description=(
-                "A ghostly knight in tarnished armor blocks the western path. "
-                "His form flickers like candlelight, and his hollow eyes burn "
-                "with eternal purpose."
+                "A ghostly knight in tarnished armor keeps his vigil at the "
+                "bridge. His form flickers like candlelight, and his hollow "
+                "eyes burn with eternal purpose."
             ),
             state="blocking",
             takeable=False,
@@ -1197,12 +1213,27 @@ class Level2Woods(LevelGenerator):
         ghostly_knight.set_room_id("bridge")
         ghostly_knight.add_state_description(
             "blocking",
-            "A spectral knight stands guard, blocking all passage west.",
+            "A spectral knight keeps a bound vigil here, silent above "
+            "the black water.",
         )
         ghostly_knight.add_state_description(
             "appeased",
             "The ghostly knight bows respectfully, his vigil ended at last.",
         )
+
+        def grant_watchfire_mark(player: Any, game_state: Any) -> Optional[str]:
+            """Mark the player's palm with the Watchfire (persisted flag)."""
+            if player.flags.get("watchfire_mark"):
+                return None
+            player.flags["watchfire_mark"] = True
+            return (
+                "The knight presses two spectral fingers to your palm. Cold "
+                "silver fire blooms there and sinks beneath the skin, leaving "
+                "a faint brand shaped like a burning tower.\n"
+                "'Carry the Watchfire to the citadel gates. They remember it, "
+                "and they fear it.'"
+            )
+
         ghostly_knight.add_interaction(
             verb="give",
             required_instrument="knight_medallion",
@@ -1216,39 +1247,37 @@ class Level2Woods(LevelGenerator):
                 "He takes the medallion with translucent fingers, pressing it to "
                 "his chest where his heart once beat. A single spectral tear runs "
                 "down his cheek.\n"
-                "'You have my eternal gratitude, mortal. The road to Vallaki is "
-                "open to you. May you find what you seek in these cursed lands.'\n"
-                "He steps aside, bowing deeply, and the way west is clear."
+                "'Hear me, mortal. I am Aldric, last of the Gray Watch. We fell "
+                "guarding this valley when Lord Morvane raised Bleakspire against "
+                "the sun. Only the Watchfire we carried can unseal his gates.'"
             ),
-            add_exit=("west", "towngate"),  # Opens path to Level 4 Vallaki
             consume_instrument=True,
-        )
-        ghostly_knight.add_interaction(
-            verb="give",
-            required_instrument="knight_medallion",
-            from_state="blocking",
-            target_state="appeased",
-            message=(
-                "You hold out the medallion. The knight's hollow eyes widen - "
-                "'My honor! Returned at last!' He takes it reverently and steps "
-                "aside, bowing. The way west to Vallaki is open."
-            ),
-            add_exit=("west", "towngate"),
-            consume_instrument=True,
+            points_awarded=150,
+            effect_fn=grant_watchfire_mark,
         )
         ghostly_knight.add_interaction(
             verb="talk",
             from_state="blocking",
             message=(
                 "The knight's hollow voice echoes across the bridge:\n"
-                "'I cannot let you pass, mortal. My honor was lost in these very "
+                "'Stay your questions, mortal. My honor was lost in these very "
                 "woods - my medallion, stolen by the wolf pack that haunts the "
-                "eastern trails. Until it is returned, I am bound to this bridge.'\n"
+                "eastern trails. Until it is returned, I can offer you nothing.'\n"
                 "He gestures toward the forest with his ghostly blade.\n"
-                "'The wolves lair somewhere east of here, along the game trail. "
-                "Find my medallion among their... trophies... and I shall trouble "
-                "you no more.'"
+                "'The wolves lair east of here, past the clearing. Find my "
+                "medallion among their... trophies... and I shall repay you with "
+                "something worth far more than passage.'"
             ),
+        )
+        ghostly_knight.add_interaction(
+            verb="talk",
+            from_state="appeased",
+            message=(
+                "Sir Aldric inclines his head. 'The Watchfire is the Gray "
+                "Watch's last ember. Lord Morvane sealed his gates against it "
+                "because it is the one flame he could not put out.'"
+            ),
+            effect_fn=grant_watchfire_mark,
         )
         ghostly_knight.add_interaction(
             verb="attack",
@@ -1257,19 +1286,19 @@ class Level2Woods(LevelGenerator):
                 "Your weapon passes through the knight as if through smoke. "
                 "He regards you with infinite sadness in his burning eyes.\n"
                 "'I am beyond your harm, mortal. I have stood this vigil for "
-                "three hundred years. Find my medallion if you wish to pass.'"
+                "three hundred years. Find my medallion if you wish my aid.'"
             ),
         )
         ghostly_knight.add_interaction(
             verb="examine",
             from_state="blocking",
             message=(
-                "The knight wears tarnished plate armor bearing a dragon crest - "
+                "The knight wears tarnished plate armor bearing a tower crest - "
                 "the same design as on a medallion, you realize. His form "
                 "flickers constantly, more solid at times, nearly invisible at "
                 "others. The sword in his hand looks terrifyingly real.\n"
-                "An inscription on his breastplate reads: 'Sir Godfrey, Order "
-                "of the Silver Dragon.'"
+                "An inscription on his breastplate reads: 'Sir Aldric, "
+                "the Gray Watch.'"
             ),
         )
         self._rooms["bridge"].add_item(ghostly_knight)
@@ -1277,11 +1306,6 @@ class Level2Woods(LevelGenerator):
         # =====================================================================
         # CASTLE GATES - Dark magic barrier
         # =====================================================================
-
-        def beacon_lit(game_state: Any) -> bool:
-            """Check if the dragon beacon has been lit (Level 4 completion)."""
-            # This will be a global flag set when players complete Level 4
-            return getattr(game_state, "beacon_lit", False)
 
         iron_gates = StatefulItem(
             name="gates",
@@ -1303,27 +1327,28 @@ class Level2Woods(LevelGenerator):
         iron_gates.add_interaction(
             verb="open",
             from_state="sealed",
+            target_state="open",
+            message=(
+                "As your palm touches the iron, the Watchfire mark flares to "
+                "life - cold silver flame racing across the runes, which shriek "
+                "and gutter out one by one. The iron groans, frost shattering, "
+                "as the gates slowly swing open.\n"
+                "Beyond, a causeway climbs toward Bleakspire Citadel."
+            ),
+            conditional_fn=bears_watchfire_mark,
+            add_exit=("east", "outer_gate"),  # Level 3 citadel
+        )
+        iron_gates.add_interaction(
+            verb="open",
+            from_state="sealed",
             message=(
                 "You push against the gates with all your strength. They don't "
                 "budge - not even slightly. The runes flare angrily at your touch, "
                 "and cold burns your palms.\n"
                 "Some greater power seals these gates. The inscription speaks of "
-                "a beacon... perhaps lighting it would weaken this dark magic."
+                "a watchfire... perhaps its keeper still stands somewhere in "
+                "these woods."
             ),
-        )
-        iron_gates.add_interaction(
-            verb="open",
-            from_state="sealed",
-            target_state="open",
-            message=(
-                "As you touch the gates, light erupts on the horizon - the dragon "
-                "beacon! Its radiance washes across the land, and the runes on the "
-                "gates flicker and die. The iron groans, frost shattering, as the "
-                "gates slowly swing open.\n"
-                "Castle Ravenloft awaits."
-            ),
-            conditional_fn=beacon_lit,
-            add_exit=("east", "courtyard"),  # Level 5
         )
         iron_gates.add_interaction(
             verb="push",
@@ -1337,8 +1362,8 @@ class Level2Woods(LevelGenerator):
                 "covered in frost despite no visible cold. Glowing runes pulse "
                 "across the metal in patterns that hurt to look at.\n"
                 "A brass plate beside the gates reads:\n"
-                "'THESE GATES ANSWER ONLY TO THE LIGHT OF THE SILVER DRAGON. "
-                "REKINDLE THE BEACON, AND THE WAY SHALL OPEN.'"
+                "'THESE GATES FEAR ONLY THE WATCHFIRE OF THE GRAY WATCH. "
+                "BEAR ITS MARK, AND THE WAY SHALL OPEN.'"
             ),
         )
         self._rooms["castle_gates"].add_item(iron_gates)
@@ -1360,10 +1385,10 @@ class Level2Woods(LevelGenerator):
             verb="read",
             message=(
                 "The plate reads:\n"
-                "'THESE GATES ANSWER ONLY TO THE LIGHT OF THE SILVER DRAGON.\n"
-                "REKINDLE THE BEACON IN THE MANOR OF ARGYNVOSTHOLT,\n"
-                "AND THE WAY TO RAVENLOFT SHALL OPEN.\n"
-                "- Lord Argynvost, Commander of the Silver Order'"
+                "'THESE GATES FEAR ONLY THE WATCHFIRE OF THE GRAY WATCH.\n"
+                "SEEK ITS LAST KEEPER WHERE THE RIVER MEETS THE BRIDGE,\n"
+                "BEAR HIS MARK, AND THE WAY TO BLEAKSPIRE SHALL OPEN.\n"
+                "- Sir Aldric, the Gray Watch'"
             ),
         )
         brass_plate.add_interaction(
@@ -1373,7 +1398,7 @@ class Level2Woods(LevelGenerator):
         self._rooms["castle_gates"].add_item(brass_plate)
 
         # =====================================================================
-        # TSER POOL AREA - Vistani items
+        # MISTPOOL AREA - Veyra items
         # =====================================================================
 
         # Fortune teller's wagon
@@ -1402,10 +1427,12 @@ class Level2Woods(LevelGenerator):
             verb="touch",
             message=(
                 "The moment your fingers touch the crystal, the mist parts. You "
-                "see yourself standing before massive gates, light blazing behind "
-                "you. Then darkness, and a pale face with crimson eyes.\n"
-                "The seer chuckles. 'You'll need the beacon before those gates "
-                "open. And before the beacon... the ghost must rest.'"
+                "see yourself standing before massive gates, a silver flame "
+                "burning on your open palm. Then darkness, and a pale face with "
+                "crimson eyes.\n"
+                "The seer chuckles. 'The gates of Bleakspire fear one flame only "
+                "- the Watchfire. And only the ghost at the bridge can mark you "
+                "with it. See that he rests easy first.'"
             ),
         )
         crystal_ball.add_interaction(
@@ -1427,8 +1454,8 @@ class Level2Woods(LevelGenerator):
         tarot_deck.add_interaction(
             verb="examine",
             message=(
-                "The images are familiar archetypes twisted into Barovian forms. "
-                "The Tower shows Castle Ravenloft burning. The Lovers depicts a "
+                "The images are familiar archetypes twisted into shapes of the Mournvale. "
+                "The Tower shows Bleakspire Citadel burning. The Lovers depicts a "
                 "man and woman separated by mist. Death rides a pale horse through "
                 "eternal twilight."
             ),
@@ -1465,9 +1492,9 @@ class Level2Woods(LevelGenerator):
             message=(
                 "The rack holds:\n"
                 "  - A short sword (20 gold) - well-balanced, good steel\n"
-                "  - A crossbow (35 gold) - Vistani make, reliable\n"
+                "  - A crossbow (35 gold) - Veyra make, reliable\n"
                 "  - Several daggers (5 gold each)\n"
-                "The Vistani trader watches you appraisingly."
+                "The Veyra trader watches you appraisingly."
             ),
         )
         self._rooms["merchant_stall"].add_item(weapon_rack)
@@ -1495,7 +1522,7 @@ class Level2Woods(LevelGenerator):
             message=(
                 "A heavy iron strongbox with a formidable lock. The merchant's "
                 "most valuable goods are surely kept inside. Attempting to steal "
-                "from the Vistani would be... unwise."
+                "from the Veyra would be... unwise."
             ),
         )
         self._rooms["merchant_stall"].add_item(strongbox)
@@ -1517,7 +1544,7 @@ class Level2Woods(LevelGenerator):
         dock_post.add_interaction(
             verb="examine",
             message=(
-                "The post is carved with Vistani symbols - protection against "
+                "The post is carved with Veyra symbols - protection against "
                 "water spirits, you think. An inscription is carved below:\n"
                 "'The lake holds secrets. Ask the seer about the ghost ship.'"
             ),
@@ -1553,8 +1580,8 @@ class Level2Woods(LevelGenerator):
             verb="enter",
             message=(
                 "You step into the rowboat. It rocks alarmingly but holds. The "
-                "water of Tser Pool is dark and still. Where would you go? The "
-                "Vistani say the pool has no far shore..."
+                "water of Mistpool is dark and still. Where would you go? The "
+                "Veyra say the pool has no far shore..."
             ),
         )
         rowboat.add_interaction(
@@ -1776,7 +1803,7 @@ class Level2Woods(LevelGenerator):
         treasure_map = StatefulItem(
             name="map",
             id="grove_map",
-            description="A faded map lies here, showing the Svalich Woods.",
+            description="A faded map lies here, showing the Gloomwood.",
             state="default",
             weight=0,
             value=5,
@@ -1786,8 +1813,8 @@ class Level2Woods(LevelGenerator):
         treasure_map.add_interaction(
             verb="read",
             message=(
-                "The map shows the Svalich Woods. An X marks a spot south of the "
-                "standing stones with the note: 'Cache buried. Mill path revealed "
+                "The map shows the Gloomwood. An X marks a spot south of the "
+                "standing stones with the note: 'Cache buried. Barrow opens "
                 "when stones align.' Another X marks the wolf den with: 'Ghost's "
                 "honor.'"
             ),
@@ -1913,7 +1940,7 @@ class Level2Woods(LevelGenerator):
                 "You step into the ring of mushrooms. The air grows thick, the "
                 "world seems to spin, and for a moment you see... another place. "
                 "Green fields, sunlight, laughter. Then it fades, and you stand "
-                "in the grey Barovian forest once more. A tear runs down your cheek."
+                "in the grey Gloomwood once more. A tear runs down your cheek."
             ),
         )
         fairy_ring.add_interaction(
@@ -2086,7 +2113,7 @@ class Level2Woods(LevelGenerator):
             message=(
                 "You speak to the raven. It cocks its head, listening intently. "
                 "Then, impossibly, it speaks:\n"
-                "'The stones remember. The ghost waits. The gates fear the light. "
+                "'The stones remember. The ghost waits. The gates fear the Watchfire. "
                 "Bring wine to the seer for more.'\n"
                 "The other ravens caw in what might be laughter."
             ),
@@ -2257,10 +2284,8 @@ class Level2Woods(LevelGenerator):
                         player = session.get("player")
                         if player and player.current_room == "old_shrine":
                             player.add_points(50)
-                            # Also grant a blessing
-                            if "blessings" not in session:
-                                session["blessings"] = set()
-                            session["blessings"].add("nature_blessing")
+                            # Persisted; wolves check this when picking prey.
+                            player.flags["nature_blessing"] = True
                 except ImportError:
                     pass
 
@@ -2422,7 +2447,7 @@ class Level2Woods(LevelGenerator):
             verb="read",
             message=(
                 "The faded text reads:\n"
-                "'DANGER - WOLVES TO THE NORTH\n"
+                "'DANGER - WOLVES TO THE NORTHWEST\n"
                 " FAIRY RING TO THE EAST - DO NOT ENTER\n"
                 " HOLLOW TO THE WEST - BEWARE THE MISTS'"
             ),
@@ -2446,7 +2471,7 @@ class Level2Woods(LevelGenerator):
         # Specter guarding the barrow
         self.spawn_mob_in_room(mob_manager, "specter", "barrow")
 
-        # Non-aggressive Vistani
+        # Non-aggressive Veyra folk
         self.spawn_mob_in_room(mob_manager, "vistani", "tser_pool")
         self.spawn_mob_in_room(mob_manager, "seer", "wagon")
         self.spawn_mob_in_room(mob_manager, "vistani", "merchant_stall")
@@ -2472,35 +2497,37 @@ class Level2Woods(LevelGenerator):
                         "'I see your path clearly now:\n"
                         "1. THE STONES - In the clearing, three stones hold the sun. "
                         "Turn the east to sunrise, the north to noon, the west to sunset. "
-                        "Then touch the altar - ancient wisdom awaits below.\n"
-                        "2. THE GHOST - A knight guards the western bridge. His medallion "
-                        "was stolen by wolves - search their den for bones that gleam. "
-                        "Return his honor and he shall let you pass.\n"
-                        "3. THE GATES - They answer only to the beacon's light. You must "
-                        "journey to Argynvostholt and rekindle the dragon fire.\n"
-                        "'May the Morninglord guide your steps, traveler.'"
+                        "Then touch the altar - the barrow of the Gray Watch will open "
+                        "below, and their treasure with it.\n"
+                        "2. THE KNIGHT - A ghost guards the western bridge, raving of "
+                        "stolen honor. His medallion lies with the wolves east of the "
+                        "clearing - search their den and return it to him.\n"
+                        "3. THE MARK - Do this, and he will press the Watchfire into "
+                        "your palm - the one flame the gates of Bleakspire fear.\n"
+                        "'May the Dawnfather guide your steps, traveler.'"
                     ),
                     "one_time": True,
                     "triggered": False,
                 }
             }
 
-        # Vistani trader - accepts gold for information
+        # Veyra trader - accepts gold for information
         trader = find_mob_in_room("vistani", "merchant_stall")
         if trader:
             trader.accepts_item = {
                 "coin": {
                     "message": (
-                        "The Vistani trader nods appreciatively.\n"
-                        "'Information is more valuable than gold in Barovia, friend. "
+                        "The Veyra trader nods appreciatively.\n"
+                        "'Information is more valuable than gold in the Mournvale, friend. "
                         "But gold opens lips...'\n"
-                        "'The ghost on the bridge was once Sir Godfrey of the Silver "
-                        "Dragon order. His medallion - his very honor - was stolen by "
-                        "the wolf pack. They lair east of here, along the game trails.\n"
+                        "'The ghost on the bridge was once Sir Aldric of the Gray "
+                        "Watch. His medallion - his very honor - was stolen by "
+                        "the wolf pack. They lair east of the clearing, past the "
+                        "standing stones.\n"
                         "'As for the castle gates... see those runes? Dark magic, bound "
-                        "to the will of the land's master. Only the light of the dragon "
-                        "beacon can break the seal. The beacon is in Argynvostholt, the "
-                        "ruined manor beyond the bridge.\n"
+                        "to the will of the land's master. Only the Watchfire of the "
+                        "Gray Watch can break the seal, and only the knight can press "
+                        "its mark into your palm. Return his medallion first.\n"
                         "'The seer knows more, if you bring her wine.'"
                     ),
                     "one_time": True,
@@ -2510,14 +2537,16 @@ class Level2Woods(LevelGenerator):
                     "message": (
                         "The trader's eyes widen at the gold.\n"
                         "'Generous! Very generous! For this, I share everything:\n"
-                        "'The standing stones in the clearing hide an ancient barrow. "
-                        "Align the suns - dawn in the east, noon in the north, dusk in "
-                        "the west - then touch the altar. The way will open.\n"
+                        "'The standing stones in the clearing hide the barrow of the "
+                        "Gray Watch. Align the suns - dawn in the east, noon in the "
+                        "north, dusk in the west - then touch the altar. The way will "
+                        "open.\n"
                         "'In the barrow lies treasure and a weapon blessed against evil. "
                         "You'll need such things where you're going.\n"
-                        "'The ghost knight wants his medallion. The wolf den has it. "
-                        "The castle gates need the beacon lit. It's all connected, friend. "
-                        "Everything in Barovia is connected.'"
+                        "'The ghost knight wants his medallion. The wolf den east of "
+                        "the clearing has it. Return it, and his Watchfire mark will "
+                        "open the gates of Bleakspire. It's all connected, friend. "
+                        "Everything in the Mournvale is connected.'"
                     ),
                     "one_time": True,
                     "triggered": False,

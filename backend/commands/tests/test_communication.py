@@ -121,6 +121,60 @@ class SayCommandTest(AsyncTestCase):
         call_args = self.utils.send_message.call_args
         self.assertNotEqual(call_args[0][1], "sid3")
 
+    async def test_say_fires_room_speech_trigger(self):
+        """Test 'say <keyword>' fires the room's speech trigger."""
+        # Arrange
+        from models.Room import Room
+
+        room = Room("test_room", "Test Room", "A test room.")
+        room.add_speech_trigger(
+            keyword="dawnfather",
+            message="The mists part!",
+            add_exit=("south", "road_south"),
+        )
+        game_state = Mock()
+        game_state.get_room = Mock(return_value=room)
+        cmd = {"verb": "say", "subject": "I invoke you, DAWNFATHER!"}
+
+        # Act
+        result = await handle_say(
+            cmd,
+            self.player,
+            game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertEqual(result, "The mists part!")
+        self.assertEqual(room.exits.get("south"), "road_south")
+
+    async def test_say_without_trigger_returns_empty(self):
+        """Test ordinary speech with a game_state still returns empty."""
+        # Arrange
+        from models.Room import Room
+
+        room = Room("test_room", "Test Room", "A test room.")
+        game_state = Mock()
+        game_state.get_room = Mock(return_value=room)
+        cmd = {"verb": "say", "subject": "Nice weather."}
+
+        # Act
+        result = await handle_say(
+            cmd,
+            self.player,
+            game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertEqual(result, "")
+
 
 class TellCommandTest(AsyncTestCase):
     """Test tell command (private messages)."""

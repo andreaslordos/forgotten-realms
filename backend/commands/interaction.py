@@ -428,26 +428,11 @@ async def handle_interaction(
                 if room:
                     room.remove_item(primary_item)
 
-        # Handle adding an exit
-        if "add_exit" in valid_interaction:
-            direction, target_room_id = valid_interaction["add_exit"]
-            if current_room:
-                current_room.exits[direction] = target_room_id
+        # Apply declarative exit changes (shared with speech triggers)
+        if current_room:
+            from commands.speech_triggers import apply_exit_config
 
-        # Handle removing an exit
-        if "remove_exit" in valid_interaction:
-            direction = valid_interaction["remove_exit"]
-            if current_room and direction in current_room.exits:
-                del current_room.exits[direction]
-
-        # Handle the reciprocal exit (creating the return path)
-        if "reciprocal_exit" in valid_interaction:
-            source_room_id, direction, target_room_id = valid_interaction[
-                "reciprocal_exit"
-            ]
-            source_room = game_state.get_room(source_room_id)
-            if source_room:
-                source_room.exits[direction] = target_room_id
+            apply_exit_config(valid_interaction, current_room, game_state)
 
         # Handle consuming the instrument
         if (
@@ -538,6 +523,7 @@ common_interaction_verbs = [
     "twist",
     "light",
     "extinguish",
+    "snuff",
     "touch",
     "cut",
     "break",

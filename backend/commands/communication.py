@@ -158,6 +158,25 @@ async def handle_say(
                     continue
                 await utils.send_message(sio, sid, room_msg)
 
+    # Spoken words can fire room speech triggers ('say dawnfather' must work
+    # like typing the bare word — converse mode turns everything into say).
+    current_room = game_state.get_room(player.current_room) if game_state else None
+    if current_room:
+        from commands.speech_triggers import process_speech_triggers
+
+        trigger_message = await process_speech_triggers(
+            subject,
+            player,
+            current_room,
+            game_state,
+            player_manager,
+            online_sessions,
+            sio,
+            utils,
+        )
+        if trigger_message is not None:
+            return trigger_message
+
     return ""
 
 

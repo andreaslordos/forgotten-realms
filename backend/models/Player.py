@@ -27,6 +27,7 @@ class Player:
     created_at: datetime
     current_room: str
     last_active: datetime
+    flags: Dict[str, bool]
 
     def __init__(
         self,
@@ -55,6 +56,8 @@ class Player:
         self.created_at = datetime.now()
         self.current_room = spawn_room  # Always start at spawn room on login/restart
         self.last_active = datetime.now()
+        # Persistent progression flags (blessings, story gates) — survive logout.
+        self.flags = {}
 
     def level_up(
         self,
@@ -257,6 +260,7 @@ class Player:
             "inventory": [item.to_dict() for item in self.inventory],
             "level": self.level,
             "current_room": self.current_room,
+            "flags": self.flags,
         }
 
     @staticmethod
@@ -272,6 +276,7 @@ class Player:
         player.inventory = [Item.from_dict(item_data) for item_data in inventory_data]
         player.level = data["level"]
         player.current_room = data["current_room"]
+        player.flags = dict(data.get("flags", {}))
 
         # Update the player's stats based on their level
         # First calculate what level threshold they should be at

@@ -59,6 +59,8 @@ class Mobile(StatefulItem):
         point_value: int = 0,
         pronouns: str = "it",
         current_room: Optional[str] = None,
+        death_broadcast: Optional[str] = None,
+        spares_flagged: Optional[str] = None,
     ) -> None:
         """
         Initialize a Mobile.
@@ -121,6 +123,13 @@ class Mobile(StatefulItem):
         # Location and identity
         self.current_room = current_room
         self.pronouns = pronouns
+
+        # World-wide announcement on death (major bosses only)
+        self.death_broadcast = death_broadcast
+
+        # Players carrying this flag are never chosen as aggro targets
+        # (e.g. wolves spare bearers of the nature blessing).
+        self.spares_flagged = spares_flagged
 
         # Add state descriptions for alive/dead
         self.add_state_description("alive", description)
@@ -309,6 +318,8 @@ class Mobile(StatefulItem):
                 ],
                 "current_room": self.current_room,
                 "pronouns": self.pronouns,
+                "death_broadcast": self.death_broadcast,
+                "spares_flagged": self.spares_flagged,
             }
         )
         return data
@@ -348,6 +359,8 @@ class Mobile(StatefulItem):
             point_value=data.get("point_value", 0),
             pronouns=data.get("pronouns", "it"),
             current_room=data.get("current_room"),
+            death_broadcast=data.get("death_broadcast"),
+            spares_flagged=data.get("spares_flagged"),
         )
 
         # Restore state

@@ -607,5 +607,51 @@ class PlayerEffectiveDexterityTest(unittest.TestCase):
         self.assertEqual(effective_dex, 20)  # No penalty due to ground light
 
 
+class PlayerFlagsTest(unittest.TestCase):
+    """Test persistent progression flags."""
+
+    def test_flags_default_to_empty_dict(self):
+        """Test a new player starts with no flags."""
+        player = Player("Newbie")
+        self.assertEqual(player.flags, {})
+
+    def test_to_dict_includes_flags(self):
+        """Test to_dict serializes flags."""
+        # Arrange
+        player = Player("Pilgrim")
+        player.flags["dawnfather_blessing"] = True
+
+        # Act
+        data = player.to_dict()
+
+        # Assert
+        self.assertEqual(data["flags"], {"dawnfather_blessing": True})
+
+    def test_from_dict_restores_flags(self):
+        """Test from_dict round-trips flags."""
+        # Arrange
+        player = Player("Pilgrim")
+        player.flags["watchfire_mark"] = True
+
+        # Act
+        restored = Player.from_dict(player.to_dict())
+
+        # Assert
+        self.assertTrue(restored.flags.get("watchfire_mark"))
+
+    def test_from_dict_handles_missing_flags_key(self):
+        """Test legacy saves without flags load with empty flags."""
+        # Arrange
+        player = Player("Elder")
+        data = player.to_dict()
+        del data["flags"]
+
+        # Act
+        restored = Player.from_dict(data)
+
+        # Assert
+        self.assertEqual(restored.flags, {})
+
+
 if __name__ == "__main__":
     unittest.main()

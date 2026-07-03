@@ -15,13 +15,13 @@ from commands.rest import process_sleeping_players
 from services.error_reporter import report_error
 from services.notifications import broadcast_logout
 
-
 logger = logging.getLogger(__name__)
 
 
 COMBAT_TICK_INTERVAL = 3.0  # Combat actions occur every 3 seconds
 DEFAULT_TICK_INTERVAL = 0.5
 INACTIVITY_RESET_SECONDS = 120 * 30  # Matches legacy behaviour (logged as 2 hours)
+QUEST_ITEM_CHECK_INTERVAL = 60.0
 ERROR_RETRY_DELAY = 1.0
 
 
@@ -75,6 +75,7 @@ class TickService:
         now = self._time()
         self._last_activity = now
         self._last_combat_tick = now
+        self._last_quest_item_check = now
 
     async def run_forever(self) -> None:
         """Run the background tick loop indefinitely, handling errors resiliently."""
@@ -107,6 +108,10 @@ class TickService:
 
         if not self.online_sessions:
             return
+
+        # Restore vanished progression-critical items (world can only
+        # change while players are online, so skip the scan when empty)
+        self._maybe_ensure_quest_items(current_time)
 
         for sid, session in list(self.online_sessions.items()):
             self._update_last_activity(session, current_time)
@@ -176,6 +181,14 @@ class TickService:
             self.online_sessions,
             self.utils,
         )
+
+    def _maybe_ensure_quest_items(self, current_time: float) -> None:
+        if current_time - self._last_quest_item_check < QUEST_ITEM_CHECK_INTERVAL:
+            return
+        from services.quest_items import ensure_quest_items
+
+        ensure_quest_items(self.game_state, self.online_sessions)
+        self._last_quest_item_check = current_time
 
     def _get_mob_manager(self) -> Any:
         return getattr(self.utils, "mob_manager", None)

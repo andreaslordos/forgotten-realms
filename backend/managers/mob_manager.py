@@ -89,6 +89,8 @@ class MobManager:
             point_value=template.get("point_value", 0),
             pronouns=template.get("pronouns", "it"),
             current_room=room_id,
+            death_broadcast=template.get("death_broadcast"),
+            spares_flagged=template.get("spares_flagged"),
         )
 
         # Initialize aggro delay
@@ -298,6 +300,10 @@ class MobManager:
                     player
                     and player.current_room == mob.current_room
                     and not is_invisible(player, online_sessions)
+                    and not (
+                        mob.spares_flagged
+                        and getattr(player, "flags", {}).get(mob.spares_flagged)
+                    )
                 ):
                     target_player = player
                     target_sid = sid

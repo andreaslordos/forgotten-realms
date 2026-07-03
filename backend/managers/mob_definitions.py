@@ -30,7 +30,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
     coin = Item(
         name="coin",
         id="coin",
-        description="A tarnished silver coin bearing Strahd's visage.",
+        description="A tarnished silver coin bearing the Pale Sovereign's visage.",
         weight=1,
         value=10,
         takeable=True,
@@ -226,7 +226,15 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "aggressive": True,
             "aggro_delay_min": 1,
             "aggro_delay_max": 3,
-            "patrol_rooms": ["woods_path", "clearing", "road", "crossroads"],
+            # Adjacency-ordered loop so each hop reads as a real movement.
+            "patrol_rooms": [
+                "woods_path",
+                "clearing",
+                "woods_path",
+                "crossroads",
+                "road_south",
+                "crossroads",
+            ],
             "movement_interval": 60,
             "loot_table": [
                 {"item": pelt, "chance": 0.8},
@@ -234,6 +242,8 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 50,
             "pronouns": "it",
+            # The old shrine's nature blessing makes wolves ignore you.
+            "spares_flagged": "nature_blessing",
         },
         # Vistani trader
         "vistani": {
@@ -304,7 +314,8 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "aggressive": True,
             "aggro_delay_min": 2,
             "aggro_delay_max": 4,
-            "patrol_rooms": ["mill", "kitchen"],
+            # Stationary until a level places it (old route had no live rooms).
+            "patrol_rooms": [],
             "movement_interval": 100,
             "loot_table": [
                 {"item": essence, "chance": 0.9},
@@ -366,7 +377,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "aggressive": False,
             "aggro_delay_min": 0,
             "aggro_delay_max": 0,
-            "patrol_rooms": ["hall", "quarters"],
+            "patrol_rooms": [],
             "movement_interval": 200,
             "loot_table": [
                 {"item": coin, "chance": 0.8},
@@ -387,7 +398,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "aggressive": False,
             "aggro_delay_min": 0,
             "aggro_delay_max": 0,
-            "patrol_rooms": ["hall", "approach"],
+            "patrol_rooms": [],
             "movement_interval": 150,
             "loot_table": [
                 {"item": essence, "chance": 0.4},
@@ -428,7 +439,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "aggressive": False,
             "aggro_delay_min": 0,
             "aggro_delay_max": 0,
-            "patrol_rooms": ["towngate", "street", "stockyard"],
+            "patrol_rooms": [],
             "movement_interval": 100,
             "loot_table": [
                 {"item": dagger, "chance": 0.4},
@@ -519,7 +530,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "point_value": 0,
             "pronouns": "he",
         },
-        # ===== CASTLE RAVENLOFT =====
+        # ===== BLEAKSPIRE CITADEL =====
         # Stone gargoyle
         "gargoyle": {
             "name": "gargoyle",
@@ -571,7 +582,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "aggressive": True,
             "aggro_delay_min": 2,
             "aggro_delay_max": 4,
-            "patrol_rooms": ["dining", "stairs"],
+            "patrol_rooms": [],
             "movement_interval": 150,
             "loot_table": [
                 {"item": fang, "chance": 1.0},
@@ -582,10 +593,14 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "point_value": 180,
             "pronouns": "she",
         },
-        # STRAHD VON ZAROVICH - FINAL BOSS
-        "strahd": {
-            "name": "Strahd",
-            "description": "Count Strahd von Zarovich stands before you, ancient and terrible. His eyes burn with cold fire.",
+        # LORD MORVANE, THE PALE SOVEREIGN - FINAL BOSS
+        "morvane": {
+            "name": "Lord Morvane",
+            "description": (
+                "Lord Morvane, the Pale Sovereign, stands before you in "
+                "colorless finery, ancient and terrible. His eyes burn with "
+                "cold fire, and the mist itself seems to lean toward him."
+            ),
             "strength": 80,
             "dexterity": 60,
             "max_stamina": 300,
@@ -605,6 +620,13 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 500,
             "pronouns": "he",
+            # Forward-compat hook for a future respawn system (None = never).
+            "respawn_seconds": None,
+            "death_broadcast": (
+                "Far away, the bells of Gravenmoor toll though no hand pulls "
+                "them. {player} has slain Lord Morvane, the Pale Sovereign! "
+                "Across the Mournvale, the mists grow thin..."
+            ),
         },
         # Skeleton - instant death, found in crypts
         "skeleton": {

@@ -140,7 +140,25 @@ def collect_latent_exits(rooms: Dict[str, Any]) -> List[LatentExit]:
     """
     seen: Set[Tuple[str, str, str]] = set()
     latent: List[LatentExit] = []
+
+    def add(source: str, direction: str, target: str, owner: str, verb: str) -> None:
+        key = (source, direction, target)
+        if key not in seen:
+            seen.add(key)
+            latent.append(LatentExit(source, direction, target, owner, verb))
+
     for room_id, room in rooms.items():
+        for triggers in getattr(room, "speech_triggers", {}).values():
+            trigger_list = triggers if isinstance(triggers, list) else [triggers]
+            for trigger in trigger_list:
+                if not isinstance(trigger, dict):
+                    continue
+                if "add_exit" in trigger:
+                    direction, target = trigger["add_exit"]
+                    add(room_id, direction, target, "speech trigger", "speak")
+                if "reciprocal_exit" in trigger:
+                    source, direction, target = trigger["reciprocal_exit"]
+                    add(source, direction, target, "speech trigger", "speak")
         for item in _iter_room_items(room):
             interactions = getattr(item, "interactions", None)
             if not isinstance(interactions, dict):
@@ -154,20 +172,10 @@ def collect_latent_exits(rooms: Dict[str, Any]) -> List[LatentExit]:
                         continue
                     if "add_exit" in entry:
                         direction, target = entry["add_exit"]
-                        key = (item_room, direction, target)
-                        if key not in seen:
-                            seen.add(key)
-                            latent.append(
-                                LatentExit(item_room, direction, target, item_id, verb)
-                            )
+                        add(item_room, direction, target, item_id, verb)
                     if "reciprocal_exit" in entry:
                         source, direction, target = entry["reciprocal_exit"]
-                        key = (source, direction, target)
-                        if key not in seen:
-                            seen.add(key)
-                            latent.append(
-                                LatentExit(source, direction, target, item_id, verb)
-                            )
+                        add(source, direction, target, item_id, verb)
     return latent
 
 
@@ -310,7 +318,7 @@ def assign_coordinates(
         coords[room_id] = (offset_x, 0, 0)
         approx.add(room_id)
         approx.update(bfs(room_id))
-        offset_x = max((c[0] for c in coords.values()), default=offset_x) + 4
+        offset_x = max(c[0] for c in coords.values()) + 4
 
     return CoordinateResult(coords, approx, contradictions, unplaced_snapshot)
 

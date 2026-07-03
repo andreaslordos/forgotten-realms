@@ -49,6 +49,8 @@ class Room:
         effect_fn: Optional[Callable[..., Union[None, Awaitable[None]]]] = None,
         conditional_fn: Optional[Callable[[Any, Any], bool]] = None,
         one_time: bool = True,
+        add_exit: Optional[Tuple[str, str]] = None,
+        reciprocal_exit: Optional[Tuple[str, str, str]] = None,
     ) -> None:
         """
         Add a speech trigger that activates when a player types a keyword in this room.
@@ -62,20 +64,26 @@ class Room:
             conditional_fn: Optional function(player, game_state) -> bool that must
                            return True for trigger to activate
             one_time: If True, trigger only fires once per game session
+            add_exit: Optional (direction, room_id) added to this room when triggered.
+                      Declarative so tooling can see the latent exit.
+            reciprocal_exit: Optional (room_id, direction, target_room_id) return path.
         """
         key = keyword.lower()
         if key not in self.speech_triggers:
             self.speech_triggers[key] = []
 
-        self.speech_triggers[key].append(
-            {
-                "message": message,
-                "effect_fn": effect_fn,
-                "conditional_fn": conditional_fn,
-                "one_time": one_time,
-                "triggered": False,
-            }
-        )
+        trigger: Dict[str, Any] = {
+            "message": message,
+            "effect_fn": effect_fn,
+            "conditional_fn": conditional_fn,
+            "one_time": one_time,
+            "triggered": False,
+        }
+        if add_exit is not None:
+            trigger["add_exit"] = add_exit
+        if reciprocal_exit is not None:
+            trigger["reciprocal_exit"] = reciprocal_exit
+        self.speech_triggers[key].append(trigger)
 
     def add_item(self, item: Any) -> None:  # item: "Item"
         """Add a visible item to the room."""

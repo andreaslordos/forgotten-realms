@@ -571,5 +571,40 @@ class RoomSpeechTriggersTest(unittest.TestCase):
         )
 
 
+class RoomSpeechTriggerExitTest(unittest.TestCase):
+    """Test declarative exit payloads on speech triggers."""
+
+    def test_add_speech_trigger_stores_add_exit(self):
+        """Test add_exit and reciprocal_exit are stored on the trigger."""
+        # Arrange
+        room = Room("gate", "Gate", "A gate.")
+
+        # Act
+        room.add_speech_trigger(
+            keyword="open sesame",
+            message="The way opens.",
+            add_exit=("south", "beyond"),
+            reciprocal_exit=("beyond", "north", "gate"),
+        )
+
+        # Assert
+        trigger = room.speech_triggers["open sesame"][0]
+        self.assertEqual(trigger["add_exit"], ("south", "beyond"))
+        self.assertEqual(trigger["reciprocal_exit"], ("beyond", "north", "gate"))
+
+    def test_add_speech_trigger_omits_exit_keys_when_none(self):
+        """Test triggers without exits do not carry exit keys."""
+        # Arrange
+        room = Room("gate", "Gate", "A gate.")
+
+        # Act
+        room.add_speech_trigger(keyword="hello", message="Hi.")
+
+        # Assert
+        trigger = room.speech_triggers["hello"][0]
+        self.assertNotIn("add_exit", trigger)
+        self.assertNotIn("reciprocal_exit", trigger)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -126,7 +126,9 @@ class WorldBuilderExportTests(unittest.TestCase):
         self.assertEqual(marker["name"], "always_true")
 
         self.assertEqual(exported_spawn["hidden_items"][0]["id"], "gem")
-        self.assertTrue(exported_spawn["hidden_items"][0]["condition"]["unserializable"])
+        self.assertTrue(
+            exported_spawn["hidden_items"][0]["condition"]["unserializable"]
+        )
 
         self.assertEqual(len(data["mobs"]), 1)
         self.assertEqual(data["mobs"][0]["id"], "wolf_1")
@@ -141,8 +143,22 @@ class WorldBuilderExportTests(unittest.TestCase):
 
         self.assertEqual(
             data["regions"],
-            [{"id": "world", "name": "World", "color": "#8b5a3c"}],
+            [
+                {"id": "world", "name": "World", "color": "#8b5a3c"},
+                {
+                    "id": "village-of-gravenmoor",
+                    "name": "Village of Gravenmoor",
+                    "color": "#4f8fba",
+                },
+                {"id": "the-gloomwood", "name": "The Gloomwood", "color": "#75a743"},
+                {
+                    "id": "bleakspire-citadel",
+                    "name": "Bleakspire Citadel",
+                    "color": "#c65197",
+                },
+            ],
         )
+        self.assertEqual(data["rooms"][0]["region_id"], "world")
         self.assertEqual(
             data["layers"],
             [{"id": "surface", "name": "Surface", "z": 0, "visible": True}],
@@ -156,6 +172,73 @@ class WorldBuilderExportTests(unittest.TestCase):
         )
         self.assertEqual(data["rooms"][1]["x"], 270)
         self.assertEqual(data["rooms"][1]["layout"]["x"], 270)
+
+
+class WorldBuilderRegionExportTests(unittest.TestCase):
+    def test_export_live_world_assigns_generator_regions_to_owned_rooms(self):
+        from managers.world import LEVEL_GENERATORS
+
+        game_state = GameState()
+        for room in generate_world().values():
+            game_state.add_room(room)
+
+        data = export_live_world(game_state, spawn_room_id="square")
+
+        village = next(
+            generator for generator in LEVEL_GENERATORS if generator.level_number == 1
+        )
+        woods = next(
+            generator for generator in LEVEL_GENERATORS if generator.level_number == 2
+        )
+        self.assertIn("square", village.room_ids)
+        woods_room_id = next(
+            room_id for room_id in woods.room_ids if room_id not in village.room_ids
+        )
+        region_by_room = {room["id"]: room["region_id"] for room in data["rooms"]}
+        self.assertEqual(region_by_room["square"], "village-of-gravenmoor")
+        self.assertEqual(region_by_room[woods_room_id], "the-gloomwood")
+
+        region_names = {region["id"]: region["name"] for region in data["regions"]}
+        self.assertEqual(region_names["world"], "World")
+        self.assertEqual(region_names["village-of-gravenmoor"], "Village of Gravenmoor")
+        self.assertEqual(region_names["the-gloomwood"], "The Gloomwood")
+        for region in data["regions"]:
+            self.assertRegex(region["color"], r"^#[0-9a-fA-F]{6}$")
+
+        validation = validate_world_data(data, spawn_room_id="square")
+        self.assertEqual([], [issue.to_dict() for issue in validation.errors])
+
+    def test_export_live_world_defaults_unowned_rooms_to_world_region(self):
+        game_state = GameState()
+        game_state.add_room(
+            Room("runtime-room-xyz", "Runtime Room", "Created at runtime.")
+        )
+
+        data = export_live_world(game_state)
+
+        self.assertEqual(data["rooms"][0]["region_id"], "world")
+        self.assertEqual(
+            data["regions"][0],
+            {"id": "world", "name": "World", "color": "#8b5a3c"},
+        )
+
+    def test_export_live_world_preserves_authored_custom_region_and_lists_it(self):
+        game_state = GameState()
+        room = Room("square", "Square", "The village square.")
+        room.authoring_metadata = {"region_id": "custom-region", "x": 10, "y": 20}
+        game_state.add_room(room)
+
+        data = export_live_world(game_state)
+
+        self.assertEqual(data["rooms"][0]["region_id"], "custom-region")
+        custom = next(
+            region for region in data["regions"] if region["id"] == "custom-region"
+        )
+        self.assertEqual(custom["name"], "Custom Region")
+        self.assertRegex(custom["color"], r"^#[0-9a-fA-F]{6}$")
+
+        validation = validate_world_data(data)
+        self.assertEqual([], [issue.to_dict() for issue in validation.errors])
 
 
 class WorldBuilderGeneratedWorldTests(unittest.TestCase):
@@ -228,7 +311,9 @@ class WorldBuilderValidationTests(unittest.TestCase):
         self.assertIn("errors", result.to_dict())
         self.assertIn("warnings", result.to_dict())
 
-    def test_validate_world_data_accepts_room_maps_and_missing_spawn_without_warning(self):
+    def test_validate_world_data_accepts_room_maps_and_missing_spawn_without_warning(
+        self,
+    ):
         data = {
             "version": 1,
             "rooms": {
@@ -281,7 +366,9 @@ class WorldBuilderValidationTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertIn("invalid_script_path", {issue.code for issue in result.errors})
-        self.assertIn("invalid_script_room_ref", {issue.code for issue in result.errors})
+        self.assertIn(
+            "invalid_script_room_ref", {issue.code for issue in result.errors}
+        )
 
     def test_validate_world_data_accepts_authoring_metadata(self):
         data = {
@@ -415,7 +502,9 @@ class WorldBuilderValidationTests(unittest.TestCase):
         self.assertIn("invalid_room_layer_ref", error_codes)
         self.assertIn("invalid_room_layout_coordinate", error_codes)
 
-    def test_validate_world_data_warns_when_legacy_coordinates_conflict_with_layout(self):
+    def test_validate_world_data_warns_when_legacy_coordinates_conflict_with_layout(
+        self,
+    ):
         data = {
             "version": 1,
             "regions": [{"id": "village", "name": "Village"}],
@@ -441,11 +530,429 @@ class WorldBuilderValidationTests(unittest.TestCase):
 
         self.assertTrue(result.ok, result.to_dict())
         conflicts = [
-            issue
-            for issue in result.warnings
-            if issue.code == "legacy_layout_conflict"
+            issue for issue in result.warnings if issue.code == "legacy_layout_conflict"
         ]
         self.assertEqual(3, len(conflicts), result.to_dict())
+
+
+class WorldBuilderAsymmetricExitTests(unittest.TestCase):
+    def _room(self, room_id, exits=None):
+        return {
+            "id": room_id,
+            "name": room_id.title(),
+            "description": f"{room_id}.",
+            "exits": exits or {},
+        }
+
+    def _asymmetric_warnings(self, result):
+        return [
+            issue.to_dict()
+            for issue in result.warnings
+            if issue.code == "asymmetric_exit"
+        ]
+
+    def test_validate_world_data_warns_when_reverse_exit_is_missing(self):
+        data = {
+            "version": 1,
+            "rooms": [self._room("a", {"north": "b"}), self._room("b")],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        warnings = self._asymmetric_warnings(result)
+        self.assertEqual(1, len(warnings))
+        self.assertEqual(warnings[0]["room_id"], "a")
+        self.assertEqual(warnings[0]["direction"], "north")
+        self.assertEqual(warnings[0]["target"], "b")
+        self.assertEqual(
+            warnings[0]["message"],
+            "Room 'a' exit north -> 'b' has no reverse exit south back to 'a'",
+        )
+
+    def test_validate_world_data_accepts_symmetric_exits_without_warning(self):
+        data = {
+            "version": 1,
+            "rooms": [
+                self._room("a", {"north": "b"}),
+                self._room("b", {"south": "a"}),
+            ],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        self.assertEqual([], self._asymmetric_warnings(result))
+
+    def test_validate_world_data_skips_directions_without_canonical_opposite(self):
+        data = {
+            "version": 1,
+            "rooms": [self._room("a", {"portal": "b"}), self._room("b")],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        self.assertEqual([], self._asymmetric_warnings(result))
+
+    def test_validate_world_data_warns_when_reverse_exit_points_elsewhere(self):
+        data = {
+            "version": 1,
+            "rooms": [
+                self._room("a", {"north": "b"}),
+                self._room("b", {"south": "c"}),
+                self._room("c", {"north": "b"}),
+            ],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        warnings = self._asymmetric_warnings(result)
+        self.assertEqual(1, len(warnings))
+        self.assertEqual(warnings[0]["room_id"], "a")
+        self.assertEqual(warnings[0]["target"], "b")
+
+    def test_validate_world_data_warns_for_asymmetric_in_out_exits(self):
+        data = {
+            "version": 1,
+            "rooms": [self._room("a", {"in": "b"}), self._room("b")],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        warnings = self._asymmetric_warnings(result)
+        self.assertEqual(1, len(warnings))
+        self.assertEqual(warnings[0]["direction"], "in")
+        self.assertIn("no reverse exit out", warnings[0]["message"])
+
+    def test_validate_world_data_skips_asymmetric_check_for_rooms_without_id(self):
+        data = {
+            "version": 1,
+            "rooms": [
+                {
+                    "id": "",
+                    "name": "Nameless",
+                    "description": "No id.",
+                    "exits": {"north": "b"},
+                },
+                self._room("b"),
+            ],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        self.assertEqual([], self._asymmetric_warnings(result))
+
+    def test_validate_world_data_warns_when_target_exits_are_malformed(self):
+        data = {
+            "version": 1,
+            "rooms": [
+                self._room("a", {"north": "b"}),
+                {"id": "b", "name": "B", "description": "b.", "exits": ["oops"]},
+            ],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        warnings = self._asymmetric_warnings(result)
+        self.assertEqual(1, len(warnings))
+        self.assertEqual(warnings[0]["room_id"], "a")
+
+    def test_validate_world_data_skips_asymmetric_check_for_broken_exits(self):
+        data = {
+            "version": 1,
+            "rooms": [self._room("a", {"north": "missing"})],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        self.assertIn("broken_exit", {issue.code for issue in result.errors})
+        self.assertEqual([], self._asymmetric_warnings(result))
+
+
+class WorldBuilderDefaultReachabilityTests(unittest.TestCase):
+    def _unreachable_warnings(self, result):
+        return [
+            issue.to_dict()
+            for issue in result.warnings
+            if issue.code == "unreachable_room"
+        ]
+
+    def test_validate_world_data_defaults_to_square_spawn_for_reachability(self):
+        data = {
+            "version": 1,
+            "rooms": [
+                {"id": "square", "name": "Square", "description": "Square."},
+                {"id": "island", "name": "Island", "description": "Cut off."},
+            ],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        self.assertTrue(result.ok)
+        warnings = self._unreachable_warnings(result)
+        self.assertEqual(1, len(warnings))
+        self.assertEqual(warnings[0]["room_id"], "island")
+        self.assertIn("spawn 'square'", warnings[0]["message"])
+
+    def test_validate_world_data_falls_back_to_first_room_for_reachability(self):
+        data = {
+            "version": 1,
+            "rooms": [
+                {"id": "alpha", "name": "Alpha", "description": "First."},
+                {"id": "island", "name": "Island", "description": "Cut off."},
+            ],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        warnings = self._unreachable_warnings(result)
+        self.assertEqual(1, len(warnings))
+        self.assertEqual(warnings[0]["room_id"], "island")
+        self.assertIn("spawn 'alpha'", warnings[0]["message"])
+
+    def test_validate_world_data_prefers_declared_spawn_over_square(self):
+        data = {
+            "version": 1,
+            "spawn_room_id": "hub",
+            "rooms": [
+                {
+                    "id": "square",
+                    "name": "Square",
+                    "description": "Square.",
+                    "exits": {"east": "loner"},
+                },
+                {"id": "hub", "name": "Hub", "description": "Hub."},
+                {"id": "loner", "name": "Loner", "description": "Loner."},
+            ],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        warnings = self._unreachable_warnings(result)
+        self.assertEqual(["loner", "square"], [w["room_id"] for w in warnings])
+        for warning in warnings:
+            self.assertIn("spawn 'hub'", warning["message"])
+
+    def test_validate_world_data_missing_declared_spawn_errors_and_uses_fallback(self):
+        data = {
+            "version": 1,
+            "spawn_room_id": "ghost",
+            "rooms": [
+                {"id": "square", "name": "Square", "description": "Square."},
+                {"id": "island", "name": "Island", "description": "Cut off."},
+            ],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        self.assertFalse(result.ok)
+        self.assertIn("spawn_room_missing", {issue.code for issue in result.errors})
+        warnings = self._unreachable_warnings(result)
+        self.assertEqual(1, len(warnings))
+        self.assertEqual(warnings[0]["room_id"], "island")
+        self.assertIn("spawn 'square'", warnings[0]["message"])
+
+    def test_validate_world_data_handles_empty_world_without_reachability_warnings(
+        self,
+    ):
+        result = validate_world_data({"version": 1, "rooms": [], "mobs": []})
+
+        self.assertTrue(result.ok)
+        self.assertEqual([], self._unreachable_warnings(result))
+
+
+class WorldBuilderStrippedLogicTests(unittest.TestCase):
+    MARKER = {"unserializable": True, "kind": "callable", "name": "legacy_fn"}
+
+    def _world(self, room):
+        room.setdefault("id", "spawn")
+        room.setdefault("name", "Spawn")
+        room.setdefault("description", "Start.")
+        return {"version": 1, "rooms": [room], "mobs": []}
+
+    def _stripped_warnings(self, result):
+        return [
+            issue.to_dict()
+            for issue in result.warnings
+            if issue.code == "python_logic_stripped"
+        ]
+
+    def test_validate_world_data_warns_for_stripped_item_interactions(self):
+        room = {
+            "items": [
+                {
+                    "type": "stateful_item",
+                    "id": "lever",
+                    "name": "Lever",
+                    "description": "A lever.",
+                    "interactions": {
+                        "pull": [
+                            {
+                                "target_state": "up",
+                                "message": "Click.",
+                                "conditional_fn": dict(self.MARKER),
+                            }
+                        ]
+                    },
+                }
+            ]
+        }
+
+        result = validate_world_data(self._world(room))
+
+        warnings = self._stripped_warnings(result)
+        self.assertEqual(1, len(warnings))
+        self.assertEqual(warnings[0]["room_id"], "spawn")
+        self.assertIn("lever", warnings[0]["message"])
+
+    def test_validate_world_data_warns_for_stripped_hidden_item_conditions(self):
+        room = {
+            "hidden_items": [
+                {
+                    "id": "gem",
+                    "item": {"id": "gem", "name": "Gem", "description": "A gem."},
+                    "condition": dict(self.MARKER),
+                }
+            ]
+        }
+
+        result = validate_world_data(self._world(room))
+
+        warnings = self._stripped_warnings(result)
+        self.assertEqual(1, len(warnings))
+        self.assertEqual(warnings[0]["room_id"], "spawn")
+        self.assertIn("gem", warnings[0]["message"])
+
+    def test_validate_world_data_warns_for_stripped_speech_triggers(self):
+        room = {
+            "speech_triggers": {
+                "help": [
+                    {
+                        "message": "A voice answers.",
+                        "effect_fn": dict(self.MARKER),
+                        "conditional_fn": None,
+                        "one_time": True,
+                        "triggered": False,
+                    }
+                ]
+            }
+        }
+
+        result = validate_world_data(self._world(room))
+
+        warnings = self._stripped_warnings(result)
+        self.assertEqual(1, len(warnings))
+        self.assertEqual(warnings[0]["room_id"], "spawn")
+        self.assertIn("help", warnings[0]["message"])
+
+    def test_validate_world_data_warns_for_mapping_form_hidden_items(self):
+        room = {
+            "hidden_items": {
+                "gem": {
+                    "item": {"id": "gem", "name": "Gem", "description": "A gem."},
+                    "condition": dict(self.MARKER),
+                }
+            },
+            "items": ["not-a-mapping"],
+            "speech_triggers": ["not-a-mapping"],
+        }
+
+        result = validate_world_data(self._world(room))
+
+        warnings = self._stripped_warnings(result)
+        self.assertEqual(1, len(warnings))
+        self.assertIn("gem", warnings[0]["message"])
+
+    def test_validate_world_data_emits_single_stripped_warning_per_room(self):
+        room = {
+            "items": [
+                {
+                    "type": "stateful_item",
+                    "id": "lever",
+                    "name": "Lever",
+                    "description": "A lever.",
+                    "interactions": {"pull": [{"effect_fn": dict(self.MARKER)}]},
+                }
+            ],
+            "hidden_items": [
+                {
+                    "id": "gem",
+                    "item": {"id": "gem", "name": "Gem", "description": "A gem."},
+                    "condition": dict(self.MARKER),
+                }
+            ],
+            "speech_triggers": {
+                "help": [{"message": "Hi.", "effect_fn": dict(self.MARKER)}]
+            },
+        }
+
+        result = validate_world_data(self._world(room))
+
+        warnings = self._stripped_warnings(result)
+        self.assertEqual(1, len(warnings))
+        for needle in ("lever", "gem", "help"):
+            self.assertIn(needle, warnings[0]["message"])
+
+    def test_validate_world_data_does_not_warn_without_stripped_markers(self):
+        room = {
+            "items": [
+                {
+                    "type": "stateful_item",
+                    "id": "lever",
+                    "name": "Lever",
+                    "description": "A lever.",
+                    "interactions": {
+                        "pull": [{"target_state": "up", "message": "Click."}]
+                    },
+                }
+            ],
+            "hidden_items": [
+                {
+                    "id": "gem",
+                    "item": {"id": "gem", "name": "Gem", "description": "A gem."},
+                }
+            ],
+            "speech_triggers": {"help": [{"message": "Hi.", "conditional_fn": None}]},
+        }
+
+        result = validate_world_data(self._world(room))
+
+        self.assertEqual([], self._stripped_warnings(result))
+
+    def test_export_live_world_round_trip_flags_stripped_logic(self):
+        game_state = GameState()
+        room = Room("spawn", "Spawn", "Start.")
+        lever = StatefulItem("Lever", "lever", "A lever.", takeable=False, state="down")
+        lever.add_state_description("up", "The lever is up.")
+        lever.add_interaction(
+            "pull",
+            target_state="up",
+            message="Click.",
+            conditional_fn=always_true,
+        )
+        room.add_item(lever)
+        room.add_hidden_item(Item("Gem", "gem", "A hidden gem."), always_true)
+        room.add_speech_trigger("help", "A voice answers.", effect_fn=always_true)
+        game_state.add_room(room)
+
+        data = export_live_world(game_state)
+        result = validate_world_data(data)
+
+        warnings = self._stripped_warnings(result)
+        self.assertEqual(1, len(warnings))
+        self.assertEqual(warnings[0]["room_id"], "spawn")
+        for needle in ("lever", "gem", "help"):
+            self.assertIn(needle, warnings[0]["message"])
 
 
 class WorldBuilderPersistenceTests(unittest.TestCase):
@@ -483,7 +990,9 @@ class WorldBuilderPersistenceTests(unittest.TestCase):
             script_path = Path(tmpdir) / "backend/world_scripts/welcome.py"
 
             self.assertEqual(written, [script_path.resolve()])
-            self.assertEqual(script_path.read_text(), "def run():\n    return 'hello'\n")
+            self.assertEqual(
+                script_path.read_text(), "def run():\n    return 'hello'\n"
+            )
 
     def test_save_script_files_skips_paths_outside_world_scripts(self):
         data = {
@@ -701,7 +1210,14 @@ class WorldBuilderPublishTests(unittest.TestCase):
                 path,
                 repo_path=tmpdir,
                 message="Publish test world",
-                checks=[["python3", "-m", "unittest", "backend.admin.tests.test_world_builder"]],
+                checks=[
+                    [
+                        "python3",
+                        "-m",
+                        "unittest",
+                        "backend.admin.tests.test_world_builder",
+                    ]
+                ],
             )
 
         self.assertTrue(result.ok)
@@ -710,7 +1226,12 @@ class WorldBuilderPublishTests(unittest.TestCase):
             run_mock.call_args_list,
             [
                 call(
-                    ["python3", "-m", "unittest", "backend.admin.tests.test_world_builder"],
+                    [
+                        "python3",
+                        "-m",
+                        "unittest",
+                        "backend.admin.tests.test_world_builder",
+                    ],
                     cwd=tmpdir,
                     text=True,
                     capture_output=True,
@@ -802,9 +1323,7 @@ class WorldBuilderPublishTests(unittest.TestCase):
         self.assertEqual(run_mock.call_count, 1)
 
     @patch("admin.world_builder.subprocess.run")
-    def test_run_git_publish_parses_env_assignments_in_publish_checks(
-        self, run_mock
-    ):
+    def test_run_git_publish_parses_env_assignments_in_publish_checks(self, run_mock):
         run_mock.return_value = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="ok", stderr=""
         )
@@ -910,7 +1429,9 @@ class WorldBuilderFacadeTests(unittest.TestCase):
             manifest = builder.list_drafts()
             self.assertEqual(manifest["active_draft_id"], "current-draft")
             self.assertEqual(manifest["drafts"][0]["name"], "Current Draft")
-            self.assertEqual(builder.load_draft("current-draft")["rooms"][0]["id"], "legacy")
+            self.assertEqual(
+                builder.load_draft("current-draft")["rooms"][0]["id"], "legacy"
+            )
 
             created = builder.create_draft(name="Experiment", source="active")
             draft_id = created["draft"]["id"]
@@ -919,8 +1440,12 @@ class WorldBuilderFacadeTests(unittest.TestCase):
                 {"version": 1, "rooms": [{"id": "experiment"}], "mobs": []},
             )
 
-            self.assertEqual(builder.load_draft("current-draft")["rooms"][0]["id"], "legacy")
-            self.assertEqual(builder.load_draft(draft_id)["rooms"][0]["id"], "experiment")
+            self.assertEqual(
+                builder.load_draft("current-draft")["rooms"][0]["id"], "legacy"
+            )
+            self.assertEqual(
+                builder.load_draft(draft_id)["rooms"][0]["id"], "experiment"
+            )
             self.assertEqual(builder.list_drafts()["active_draft_id"], "current-draft")
 
     def test_draft_store_creates_from_live_and_rejects_unsafe_ids(self):
@@ -955,9 +1480,13 @@ class WorldBuilderFacadeTests(unittest.TestCase):
                 spawn_room_id="square",
             )
             first = builder.create_draft(name="First", source="live")["draft"]["id"]
-            second = builder.create_draft(name="Second", source_draft_id=first)["draft"]["id"]
+            second = builder.create_draft(name="Second", source_draft_id=first)[
+                "draft"
+            ]["id"]
 
-            renamed = builder.rename_draft(first, name="Renamed", description="New desc")
+            renamed = builder.rename_draft(
+                first, name="Renamed", description="New desc"
+            )
             self.assertEqual(renamed["draft"]["name"], "Renamed")
             self.assertEqual(renamed["draft"]["description"], "New desc")
 
@@ -984,7 +1513,9 @@ class WorldBuilderFacadeTests(unittest.TestCase):
                 repo_path=tmpdir,
                 spawn_room_id="baseline",
             )
-            draft_id = builder.create_draft(name="Experiment", source="live")["draft"]["id"]
+            draft_id = builder.create_draft(name="Experiment", source="live")["draft"][
+                "id"
+            ]
 
             result = builder.reset_draft_from_baseline(draft_id, baseline_factory)
 
@@ -1006,18 +1537,30 @@ class WorldBuilderFacadeTests(unittest.TestCase):
                 repo_path=tmpdir,
                 spawn_room_id="square",
             )
-            draft_id = builder.create_draft(name="Experiment", source="live")["draft"]["id"]
-            world = {"version": 1, "rooms": [{"id": "experiment", "name": "Experiment"}], "mobs": []}
+            draft_id = builder.create_draft(name="Experiment", source="live")["draft"][
+                "id"
+            ]
+            world = {
+                "version": 1,
+                "rooms": [{"id": "experiment", "name": "Experiment"}],
+                "mobs": [],
+            }
 
             apply_result = builder.apply_draft(draft_id, world)
-            publish_result = builder.publish_draft(draft_id, world, checks=[["python3", "-V"]])
+            publish_result = builder.publish_draft(
+                draft_id, world, checks=[["python3", "-V"]]
+            )
 
             self.assertTrue(apply_result.ok)
             self.assertEqual(game_state.rooms["experiment"].name, "Experiment")
-            self.assertEqual(builder.load_draft(draft_id)["rooms"][0]["id"], "experiment")
+            self.assertEqual(
+                builder.load_draft(draft_id)["rooms"][0]["id"], "experiment"
+            )
             self.assertEqual(publish_result["ok"], True)
             publish_mock.assert_called_once()
-            self.assertEqual(publish_mock.call_args.args[0]["rooms"][0]["id"], "experiment")
+            self.assertEqual(
+                publish_mock.call_args.args[0]["rooms"][0]["id"], "experiment"
+            )
 
 
 if __name__ == "__main__":

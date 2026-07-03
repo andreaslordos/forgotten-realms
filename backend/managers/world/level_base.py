@@ -128,12 +128,11 @@ class LevelGenerator(ABC):
         if room_id not in self._rooms:
             return None
 
-        mob_manager.spawn_mob(mob_type, room_id)
-        # Get the most recently spawned mob
-        mob_ids = list(mob_manager.mobs.keys())
-        if mob_ids:
-            mob = mob_manager.mobs.get(mob_ids[-1])
-            if mob:
-                self._rooms[room_id].add_item(mob)
-                return mob
+        # Use spawn_mob's return value directly — grabbing the "most recent"
+        # key would silently attach the WRONG mob when spawning fails
+        # (e.g. an unknown definition id).
+        mob = mob_manager.spawn_mob(mob_type, room_id)
+        if mob:
+            self._rooms[room_id].add_item(mob)
+            return mob
         return None

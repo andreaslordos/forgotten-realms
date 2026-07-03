@@ -8,7 +8,7 @@ from models.Weapon import Weapon
 from models.CombatDialogue import CombatDialogue
 from commands.rest import wake_player
 from models.Item import Item
-from services.notifications import broadcast_item_drop
+from services.notifications import broadcast_all, broadcast_item_drop
 from services.invisibility_service import is_invisible, break_invisibility
 
 # Set up logging
@@ -871,6 +871,9 @@ def reset_player_persona(player: Any) -> None:
     player.carrying_capacity_num = level_data["carrying_capacity_num"]
     player.current_level_at = 0
     player.next_level_at = 400
+    # player.flags deliberately survives death: blessings/marks are earned
+    # from one-time world consumables (the bones, the medallion), so wiping
+    # them could strand progression for the whole server until reset.
 
 
 async def handle_respawn_choice(
@@ -1614,6 +1617,12 @@ async def handle_mob_defeat(
                 await utils.send_message(
                     sio, sid, f"{player.name} has slain {mob.name}!"
                 )
+
+    # World-wide announcement for major bosses. Plain replace (not
+    # str.format) so stray braces in content strings can never crash a kill.
+    death_broadcast = getattr(mob, "death_broadcast", None)
+    if death_broadcast:
+        await broadcast_all(death_broadcast.replace("{player}", player.name))
 
     # Remove mob from game
     if mob_manager:

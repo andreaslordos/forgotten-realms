@@ -1611,6 +1611,7 @@ class HandleMobDefeatTest(unittest.IsolatedAsyncioTestCase):
         self.mob.point_value = 50
         self.mob.target_player = self.player
         self.mob.drop_loot = Mock(return_value=[])
+        self.mob.death_broadcast = None
 
         self.current_room = Mock()
         self.current_room.add_item = Mock()
@@ -1655,6 +1656,82 @@ class HandleMobDefeatTest(unittest.IsolatedAsyncioTestCase):
         self.player.add_points.assert_called_with(
             50, self.sio, self.online_sessions, send_notification=True
         )
+
+    async def test_handle_mob_defeat_sends_death_broadcast_to_all(self):
+        """Test a boss death_broadcast is announced world-wide."""
+        from commands.combat import handle_mob_defeat
+
+        # Arrange
+        self.mob.death_broadcast = "{player} has slain the Pale Sovereign!"
+
+        # Act
+        with patch(
+            "commands.combat.broadcast_all", new_callable=AsyncMock
+        ) as mock_broadcast:
+            await handle_mob_defeat(
+                self.player,
+                self.mob,
+                "player_sid",
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.mob_manager,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert
+        mock_broadcast.assert_awaited_once_with("Player1 has slain the Pale Sovereign!")
+
+    async def test_handle_mob_defeat_broadcast_survives_stray_braces(self):
+        """Test literal braces in a broadcast string cannot crash the kill."""
+        from commands.combat import handle_mob_defeat
+
+        # Arrange
+        self.mob.death_broadcast = "{player} broke the {Pale} seal!"
+
+        # Act
+        with patch(
+            "commands.combat.broadcast_all", new_callable=AsyncMock
+        ) as mock_broadcast:
+            await handle_mob_defeat(
+                self.player,
+                self.mob,
+                "player_sid",
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.mob_manager,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert: replace (not str.format) leaves unknown braces alone
+        mock_broadcast.assert_awaited_once_with("Player1 broke the {Pale} seal!")
+        self.mob_manager.remove_mob.assert_called_once()
+
+    async def test_handle_mob_defeat_no_broadcast_without_field(self):
+        """Test ordinary mobs do not trigger a world-wide announcement."""
+        from commands.combat import handle_mob_defeat
+
+        # Act
+        with patch(
+            "commands.combat.broadcast_all", new_callable=AsyncMock
+        ) as mock_broadcast:
+            await handle_mob_defeat(
+                self.player,
+                self.mob,
+                "player_sid",
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.mob_manager,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert
+        mock_broadcast.assert_not_awaited()
 
     async def test_handle_mob_defeat_drops_loot(self):
         """Test mob defeat drops loot."""

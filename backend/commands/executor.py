@@ -129,42 +129,21 @@ async def execute_command(
 
         # Check room keyword/speech triggers
         current_room = game_state.get_room(player.current_room)
-        if (
-            current_room
-            and hasattr(current_room, "speech_triggers")
-            and isinstance(current_room.speech_triggers, dict)
-            and current_room.speech_triggers
-        ):
-            raw_input = cmd.get("original", "").lower().strip()
-            for keyword, triggers in current_room.speech_triggers.items():
-                if keyword in raw_input:
-                    # Triggers can be a list (new format) or dict (old format)
-                    trigger_list = (
-                        triggers if isinstance(triggers, list) else [triggers]
-                    )
-                    for config in trigger_list:
-                        # Skip if one-time trigger already fired
-                        if config.get("one_time") and config.get("triggered"):
-                            continue
-                        # Check conditional function
-                        conditional_fn = config.get("conditional_fn")
-                        if conditional_fn and not conditional_fn(player, game_state):
-                            continue
-                        # Mark as triggered
-                        if config.get("one_time"):
-                            config["triggered"] = True
-                        # Execute effect function if present
-                        effect_fn = config.get("effect_fn")
-                        if effect_fn:
-                            await effect_fn(
-                                player,
-                                game_state,
-                                player_manager,
-                                online_sessions,
-                                sio,
-                                utils,
-                            )
-                        return cast(str, config.get("message", ""))
+        if current_room:
+            from commands.speech_triggers import process_speech_triggers
+
+            trigger_message = await process_speech_triggers(
+                cmd.get("original", ""),
+                player,
+                current_room,
+                game_state,
+                player_manager,
+                online_sessions,
+                sio,
+                utils,
+            )
+            if trigger_message is not None:
+                return trigger_message
 
         return f"I don't know how to '{verb}'."
 
