@@ -1945,6 +1945,25 @@ class Level1Village(LevelGenerator):
         )
         self._rooms["watchtower"].add_item(guard_log)
 
+        # =====================================================================
+        # GOLDEN DOOR - a legend, not a feature (see services/golden_doors)
+        # =====================================================================
+        from services.golden_doors import create_golden_door
+
+        create_golden_door(
+            "tunnel",
+            self._rooms["cellar_tunnel"],
+            theme_hint=(
+                "a dimension of roots and cellars, of things stored so long "
+                "they became a place of their own"
+            ),
+            riddle_text=(
+                "'I SPEAK WITHOUT A MOUTH AND HEAR WITHOUT EARS. I HAVE NO "
+                "BODY, BUT I COME ALIVE WITH WIND. NAME ME.'"
+            ),
+            riddle_answer="echo",
+        )
+
     def spawn_mobs(self, mob_manager: Any) -> None:
         """Spawn mobs for Level 1."""
 

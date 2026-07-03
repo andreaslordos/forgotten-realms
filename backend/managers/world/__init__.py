@@ -45,11 +45,13 @@ def generate_world(mob_manager: Optional[Any] = None) -> Dict[str, Room]:
     """
     all_rooms: Dict[str, Room] = {}
 
-    # Each world build registers its quest items afresh (levels re-register
-    # in add_items); stale anchors from a prior build must not linger.
+    # Each world build registers its quest items and golden doors afresh
+    # (levels re-register in add_items); stale state must not linger.
+    from services.golden_doors import reset_doors
     from services.quest_items import clear_quest_item_registry
 
     clear_quest_item_registry()
+    reset_doors()
 
     # If no level generators are configured yet, fall back to legacy generator
     if not LEVEL_GENERATORS:

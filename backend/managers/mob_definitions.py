@@ -99,6 +99,19 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         takeable=True,
     )
 
+    golden_key = Item(
+        name="golden key",
+        id="golden_key",
+        description=(
+            "A key of soft warm gold that hums faintly, as if it remembers "
+            "a lock that does not exist yet."
+        ),
+        weight=1,
+        value=0,
+        takeable=True,
+        synonyms=["gold key", "key"],
+    )
+
     # ===== SHOP GOODS =====
     # Stock has value=0 (except the dagger) so bought goods can't be
     # laundered into points at the bog.
@@ -505,6 +518,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "movement_interval": 0,
             "loot_table": [
                 {"item": essence, "chance": 0.7},
+                {"item": golden_key, "chance": 0.02},
             ],
             "instant_death": False,
             "point_value": 80,
@@ -652,6 +666,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "movement_interval": 0,
             "loot_table": [
                 {"item": essence, "chance": 0.9},
+                {"item": golden_key, "chance": 0.02},
             ],
             "instant_death": False,
             "point_value": 120,

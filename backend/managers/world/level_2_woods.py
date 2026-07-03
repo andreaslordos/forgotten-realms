@@ -2458,6 +2458,24 @@ class Level2Woods(LevelGenerator):
         )
         self._rooms["stream_crossing"].add_item(wooden_sign)
 
+        # =====================================================================
+        # GOLDEN DOOR - a legend, not a feature (see services/golden_doors)
+        # =====================================================================
+        from services.golden_doors import create_golden_door
+
+        create_golden_door(
+            "barrow",
+            self._rooms["barrow"],
+            theme_hint=(
+                "a dimension woven from grave-goods and the dreams of buried "
+                "kings, older than the Mournvale itself"
+            ),
+            riddle_text=(
+                "'THE MORE OF ME YOU TAKE, THE MORE YOU LEAVE BEHIND. " "NAME ME.'"
+            ),
+            riddle_answer="footsteps",
+        )
+
     def spawn_mobs(self, mob_manager: Any) -> None:
         """Spawn mobs for Level 2."""
 

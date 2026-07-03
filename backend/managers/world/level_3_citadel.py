@@ -1119,6 +1119,22 @@ class Level3Citadel(LevelGenerator):
         dawnblade.emits_light = True
         self._rooms["vault"].add_item(dawnblade)
 
+        # =====================================================================
+        # GOLDEN DOOR - a legend, not a feature (see services/golden_doors)
+        # =====================================================================
+        from services.golden_doors import create_golden_door
+
+        create_golden_door(
+            "undercrypt",
+            self._rooms["undercrypt"],
+            theme_hint=(
+                "a cold dimension on the far side of every mirror, where the "
+                "Gray Watch's dead keep a second, stranger vigil"
+            ),
+            riddle_text=("'I AM ALWAYS COMING BUT I NEVER ARRIVE. NAME ME.'"),
+            riddle_answer="tomorrow",
+        )
+
     def spawn_mobs(self, mob_manager: Any) -> None:
         """Spawn mobs for Level 3."""
 

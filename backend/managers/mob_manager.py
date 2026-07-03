@@ -49,6 +49,13 @@ class MobManager:
         self.mob_definitions = definitions
         logger.info(f"Loaded {len(definitions)} mob definitions")
 
+    def add_mob_definition(
+        self, definition_id: str, template: Dict[str, Any]
+    ) -> None:
+        """Register a single definition at runtime (generated zone mobs)."""
+        self.mob_definitions[definition_id] = template
+        logger.info(f"Registered runtime mob definition '{definition_id}'")
+
     def spawn_mob(
         self, definition_id: str, room_id: str, game_state: Optional["GameState"] = None
     ) -> Optional[Mobile]:

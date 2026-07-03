@@ -1,0 +1,74 @@
+{
+  "zone_name": "The Hollow Reliquary",
+  "theme": "A chapel-shaped absence folded out of the world, where relics of saints no one remembers hum in glass.",
+  "rooms": [
+    {
+      "id": "threshold",
+      "name": "Threshold of Nowhere",
+      "description": "You stand on a floor of pale gold that gives slightly, like flesh. There is no ceiling, only a soft amber glow with no source. An arch of fused candle-wax opens north into a nave, and low doorways lead east into a gallery and west into an ossuary.",
+      "coords": [0, 0, 0],
+      "exits": {"north": "nave", "east": "gallery", "west": "ossuary"}
+    },
+    {
+      "id": "nave",
+      "name": "The Backwards Nave",
+      "description": "Pews of black glass face away from the altar, as if the congregation worshipped the door they came in by. A bone bell hangs from nothing at all in the center of the aisle. The threshold lies south, and to the north a wall of woven candle-smoke refuses to be a wall.",
+      "coords": [0, 1, 0],
+      "exits": {"south": "threshold", "north": "reliquary"}
+    },
+    {
+      "id": "reliquary",
+      "name": "The Hollow Reliquary",
+      "description": "Relic-cases of breathing glass line a chamber shaped like the inside of a held note. Something in a warden's shape stands guard over a glass psalm that sings very quietly to itself. The nave lies back to the south.",
+      "coords": [0, 2, 0],
+      "exits": {"south": "nave"}
+    },
+    {
+      "id": "gallery",
+      "name": "Gallery of Unpainted Portraits",
+      "description": "Frames of tarnished silver hang in rows, each holding a canvas that is not blank but not painted either - faces almost form when you stop looking. A clouded pearl rests on a velvet stand as though recently admired. The threshold lies west.",
+      "coords": [1, 0, 0],
+      "exits": {"west": "threshold"}
+    },
+    {
+      "id": "ossuary",
+      "name": "Ossuary of the Unremembered",
+      "description": "Bones are stacked here with terrible tenderness, each labeled in a script that rearranges itself. A saint's knucklebone sits apart on a cushion of dust, and something that was once a skeleton keeps its vigil. The threshold lies east.",
+      "coords": [-1, 0, 0],
+      "exits": {"east": "threshold"}
+    }
+  ],
+  "entry_room_id": "threshold",
+  "exit_room_id": "threshold",
+  "mobs": [
+    {"room_id": "ossuary", "template_id": "skeleton"},
+    {
+      "room_id": "reliquary",
+      "custom": {
+        "name": "reliquary warden",
+        "description": "The reliquary warden stands guard: a vestment with no one inside it, sleeves ending in candle flame.",
+        "strength": 30,
+        "dexterity": 25,
+        "max_stamina": 100,
+        "damage": 10,
+        "point_value": 100,
+        "aggressive": true,
+        "pronouns": "it"
+      }
+    }
+  ],
+  "items": [
+    {"room_id": "reliquary", "name": "glass psalm", "description": "A sheet of hymn-music blown from glass; it sings faintly when held.", "weight": 1, "value": 60, "takeable": true, "synonyms": ["psalm", "glass sheet"]},
+    {"room_id": "gallery", "name": "clouded pearl", "description": "A pearl the size of an eye, clouded like a cataract that remembers seeing.", "weight": 1, "value": 40, "takeable": true, "synonyms": ["pearl"]},
+    {"room_id": "ossuary", "name": "knucklebone", "description": "A saint's knucklebone, worn smooth by prayers nobody finished.", "weight": 1, "value": 30, "takeable": true, "synonyms": ["bone", "saint's knucklebone"]}
+  ],
+  "puzzle": {
+    "room_id": "nave",
+    "item_name": "bone bell",
+    "item_description": "A bell carved from a single hollow bone hangs from nothing at all, its clapper a black pearl.",
+    "trigger_verb": "ring",
+    "success_message": "The bone bell tolls a note you feel in your teeth. The wall of woven candle-smoke to the north unravels, thread by thread, into a passage.",
+    "hint": "The clapper is a black pearl. The smoke-wall to the north trembles at the smallest sound; a true toll might unmake it.",
+    "blocked_exit": {"from": "nave", "direction": "north", "to": "reliquary"}
+  }
+}

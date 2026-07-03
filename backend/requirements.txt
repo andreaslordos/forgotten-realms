@@ -16,3 +16,4 @@ simple-websocket==1.1.0
 typing_extensions==4.12.2
 wsproto==1.2.0
 yarl==1.18.3
+anthropic>=0.42
