@@ -25,8 +25,10 @@ from tests.test_helpers import (
     create_mock_game_state,
     create_mock_room,
 )
+from managers.game_state import GameState
 from managers.mob_manager import MobManager
 from models.Mobile import Mobile
+from models.Room import Room
 
 
 class MobManagerInitializationTest(unittest.TestCase):
@@ -630,6 +632,208 @@ class MobManagerProcessAggressionTest(BaseAsyncTest):
         )
 
         mock_initiate.assert_not_called()
+
+
+class _FakeTime:
+    """Controllable clock for deterministic respawn tests."""
+
+    def __init__(self, start=1000.0):
+        self.now = start
+
+    def time(self):
+        return self.now
+
+    def advance(self, seconds):
+        self.now += seconds
+
+
+class MobManagerRespawnSchedulingTest(unittest.TestCase):
+    """Test respawn bookkeeping: ids, spawn_records, and the respawn queue."""
+
+    def setUp(self):
+        """Set up a manager on a fake clock with varied respawn templates."""
+        self.fake = _FakeTime()
+        self.manager = MobManager(time_func=self.fake.time)
+        self.manager.load_mob_definitions(
+            {
+                "wolf": {"name": "wolf"},
+                "boss": {"name": "boss", "respawn_seconds": None},
+                "npc": {"name": "npc", "respawn_seconds": 600},
+            }
+        )
+
+    def test_spawn_mob_ids_stay_unique_across_spawn_remove_spawn(self):
+        """Test mob ids are never reused after a mob dies (monotonic counter)."""
+        # Arrange - two live wolves, then kill the first
+        mob1 = self.manager.spawn_mob("wolf", "room1")
+        mob2 = self.manager.spawn_mob("wolf", "room1")
+        self.manager.remove_mob(mob1.id, schedule_respawn=False)
+
+        # Act - spawn a third wolf into the same room
+        mob3 = self.manager.spawn_mob("wolf", "room1")
+
+        # Assert - all three ids seen so far are distinct
+        self.assertEqual(len({mob1.id, mob2.id, mob3.id}), 3)
+
+    def test_spawn_mob_writes_spawn_record(self):
+        """Test spawn_mob records the definition and home room for the mob."""
+        # Act
+        mob = self.manager.spawn_mob("wolf", "room1")
+
+        # Assert
+        self.assertEqual(self.manager.spawn_records[mob.id], ("wolf", "room1"))
+
+    def test_remove_mob_pops_spawn_record(self):
+        """Test remove_mob clears the mob's spawn record."""
+        # Arrange
+        mob = self.manager.spawn_mob("wolf", "room1")
+
+        # Act
+        self.manager.remove_mob(mob.id)
+
+        # Assert
+        self.assertNotIn(mob.id, self.manager.spawn_records)
+
+    def test_remove_mob_schedules_default_respawn_after_300_seconds(self):
+        """Test remove_mob queues a respawn at now+300 for default templates."""
+        # Arrange
+        mob = self.manager.spawn_mob("wolf", "room1")
+
+        # Act
+        self.manager.remove_mob(mob.id)
+
+        # Assert
+        self.assertEqual(
+            self.manager.respawn_queue,
+            [(self.fake.time() + 300.0, "wolf", "room1")],
+        )
+
+    def test_remove_mob_uses_template_respawn_seconds(self):
+        """Test remove_mob honours a custom respawn_seconds value."""
+        # Arrange
+        mob = self.manager.spawn_mob("npc", "room2")
+
+        # Act
+        self.manager.remove_mob(mob.id)
+
+        # Assert
+        self.assertEqual(
+            self.manager.respawn_queue,
+            [(self.fake.time() + 600.0, "npc", "room2")],
+        )
+
+    def test_remove_mob_never_schedules_respawn_when_respawn_seconds_none(self):
+        """Test a template with respawn_seconds=None stays dead (bosses)."""
+        # Arrange
+        mob = self.manager.spawn_mob("boss", "lair")
+
+        # Act
+        self.manager.remove_mob(mob.id)
+
+        # Assert
+        self.assertEqual(self.manager.respawn_queue, [])
+
+    def test_remove_mob_skips_scheduling_when_schedule_respawn_false(self):
+        """Test schedule_respawn=False suppresses the respawn queue entry."""
+        # Arrange
+        mob = self.manager.spawn_mob("wolf", "room1")
+
+        # Act
+        self.manager.remove_mob(mob.id, schedule_respawn=False)
+
+        # Assert
+        self.assertEqual(self.manager.respawn_queue, [])
+
+
+class MobManagerProcessRespawnsTest(BaseAsyncTest):
+    """Test MobManager.process_respawns queued respawn handling."""
+
+    def setUp(self):
+        """Set up a manager on a fake clock and a real one-room world."""
+        super().setUp()
+        self.fake = _FakeTime()
+        self.manager = MobManager(time_func=self.fake.time)
+        self.manager.load_mob_definitions({"wolf": {"name": "wolf"}})
+
+        self.game_state = GameState()
+        self.room = Room("room1", "Clearing", "A quiet clearing.")
+        self.game_state.add_room(self.room)
+
+        self.mock_utils = Mock()
+        self.mock_utils.send_message = AsyncMock()
+
+    async def test_process_respawns_returns_empty_list_when_nothing_due(self):
+        """Test process_respawns does nothing while entries are still pending."""
+        # Arrange - respawn due 300 seconds from now
+        mob = self.manager.spawn_mob("wolf", "room1", self.game_state)
+        self.manager.remove_mob(mob.id, self.game_state)
+
+        # Act
+        respawned = await self.manager.process_respawns(self.game_state)
+
+        # Assert - queue untouched, nothing spawned
+        self.assertEqual(respawned, [])
+        self.assertEqual(len(self.manager.respawn_queue), 1)
+        self.assertEqual(self.manager.mobs, {})
+
+    async def test_process_respawns_spawns_due_mob_into_home_room(self):
+        """Test a due entry respawns the mob into its home room."""
+        # Arrange
+        mob = self.manager.spawn_mob("wolf", "room1", self.game_state)
+        self.manager.remove_mob(mob.id, self.game_state)
+        self.fake.advance(301.0)
+
+        # Act
+        respawned = await self.manager.process_respawns(self.game_state)
+
+        # Assert - a fresh wolf lives in room1 and the entry is consumed
+        self.assertEqual(len(respawned), 1)
+        self.assertEqual(respawned[0].name, "wolf")
+        self.assertEqual(respawned[0].current_room, "room1")
+        self.assertIn(respawned[0], self.room.items)
+        self.assertEqual(self.manager.respawn_queue, [])
+
+    async def test_process_respawns_keeps_future_entries_queued(self):
+        """Test only due entries respawn; later ones stay in the queue."""
+        # Arrange - one entry due now, one due 300s later
+        mob1 = self.manager.spawn_mob("wolf", "room1", self.game_state)
+        self.manager.remove_mob(mob1.id, self.game_state)
+        self.fake.advance(301.0)
+        mob2 = self.manager.spawn_mob("wolf", "room1", self.game_state)
+        self.manager.remove_mob(mob2.id, self.game_state)
+
+        # Act
+        respawned = await self.manager.process_respawns(self.game_state)
+
+        # Assert
+        self.assertEqual(len(respawned), 1)
+        self.assertEqual(len(self.manager.respawn_queue), 1)
+
+    async def test_process_respawns_notifies_players_in_home_room(self):
+        """Test players standing in the home room see the respawn message."""
+        # Arrange
+        mob = self.manager.spawn_mob("wolf", "room1", self.game_state)
+        self.manager.remove_mob(mob.id, self.game_state)
+        self.fake.advance(301.0)
+
+        witness = create_mock_player(name="Witness")
+        witness.current_room = "room1"
+        elsewhere = create_mock_player(name="Elsewhere")
+        elsewhere.current_room = "room2"
+        online_sessions = {
+            "sid1": {"player": witness},
+            "sid2": {"player": elsewhere},
+        }
+
+        # Act
+        await self.manager.process_respawns(
+            self.game_state, online_sessions, self.mock_sio, self.mock_utils
+        )
+
+        # Assert - only the witness saw the wolf return
+        self.mock_utils.send_message.assert_awaited_once_with(
+            self.mock_sio, "sid1", "Wolf pads out of the shadows."
+        )
 
 
 if __name__ == "__main__":

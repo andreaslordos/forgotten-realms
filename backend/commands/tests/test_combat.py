@@ -30,7 +30,9 @@ from commands.combat import (
     is_in_combat,
     check_command_restrictions,
     active_combats,
+    process_mob_combat_attack,
 )
+from services.world_clock import WorldClock, set_world_clock
 from models.Mobile import Mobile
 from models.Weapon import Weapon
 from models.Item import Item
@@ -1802,6 +1804,7 @@ class ProcessMobCombatAttackTest(unittest.IsolatedAsyncioTestCase):
         self.mob.name = "goblin"
         self.mob.damage = 10
         self.mob.dexterity = 40
+        self.mob.aggressive = False
         self.mob.take_damage = Mock(return_value=(False, 80))
         self.mob.get_effective_dexterity = lambda *args, **kwargs: self.mob.dexterity
 
@@ -3300,6 +3303,129 @@ class MaybeFireMobAbilityTest(unittest.IsolatedAsyncioTestCase):
         # Assert
         self.assertFalse(result)
         self.assertNotIn("blind", self.session.get("afflictions", {}))
+
+
+class NightHitBonusTest(unittest.IsolatedAsyncioTestCase):
+    """Test the aggressive-mob night hit bonus in process_mob_combat_attack."""
+
+    def setUp(self):
+        """Set up an aggressive mob attacking a mock player at equal dex."""
+        self.mob = Mobile(
+            name="wolf",
+            id="wolf_1",
+            description="A gaunt wolf.",
+            dexterity=50,
+            damage=5,
+            aggressive=True,
+            current_room="road",
+        )
+
+        self.player = Mock()
+        self.player.name = "Hero"
+        self.player.stamina = 100
+        self.player.current_room = "road"
+        # Equal dexterity => base hit chance of exactly 50
+        self.player.get_effective_dexterity = Mock(return_value=50)
+
+        self.online_sessions = {"sid1": {"player": self.player}}
+        self.game_state = Mock()
+        self.game_state.get_room = Mock(return_value=Room("road", "Road", "A road."))
+        self.player_manager = Mock()
+        self.sio = Mock()
+        self.utils = Mock()
+        self.utils.send_message = AsyncMock()
+        self.utils.send_stats_update = AsyncMock()
+
+    def tearDown(self):
+        """Clear the global world clock so other tests aren't polluted."""
+        set_world_clock(None)
+
+    def _night_clock(self):
+        """Build a real clock frozen at the first second of night."""
+        now = 10000.0
+        return WorldClock(time_func=lambda: now, epoch=now - 1800.0)
+
+    async def _attack(self):
+        await process_mob_combat_attack(
+            self.mob,
+            self.player,
+            None,
+            "sid1",
+            self.player_manager,
+            self.game_state,
+            self.online_sessions,
+            None,
+            self.sio,
+            self.utils,
+        )
+
+    async def test_process_mob_combat_attack_roll_misses_without_clock(self):
+        """Test a roll of 55 misses at base 50 hit chance with no clock."""
+        # Arrange
+        set_world_clock(None)
+
+        # Act
+        with patch("commands.combat.random.randint", return_value=55), patch(
+            "commands.combat.random.uniform", return_value=1.0
+        ):
+            await self._attack()
+
+        # Assert - miss message sent, no damage taken
+        self.utils.send_message.assert_awaited_once_with(
+            self.sio, "sid1", "Wolf attacks but misses!"
+        )
+        self.assertEqual(self.player.stamina, 100)
+
+    async def test_process_mob_combat_attack_same_roll_hits_at_night(self):
+        """Test the same roll of 55 hits once the night bonus lifts chance to 60."""
+        # Arrange
+        set_world_clock(self._night_clock())
+
+        # Act
+        with patch("commands.combat.random.randint", return_value=55), patch(
+            "commands.combat.random.uniform", return_value=1.0
+        ):
+            await self._attack()
+
+        # Assert - hit message sent and damage applied
+        self.utils.send_message.assert_awaited_once_with(
+            self.sio, "sid1", "Wolf strikes you for 5 damage!"
+        )
+        self.assertEqual(self.player.stamina, 95)
+
+    async def test_process_mob_combat_attack_no_night_bonus_for_passive_mob(self):
+        """Test a non-aggressive mob gets no night bonus and still misses."""
+        # Arrange
+        self.mob.aggressive = False
+        set_world_clock(self._night_clock())
+
+        # Act
+        with patch("commands.combat.random.randint", return_value=55), patch(
+            "commands.combat.random.uniform", return_value=1.0
+        ):
+            await self._attack()
+
+        # Assert
+        self.utils.send_message.assert_awaited_once_with(
+            self.sio, "sid1", "Wolf attacks but misses!"
+        )
+
+    async def test_process_mob_combat_attack_night_bonus_caps_at_95(self):
+        """Test the night bonus never pushes hit chance beyond 95."""
+        # Arrange - huge dex gap caps base chance at 90; +10 must clamp to 95
+        self.mob.dexterity = 200
+        set_world_clock(self._night_clock())
+
+        # Act - a roll of 96 must still miss
+        with patch("commands.combat.random.randint", return_value=96), patch(
+            "commands.combat.random.uniform", return_value=1.0
+        ):
+            await self._attack()
+
+        # Assert
+        self.utils.send_message.assert_awaited_once_with(
+            self.sio, "sid1", "Wolf attacks but misses!"
+        )
 
 
 if __name__ == "__main__":

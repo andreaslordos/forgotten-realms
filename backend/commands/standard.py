@@ -582,6 +582,24 @@ async def handle_info(
 
 
 # ===== LEVELS COMMAND =====
+async def handle_time(
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
+    """Report the current phase of the day/night cycle."""
+    from services.world_clock import get_world_clock
+
+    clock = get_world_clock()
+    if clock is None:
+        return "Time has no meaning in this place."
+    return clock.describe()
+
+
 async def handle_levels(
     cmd: Dict[str, Any],
     player: Any,
@@ -755,6 +773,7 @@ command_registry.register(
 command_registry.register("users", handle_users, "Lists online users.")
 command_registry.register("quit", handle_quit, "Exit the game.")
 command_registry.register("levels", handle_levels, "Lists levels of experience.")
+command_registry.register("time", handle_time, "Shows the time of day.")
 command_registry.register(
     "debug", handle_diagnostic, "Show diagnostic info for debugging."
 )

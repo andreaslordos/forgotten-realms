@@ -1688,6 +1688,14 @@ async def process_mob_combat_attack(
     hit_chance = min(90, 50 + (attacker_dex - defender_dex) // 2)
     hit_chance = _adjusted_hit_chance(hit_chance, attacker, defender, online_sessions)
 
+    # The creatures of the Mournvale strike truer in the dark.
+    if attacker_is_mob and attacker.aggressive:
+        from services.world_clock import NIGHT_HIT_BONUS, get_world_clock
+
+        clock = get_world_clock()
+        if clock is not None and clock.is_night():
+            hit_chance = min(95, hit_chance + NIGHT_HIT_BONUS)
+
     # Determine if attack hits
     roll = random.randint(1, 100)
 

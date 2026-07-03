@@ -1,8 +1,16 @@
 # backend/managers/mob_definitions.py
 
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 from models.Item import Item
 from models.Weapon import Weapon
+
+# Mobs that emerge at dusk and dissipate at dawn: (definition_id, room_id).
+# Kept outside the village core so fresh players aren't ambushed at spawn.
+NIGHT_SPAWNS: List[Tuple[str, str]] = [
+    ("wolf", "road_south"),
+    ("wolf", "crossroads"),
+    ("specter", "graveyard"),
+]
 
 
 def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
@@ -131,6 +139,8 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 0,
             "pronouns": "he",
+            # Quest NPC: killable for points but never world-bricking.
+            "respawn_seconds": 600,
         },
         # Village priest
         "priest": {
@@ -149,6 +159,8 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 0,
             "pronouns": "he",
+            # Quest NPC: killable for points but never world-bricking.
+            "respawn_seconds": 600,
         },
         # Bram the greedy shopkeeper
         "bildrath": {
@@ -171,6 +183,8 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 30,
             "pronouns": "he",
+            # Quest NPC: killable for points but never world-bricking.
+            "respawn_seconds": 600,
         },
         # Zombie - moderate threat in graveyard
         "zombie": {
@@ -265,6 +279,8 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 20,
             "pronouns": "she",
+            # Quest NPC: killable for points but never world-bricking.
+            "respawn_seconds": 600,
         },
         # Madam Eva - fortune teller
         "seer": {
@@ -283,6 +299,8 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 0,
             "pronouns": "she",
+            # Quest NPC: killable for points but never world-bricking.
+            "respawn_seconds": 600,
         },
         # Bat swarm
         "bats": {
@@ -325,6 +343,8 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 200,
             "pronouns": "she",
+            # Quest NPC: killable for points but never world-bricking.
+            "respawn_seconds": 600,
             "magic": 30,
             "mob_abilities": [
                 {

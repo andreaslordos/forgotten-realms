@@ -96,6 +96,7 @@ class TickService:
         await self._handle_inactivity_reset(current_time)
         await self._maybe_process_combat(current_time)
         await self._process_mob_ai()
+        await self._process_world_clock()
         await self.sleeping_players_callable(
             self.sio, self.online_sessions, self.player_manager, self.utils
         )
@@ -182,6 +183,20 @@ class TickService:
             self.online_sessions,
             self.utils,
         )
+
+    async def _process_world_clock(self) -> None:
+        """Advance the day/night cycle (dusk/dawn broadcasts, night mobs)."""
+        from services.world_clock import get_world_clock
+
+        clock = get_world_clock()
+        if clock is not None:
+            await clock.tick(
+                self.sio,
+                self.online_sessions,
+                self.game_state,
+                self.utils,
+                self._get_mob_manager(),
+            )
 
     def _maybe_ensure_quest_items(self, current_time: float) -> None:
         if current_time - self._last_quest_item_check < QUEST_ITEM_CHECK_INTERVAL:

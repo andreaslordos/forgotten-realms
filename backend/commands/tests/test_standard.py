@@ -28,7 +28,9 @@ from commands.standard import (
     handle_users,
     handle_quit,
     handle_diagnostic,
+    handle_time,
 )
+from services.world_clock import WorldClock, set_world_clock
 from models.Item import Item
 from models.Room import Room
 from models.StatefulItem import StatefulItem
@@ -1653,6 +1655,61 @@ class HandleDiagnosticTest(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertIn("Is a dictionary: NO", result)
+
+
+class HandleTimeTest(unittest.IsolatedAsyncioTestCase):
+    """Test handle_time day/night reporting."""
+
+    def setUp(self):
+        """Set up mocks for tests."""
+        self.player = Mock()
+        self.player.name = "TestPlayer"
+        self.game_state = Mock()
+        self.player_manager = Mock()
+        self.online_sessions = {}
+        self.sio = AsyncMock()
+        self.utils = Mock()
+        self.cmd = {"verb": "time"}
+
+    def tearDown(self):
+        """Clear the global world clock so other tests aren't polluted."""
+        set_world_clock(None)
+
+    async def _run(self):
+        return await handle_time(
+            self.cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+    async def test_handle_time_reports_timelessness_without_clock(self):
+        """Test handle_time falls back gracefully when no clock is set."""
+        # Arrange
+        set_world_clock(None)
+
+        # Act
+        result = await self._run()
+
+        # Assert
+        self.assertEqual(result, "Time has no meaning in this place.")
+
+    async def test_handle_time_returns_clock_description_when_clock_set(self):
+        """Test handle_time returns the clock's describe() text."""
+        # Arrange - a clock frozen at the very start of day
+        now = 5000.0
+        clock = WorldClock(time_func=lambda: now, epoch=now)
+        set_world_clock(clock)
+
+        # Act
+        result = await self._run()
+
+        # Assert
+        self.assertEqual(result, clock.describe())
+        self.assertEqual(result, "It is day. Dusk falls in about 30 minute(s).")
 
 
 if __name__ == "__main__":

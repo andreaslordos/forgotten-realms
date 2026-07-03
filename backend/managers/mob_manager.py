@@ -1,7 +1,8 @@
 # backend/managers/mob_manager.py
 
 import logging
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+import time
+from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 from models.Mobile import Mobile
 from services.invisibility_service import is_invisible
 
@@ -24,10 +25,19 @@ class MobManager:
     mob_definitions: Dict[str, Dict[str, Any]]
     global_tick_counter: int
 
-    def __init__(self) -> None:
+    DEFAULT_RESPAWN_SECONDS = 300.0
+
+    def __init__(self, *, time_func: Optional[Callable[[], float]] = None) -> None:
         self.mobs = {}  # Dict of mob_id -> Mobile instance
         self.mob_definitions = {}  # Dict of definition_id -> mob template
         self.global_tick_counter = 0  # Track ticks for movement timing
+        self._time: Callable[[], float] = time_func or time.time
+        # Monotonic id counter (len(self.mobs) would reuse ids once mobs die)
+        self._spawn_counter = 0
+        # mob_id -> (definition_id, home_room) for respawn scheduling
+        self.spawn_records: Dict[str, Tuple[str, str]] = {}
+        # (respawn_at, definition_id, home_room)
+        self.respawn_queue: List[Tuple[float, str, str]] = []
 
     def load_mob_definitions(self, definitions: Dict[str, Dict[str, Any]]) -> None:
         """
@@ -60,7 +70,9 @@ class MobManager:
         template = self.mob_definitions[definition_id]
 
         # Generate unique mob ID
-        mob_id = f"{definition_id}_{len(self.mobs)}_{room_id}"
+        mob_id = f"{definition_id}_{self._spawn_counter}_{room_id}"
+        self._spawn_counter += 1
+        self.spawn_records[mob_id] = (definition_id, room_id)
 
         # Reconstruct loot table with Item objects
         loot_table: List[Dict[str, Any]] = []
@@ -110,13 +122,24 @@ class MobManager:
         logger.info(f"Spawned {mob.name} (ID: {mob_id}) in room {room_id}")
         return mob
 
-    def remove_mob(self, mob_id: str, game_state: Optional["GameState"] = None) -> bool:
+    def remove_mob(
+        self,
+        mob_id: str,
+        game_state: Optional["GameState"] = None,
+        *,
+        schedule_respawn: bool = True,
+    ) -> bool:
         """
-        Remove a mob from the game.
+        Remove a mob from the game, optionally scheduling its respawn.
+
+        Respawn delay comes from the definition's respawn_seconds (default
+        300; None means never — bosses stay dead until the world resets).
 
         Args:
             mob_id (str): ID of the mob to remove
             game_state (GameState, optional): Game state for room cleanup
+            schedule_respawn: False for permanent removals (dawn despawns,
+                admin deletions)
 
         Returns:
             bool: True if removed, False if not found
@@ -134,8 +157,55 @@ class MobManager:
 
         # Remove from tracking
         del self.mobs[mob_id]
+        record = self.spawn_records.pop(mob_id, None)
+
+        if schedule_respawn and record is not None:
+            definition_id, home_room = record
+            template = self.mob_definitions.get(definition_id, {})
+            respawn_seconds = template.get(
+                "respawn_seconds", self.DEFAULT_RESPAWN_SECONDS
+            )
+            if respawn_seconds is not None:
+                self.respawn_queue.append(
+                    (self._time() + float(respawn_seconds), definition_id, home_room)
+                )
+                logger.info(
+                    f"Scheduled respawn of '{definition_id}' in {respawn_seconds}s"
+                )
+
         logger.info(f"Removed mob {mob.name} (ID: {mob_id})")
         return True
+
+    async def process_respawns(
+        self,
+        game_state: "GameState",
+        online_sessions: Optional[Dict[str, Dict[str, Any]]] = None,
+        sio: Any = None,
+        utils: Any = None,
+    ) -> List[Mobile]:
+        """Spawn any queued mobs whose respawn time has arrived."""
+        now = self._time()
+        due = [entry for entry in self.respawn_queue if entry[0] <= now]
+        if not due:
+            return []
+        self.respawn_queue = [e for e in self.respawn_queue if e[0] > now]
+
+        respawned: List[Mobile] = []
+        for _respawn_at, definition_id, home_room in due:
+            mob = self.spawn_mob(definition_id, home_room, game_state)
+            if not mob:
+                continue
+            respawned.append(mob)
+            if online_sessions and sio and utils:
+                for sid, session in online_sessions.items():
+                    player = session.get("player")
+                    if player and player.current_room == home_room:
+                        await utils.send_message(
+                            sio,
+                            sid,
+                            f"{mob.name.capitalize()} pads out of the shadows.",
+                        )
+        return respawned
 
     def get_mob(self, mob_id: str) -> Optional[Mobile]:
         """Get a mob by ID."""
@@ -180,6 +250,8 @@ class MobManager:
             utils: Utils module
         """
         self.global_tick_counter += 1
+
+        await self.process_respawns(game_state, online_sessions, sio, utils)
 
         from commands.combat import is_in_combat
 

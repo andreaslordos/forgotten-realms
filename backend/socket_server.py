@@ -81,6 +81,12 @@ logger.info("Notification context set successfully.")
 utils.mob_manager = mob_manager  # type: ignore[attr-defined]
 logger.info("Mob manager attached to utils.")
 
+# Start the day/night cycle (world begins at dawn).
+from services.world_clock import WorldClock, set_world_clock
+
+set_world_clock(WorldClock())
+logger.info("World clock started.")
+
 # Register Socket.IO event handlers.
 logger.info("Registering Socket.IO event handlers...")
 register_handlers(sio, auth_manager, player_manager, game_state, online_sessions, utils)
