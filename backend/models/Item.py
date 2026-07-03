@@ -11,6 +11,7 @@ class Item:
     value: int
     takeable: bool
     emits_light: bool
+    is_currency: bool
     grants_invisibility: bool
     invisibility_duration_seconds: float
     invisibility_activated_at: Optional[float]
@@ -26,6 +27,7 @@ class Item:
         value: int = 0,
         takeable: bool = True,
         emits_light: bool = False,
+        is_currency: bool = False,
         grants_invisibility: bool = False,
         invisibility_duration_seconds: float = 0.0,
         synonyms: Optional[List[str]] = None,
@@ -49,6 +51,8 @@ class Item:
         self.value = value
         self.takeable = takeable
         self.emits_light = emits_light
+        # Currency items convert to gold on pickup instead of filling a slot.
+        self.is_currency = is_currency
         self.grants_invisibility = grants_invisibility
         self.invisibility_duration_seconds = invisibility_duration_seconds
         self.invisibility_activated_at: Optional[float] = None
@@ -86,6 +90,8 @@ class Item:
         # Only include synonyms if item has any
         if self.synonyms:
             data["synonyms"] = self.synonyms
+        if self.is_currency:
+            data["is_currency"] = True
         # Only include invisibility fields if item grants invisibility
         if self.grants_invisibility:
             data["grants_invisibility"] = self.grants_invisibility
@@ -105,6 +111,7 @@ class Item:
             value=data.get("value", 0),
             takeable=data.get("takeable", True),
             emits_light=data.get("emits_light", False),
+            is_currency=data.get("is_currency", False),
             grants_invisibility=data.get("grants_invisibility", False),
             invisibility_duration_seconds=data.get(
                 "invisibility_duration_seconds", 0.0

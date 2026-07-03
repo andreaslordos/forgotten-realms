@@ -1274,6 +1274,8 @@ class HandleScoreTest(unittest.IsolatedAsyncioTestCase):
         self.player.max_stamina = 100
         self.player.strength = 10
         self.player.dexterity = 10
+        self.player.magic = 15
+        self.player.gold = 42
         self.player.inventory = []
 
         self.game_state = Mock()
@@ -1298,6 +1300,26 @@ class HandleScoreTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("500", result)
         self.assertIn("Novice", result)
+
+    async def test_handle_score_shows_magic_and_gold(self):
+        """Test score command includes Magic and Gold lines."""
+        # Arrange
+        cmd = {"verb": "score"}
+
+        # Act
+        result = await handle_score(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+        # Assert
+        self.assertIn("Magic: 15", result)
+        self.assertIn("Gold: 42", result)
 
 
 class HandleHelpTest(unittest.IsolatedAsyncioTestCase):

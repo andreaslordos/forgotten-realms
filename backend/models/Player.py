@@ -28,6 +28,7 @@ class Player:
     current_room: str
     last_active: datetime
     flags: Dict[str, bool]
+    gold: int
 
     def __init__(
         self,
@@ -58,6 +59,8 @@ class Player:
         self.last_active = datetime.now()
         # Persistent progression flags (blessings, story gates) — survive logout.
         self.flags = {}
+        # Currency for shops. Persists across logout; zeroed on combat death.
+        self.gold = 0
 
     def level_up(
         self,
@@ -175,6 +178,11 @@ class Player:
     def add_item(self, item: Item) -> Tuple[bool, str]:
         if not item.takeable:
             return False, "Don't be ridiculous!"
+        # Currency converts to gold instead of occupying inventory.
+        if getattr(item, "is_currency", False):
+            amount = max(0, item.value)
+            self.gold += amount
+            return True, f"You pocket the {item.name} (+{amount} gold)."
         # Check number capacity
         if len(self.inventory) >= self.carrying_capacity_num:
             return False, "You are carrying too many items."
@@ -261,6 +269,7 @@ class Player:
             "level": self.level,
             "current_room": self.current_room,
             "flags": self.flags,
+            "gold": self.gold,
         }
 
     @staticmethod
@@ -277,6 +286,7 @@ class Player:
         player.level = data["level"]
         player.current_room = data["current_room"]
         player.flags = dict(data.get("flags", {}))
+        player.gold = int(data.get("gold", 0))
 
         # Update the player's stats based on their level
         # First calculate what level threshold they should be at

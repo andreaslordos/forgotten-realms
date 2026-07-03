@@ -31,6 +31,7 @@ __all__ = [
     "player_interaction",
     "magic",
     "pathfinding",
+    "shop",
 ]
 
 logging.basicConfig(
@@ -105,6 +106,7 @@ try:
         pathfinding,
         player_interaction,
         rest,
+        shop,
         standard,
     )
 

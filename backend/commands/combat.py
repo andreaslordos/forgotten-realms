@@ -1067,6 +1067,8 @@ def reset_player_persona(player: Any) -> None:
     player.carrying_capacity_num = level_data["carrying_capacity_num"]
     player.current_level_at = 0
     player.next_level_at = 400
+    # Death wipes wealth like everything else.
+    player.gold = 0
     # player.flags deliberately survives death: blessings/marks are earned
     # from one-time world consumables (the bones, the medallion), so wiping
     # them could strand progression for the whole server until reset.
@@ -1813,6 +1815,15 @@ async def handle_mob_defeat(
     if loot_dropped:
         loot_names = ", ".join(item.name for item in loot_dropped)
         victory_msg += f"\n{mob.name.capitalize()} dropped: {loot_names}"
+
+    # Gold goes straight to the victor's purse
+    gold_drop = getattr(mob, "gold_drop", None)
+    if gold_drop:
+        low, high = gold_drop
+        looted_gold = random.randint(int(low), int(high))
+        if looted_gold > 0:
+            player.gold += looted_gold
+            victory_msg += f"\nYou loot {looted_gold} gold from the corpse."
 
     if player_sid:
         await utils.send_message(sio, player_sid, victory_msg)

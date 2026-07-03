@@ -63,6 +63,9 @@ class Mobile(StatefulItem):
         spares_flagged: Optional[str] = None,
         magic: int = 0,
         abilities: Optional[List[Dict[str, Any]]] = None,
+        gold_drop: Optional[Tuple[int, int]] = None,
+        shop_stock: Optional[List[Dict[str, Any]]] = None,
+        buys_items: bool = False,
     ) -> None:
         """
         Initialize a Mobile.
@@ -114,6 +117,11 @@ class Mobile(StatefulItem):
         # Spell-like abilities: [{"spell", "chance", "cooldown_ticks", "message"}]
         self.abilities: List[Dict[str, Any]] = abilities if abilities else []
         self.ability_cooldowns: Dict[str, int] = {}
+
+        # Economy: (min, max) gold looted on death; shopkeeper stock/behavior
+        self.gold_drop = gold_drop
+        self.shop_stock: List[Dict[str, Any]] = shop_stock if shop_stock else []
+        self.buys_items = buys_items
 
         # Behavior
         self.aggressive = aggressive

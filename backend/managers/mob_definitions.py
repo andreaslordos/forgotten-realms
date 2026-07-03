@@ -42,6 +42,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         weight=1,
         value=10,
         takeable=True,
+        is_currency=True,
     )
 
     fang = Item(
@@ -98,6 +99,44 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         takeable=True,
     )
 
+    # ===== SHOP GOODS =====
+    # Stock has value=0 (except the dagger) so bought goods can't be
+    # laundered into points at the bog.
+    from models.Consumable import Consumable
+
+    lantern = Item(
+        name="lantern",
+        id="shop_lantern",
+        description="A sturdy iron lantern that burns with a steady flame.",
+        weight=2,
+        value=0,
+        takeable=True,
+        emits_light=True,
+        synonyms=["lamp", "iron lantern"],
+    )
+
+    healing_potion = Consumable(
+        name="potion",
+        id="healing_potion",
+        description="A stoppered vial of red liquid that warms the hand.",
+        effect="heal",
+        magnitude=25,
+        weight=1,
+        value=0,
+        synonyms=["healing potion", "red potion", "vial"],
+    )
+
+    antidote = Consumable(
+        name="antidote",
+        id="antidote",
+        description="A bitter draught said to burn out hexes and curses.",
+        effect="cure_all",
+        magnitude=0,
+        weight=1,
+        value=0,
+        synonyms=["draught", "cure"],
+    )
+
     return {
         # ===== VILLAGE OF GRAVENMOOR =====
         # Peaceful peasant - frightened villager
@@ -141,6 +180,9 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "pronouns": "he",
             # Quest NPC: killable for points but never world-bricking.
             "respawn_seconds": 600,
+            "shop_stock": [
+                {"item": healing_potion, "price": 25},
+            ],
         },
         # Village priest
         "priest": {
@@ -185,6 +227,13 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "pronouns": "he",
             # Quest NPC: killable for points but never world-bricking.
             "respawn_seconds": 600,
+            "shop_stock": [
+                {"item": lantern, "price": 40},
+                {"item": healing_potion, "price": 25},
+                {"item": antidote, "price": 30},
+                {"item": dagger, "price": 15},
+            ],
+            "buys_items": True,
         },
         # Zombie - moderate threat in graveyard
         "zombie": {
@@ -206,6 +255,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 40,
             "pronouns": "it",
+            "gold_drop": (8, 20),
         },
         # Ghoul - dangerous in crypt
         "ghoul": {
@@ -227,6 +277,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 75,
             "pronouns": "it",
+            "gold_drop": (12, 25),
         },
         # ===== THE GLOOMWOOD =====
         # Wolf - aggressive pack hunter
@@ -256,6 +307,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 50,
             "pronouns": "it",
+            "gold_drop": (5, 15),
             # The old shrine's nature blessing makes wolves ignore you.
             "spares_flagged": "nature_blessing",
         },
@@ -343,6 +395,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 200,
             "pronouns": "she",
+            "gold_drop": (30, 60),
             # Quest NPC: killable for points but never world-bricking.
             "respawn_seconds": 600,
             "magic": 30,
@@ -540,6 +593,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 130,
             "pronouns": "it",
+            "gold_drop": (15, 30),
         },
         # Monster hunter ally
         "hunter": {
@@ -581,6 +635,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 100,
             "pronouns": "it",
+            "gold_drop": (10, 25),
         },
         # Dungeon wraith
         "wraith": {
@@ -601,6 +656,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 120,
             "pronouns": "it",
+            "gold_drop": (20, 40),
             "magic": 40,
         },
         # Vampire consort
@@ -652,6 +708,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 500,
             "pronouns": "he",
+            "gold_drop": (150, 300),
             "magic": 60,
             # Forward-compat hook for a future respawn system (None = never).
             "respawn_seconds": None,

@@ -178,5 +178,95 @@ class ItemLightEmissionTest(unittest.TestCase):
         self.assertFalse(item.emits_light)
 
 
+class ItemCurrencyTest(unittest.TestCase):
+    """Test item currency property for the gold economy."""
+
+    def test___init___defaults_is_currency_to_false(self):
+        """Test item defaults to not being currency."""
+        # Arrange & Act
+        item = Item("Stone", "stone_1", "A smooth stone")
+
+        # Assert
+        self.assertFalse(item.is_currency)
+
+    def test___init___accepts_is_currency_parameter(self):
+        """Test creating a currency item."""
+        # Arrange & Act
+        item = Item(
+            "gold coin", "coin_1", "A shiny gold coin", value=10, is_currency=True
+        )
+
+        # Assert
+        self.assertTrue(item.is_currency)
+
+    def test_to_dict_includes_is_currency_when_true(self):
+        """Test serialization includes is_currency for currency items."""
+        # Arrange
+        item = Item("gold coin", "coin_1", "A shiny gold coin", is_currency=True)
+
+        # Act
+        item_dict = item.to_dict()
+
+        # Assert
+        self.assertIn("is_currency", item_dict)
+        self.assertTrue(item_dict["is_currency"])
+
+    def test_to_dict_omits_is_currency_when_false(self):
+        """Test serialization omits is_currency for ordinary items."""
+        # Arrange
+        item = Item("Stone", "stone_1", "A smooth stone")
+
+        # Act
+        item_dict = item.to_dict()
+
+        # Assert
+        self.assertNotIn("is_currency", item_dict)
+
+    def test_from_dict_restores_is_currency(self):
+        """Test deserialization restores is_currency property."""
+        # Arrange
+        data = {
+            "name": "gold coin",
+            "id": "coin_1",
+            "description": "A shiny gold coin",
+            "is_currency": True,
+        }
+
+        # Act
+        item = Item.from_dict(data)
+
+        # Assert
+        self.assertTrue(item.is_currency)
+
+    def test_from_dict_defaults_is_currency_to_false(self):
+        """Test deserialization of legacy data defaults is_currency to False."""
+        # Arrange
+        data = {
+            "name": "Stone",
+            "id": "stone_1",
+            "description": "A smooth stone",
+        }
+
+        # Act
+        item = Item.from_dict(data)
+
+        # Assert
+        self.assertFalse(item.is_currency)
+
+    def test_to_dict_from_dict_round_trip_with_is_currency(self):
+        """Test serialization cycle preserves is_currency."""
+        # Arrange
+        original = Item(
+            "gold coin", "coin_1", "A shiny gold coin", value=25, is_currency=True
+        )
+
+        # Act
+        reconstructed = Item.from_dict(original.to_dict())
+
+        # Assert
+        self.assertTrue(reconstructed.is_currency)
+        self.assertEqual(reconstructed.value, original.value)
+
+
 if __name__ == "__main__":
     unittest.main()

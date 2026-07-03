@@ -1783,6 +1783,109 @@ class HandleMobDefeatTest(unittest.IsolatedAsyncioTestCase):
         self.mob_manager.remove_mob.assert_called_with(self.mob.id, self.game_state)
 
 
+class HandleMobDefeatGoldDropTest(unittest.IsolatedAsyncioTestCase):
+    """Test handle_mob_defeat gold looting."""
+
+    def setUp(self):
+        """Set up test fixtures with a gold-carrying mob."""
+        self.player = Mock()
+        self.player.name = "Player1"
+        self.player.gold = 5
+        self.player.add_points = Mock(return_value=(False, ""))
+
+        self.mob = Mock(spec=Mobile)
+        self.mob.id = "goblin_1"
+        self.mob.name = "goblin"
+        self.mob.current_room = "room1"
+        self.mob.point_value = 0
+        self.mob.target_player = self.player
+        self.mob.drop_loot = Mock(return_value=[])
+        self.mob.death_broadcast = None
+        self.mob.gold_drop = (3, 9)
+
+        self.game_state = Mock()
+        self.game_state.get_room = Mock(return_value=Mock())
+
+        self.player_manager = Mock()
+        self.mob_manager = Mock()
+        self.online_sessions = {"player_sid": {"player": self.player}}
+        self.sio = AsyncMock()
+        self.utils = Mock()
+        self.utils.send_message = AsyncMock()
+        self.utils.send_stats_update = AsyncMock()
+
+        active_combats.clear()
+
+    async def _defeat(self):
+        """Run handle_mob_defeat with the standard fixtures."""
+        from commands.combat import handle_mob_defeat
+
+        await handle_mob_defeat(
+            self.player,
+            self.mob,
+            "player_sid",
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.mob_manager,
+            self.sio,
+            self.utils,
+        )
+
+    async def test_handle_mob_defeat_rolls_gold_drop_range(self):
+        """Test gold is rolled with randint over the mob's (low, high) range."""
+        # Arrange & Act
+        with patch("commands.combat.random.randint", return_value=7) as mock_randint:
+            await self._defeat()
+
+        # Assert
+        mock_randint.assert_called_once_with(3, 9)
+
+    async def test_handle_mob_defeat_adds_looted_gold_to_player(self):
+        """Test the rolled gold amount is added to the player's purse."""
+        # Arrange & Act
+        with patch("commands.combat.random.randint", return_value=7):
+            await self._defeat()
+
+        # Assert
+        self.assertEqual(self.player.gold, 12)
+
+    async def test_handle_mob_defeat_appends_loot_message(self):
+        """Test the victory message mentions the looted gold."""
+        # Arrange & Act
+        with patch("commands.combat.random.randint", return_value=7):
+            await self._defeat()
+
+        # Assert
+        victory_msg = self.utils.send_message.call_args_list[0][0][2]
+        self.assertIn("You have slain goblin!", victory_msg)
+        self.assertIn("You loot 7 gold from the corpse.", victory_msg)
+
+    async def test_handle_mob_defeat_no_gold_drop_leaves_gold_unchanged(self):
+        """Test a mob without gold_drop grants no gold and no loot message."""
+        # Arrange
+        self.mob.gold_drop = None
+
+        # Act
+        await self._defeat()
+
+        # Assert
+        self.assertEqual(self.player.gold, 5)
+        victory_msg = self.utils.send_message.call_args_list[0][0][2]
+        self.assertNotIn("gold", victory_msg)
+
+    async def test_handle_mob_defeat_zero_roll_grants_nothing(self):
+        """Test a zero gold roll adds no gold and no loot message."""
+        # Arrange & Act
+        with patch("commands.combat.random.randint", return_value=0):
+            await self._defeat()
+
+        # Assert
+        self.assertEqual(self.player.gold, 5)
+        victory_msg = self.utils.send_message.call_args_list[0][0][2]
+        self.assertNotIn("You loot", victory_msg)
+
+
 class ProcessMobCombatAttackTest(unittest.IsolatedAsyncioTestCase):
     """Test process_mob_combat_attack function."""
 
@@ -2271,6 +2374,21 @@ class ResetPlayerPersonaTest(unittest.TestCase):
         self.assertEqual(player.level, "Neophyte")
         self.assertEqual(player.current_level_at, 0)
         self.assertEqual(player.next_level_at, 400)
+
+    def test_reset_player_persona_zeroes_gold(self):
+        """Test resetting a persona wipes the player's gold."""
+        from commands.combat import reset_player_persona
+
+        # Arrange
+        player = Mock()
+        player.points = 500
+        player.gold = 250
+
+        # Act
+        reset_player_persona(player)
+
+        # Assert
+        self.assertEqual(player.gold, 0)
 
 
 class HandleRespawnChoiceTest(unittest.IsolatedAsyncioTestCase):

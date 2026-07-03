@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tests.test_base import BaseModelTest
 from tests.test_helpers import create_mock_item
+from models.Item import Item
 from models.Player import Player
 from models.Levels import levels
 from backend.globals import SPAWN_ROOM
@@ -651,6 +652,170 @@ class PlayerFlagsTest(unittest.TestCase):
 
         # Assert
         self.assertEqual(restored.flags, {})
+
+
+class PlayerGoldTest(unittest.TestCase):
+    """Test the gold currency attribute and its persistence."""
+
+    def test___init___sets_gold_to_zero(self):
+        """Test a new player starts with zero gold."""
+        # Arrange & Act
+        player = Player("Pauper")
+
+        # Assert
+        self.assertEqual(player.gold, 0)
+
+    def test_to_dict_includes_gold(self):
+        """Test to_dict serializes the gold balance."""
+        # Arrange
+        player = Player("Merchant")
+        player.gold = 137
+
+        # Act
+        data = player.to_dict()
+
+        # Assert
+        self.assertEqual(data["gold"], 137)
+
+    def test_from_dict_restores_gold(self):
+        """Test from_dict round-trips the gold balance."""
+        # Arrange
+        player = Player("Merchant")
+        player.gold = 42
+
+        # Act
+        restored = Player.from_dict(player.to_dict())
+
+        # Assert
+        self.assertEqual(restored.gold, 42)
+
+    def test_from_dict_defaults_gold_to_zero_for_legacy_saves(self):
+        """Test legacy saves without a gold key load with zero gold."""
+        # Arrange
+        player = Player("Elder")
+        data = player.to_dict()
+        del data["gold"]
+
+        # Act
+        restored = Player.from_dict(data)
+
+        # Assert
+        self.assertEqual(restored.gold, 0)
+
+
+class PlayerCurrencyPickupTest(unittest.TestCase):
+    """Test Player.add_item conversion of currency items into gold."""
+
+    def setUp(self):
+        """Set up a fresh player and a real currency item."""
+        self.player = Player("Collector")
+        self.coin = Item(
+            "gold coin",
+            "coin_1",
+            "A shiny gold coin.",
+            weight=1,
+            value=10,
+            is_currency=True,
+        )
+
+    def test_add_item_currency_increases_gold_by_value(self):
+        """Test picking up a coin adds its value to gold."""
+        # Arrange
+        self.player.gold = 5
+
+        # Act
+        success, message = self.player.add_item(self.coin)
+
+        # Assert
+        self.assertTrue(success)
+        self.assertEqual(self.player.gold, 15)
+
+    def test_add_item_currency_returns_pocket_message(self):
+        """Test picking up a coin returns a pocket message with the amount."""
+        # Arrange & Act
+        success, message = self.player.add_item(self.coin)
+
+        # Assert
+        self.assertTrue(success)
+        self.assertEqual(message, "You pocket the gold coin (+10 gold).")
+
+    def test_add_item_currency_not_added_to_inventory(self):
+        """Test a currency item never occupies an inventory slot."""
+        # Arrange & Act
+        self.player.add_item(self.coin)
+
+        # Assert
+        self.assertNotIn(self.coin, self.player.inventory)
+        self.assertEqual(len(self.player.inventory), 0)
+
+    def test_add_item_currency_ignores_item_capacity(self):
+        """Test currency pickup works even with a full inventory."""
+        # Arrange - fill the inventory to the item-count cap
+        self.player.carrying_capacity_num = 0
+
+        # Act
+        success, message = self.player.add_item(self.coin)
+
+        # Assert
+        self.assertTrue(success)
+        self.assertEqual(self.player.gold, 10)
+
+    def test_add_item_currency_ignores_weight_capacity(self):
+        """Test currency pickup works even when over the weight limit."""
+        # Arrange
+        heavy_coin = Item(
+            "heavy coin",
+            "coin_2",
+            "An absurdly heavy coin.",
+            weight=1000,
+            value=3,
+            is_currency=True,
+        )
+
+        # Act
+        success, _ = self.player.add_item(heavy_coin)
+
+        # Assert
+        self.assertTrue(success)
+        self.assertEqual(self.player.gold, 3)
+
+    def test_add_item_currency_clamps_negative_value_to_zero(self):
+        """Test a currency item with negative value grants zero gold."""
+        # Arrange
+        cursed = Item(
+            "cursed coin",
+            "coin_3",
+            "A cursed coin.",
+            value=-5,
+            is_currency=True,
+        )
+
+        # Act
+        success, message = self.player.add_item(cursed)
+
+        # Assert
+        self.assertTrue(success)
+        self.assertEqual(self.player.gold, 0)
+        self.assertIn("+0 gold", message)
+
+    def test_add_item_currency_respects_takeable_flag(self):
+        """Test a non-takeable currency item is still refused."""
+        # Arrange
+        bolted = Item(
+            "bolted coin",
+            "coin_4",
+            "A coin bolted to the floor.",
+            value=10,
+            takeable=False,
+            is_currency=True,
+        )
+
+        # Act
+        success, _ = self.player.add_item(bolted)
+
+        # Assert
+        self.assertFalse(success)
+        self.assertEqual(self.player.gold, 0)
 
 
 if __name__ == "__main__":

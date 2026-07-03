@@ -105,6 +105,9 @@ class MobManager:
             spares_flagged=template.get("spares_flagged"),
             magic=template.get("magic", 0),
             abilities=template.get("mob_abilities"),
+            gold_drop=template.get("gold_drop"),
+            shop_stock=template.get("shop_stock"),
+            buys_items=template.get("buys_items", False),
         )
 
         # Initialize aggro delay

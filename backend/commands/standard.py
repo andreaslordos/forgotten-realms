@@ -477,6 +477,8 @@ async def handle_score(
         f"Stamina: {player.stamina}/{player.max_stamina}\n"
         f"Strength: {player.strength}\n"
         f"Dexterity: {player.dexterity}\n"
+        f"Magic: {player.magic}\n"
+        f"Gold: {player.gold}\n"
         f"Carrying capacity: {len(player.inventory)}/{player.carrying_capacity_num} items"
     )
 

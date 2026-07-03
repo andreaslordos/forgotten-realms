@@ -99,6 +99,7 @@ def create_mock_item(name="TestItem", **kwargs):
     item.damage = kwargs.get("damage", 0)
     item.takeable = kwargs.get("takeable", True)
     item.emits_light = kwargs.get("emits_light", False)
+    item.is_currency = kwargs.get("is_currency", False)
     item.to_dict = Mock(return_value={"name": name, "type": item.item_type})
     return item
 
