@@ -19,7 +19,8 @@ from services.zone_injector import inject_zone
 PREFIX = "pd_t_"
 FIXTURE_PATH = (
     Path(__file__).resolve().parents[2]
-    / "storage"
+    / "managers"
+    / "world"
     / "fallback_zones"
     / "hollow_reliquary.json"
 )

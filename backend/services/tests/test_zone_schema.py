@@ -15,7 +15,8 @@ from services.zone_schema import spec_to_rooms, validate_zone_spec
 PREFIX = "pd_t_"
 FIXTURE_PATH = (
     Path(__file__).resolve().parents[2]
-    / "storage"
+    / "managers"
+    / "world"
     / "fallback_zones"
     / "hollow_reliquary.json"
 )
