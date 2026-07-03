@@ -61,6 +61,8 @@ class Mobile(StatefulItem):
         current_room: Optional[str] = None,
         death_broadcast: Optional[str] = None,
         spares_flagged: Optional[str] = None,
+        magic: int = 0,
+        abilities: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         """
         Initialize a Mobile.
@@ -101,8 +103,17 @@ class Mobile(StatefulItem):
         self.max_stamina = max_stamina
         self.stamina = max_stamina
         self.damage = damage
+        self.magic = magic  # Spell resistance (and future casting)
         self.instant_death = instant_death
         self.point_value = point_value
+
+        # Active afflictions (same record shape as player sessions; managed
+        # by services.affliction_service)
+        self.afflictions: Dict[str, Dict[str, Any]] = {}
+
+        # Spell-like abilities: [{"spell", "chance", "cooldown_ticks", "message"}]
+        self.abilities: List[Dict[str, Any]] = abilities if abilities else []
+        self.ability_cooldowns: Dict[str, int] = {}
 
         # Behavior
         self.aggressive = aggressive
@@ -200,6 +211,12 @@ class Mobile(StatefulItem):
 
         # Don't move if in combat
         if self.target_player is not None:
+            return False
+
+        # Crippled mobs cannot patrol
+        from services.affliction_service import mob_has_affliction
+
+        if mob_has_affliction(self, "cripple"):
             return False
 
         # Check if enough ticks have passed
@@ -320,6 +337,8 @@ class Mobile(StatefulItem):
                 "pronouns": self.pronouns,
                 "death_broadcast": self.death_broadcast,
                 "spares_flagged": self.spares_flagged,
+                "magic": self.magic,
+                "abilities": self.abilities,
             }
         )
         return data
@@ -361,6 +380,8 @@ class Mobile(StatefulItem):
             current_room=data.get("current_room"),
             death_broadcast=data.get("death_broadcast"),
             spares_flagged=data.get("spares_flagged"),
+            magic=data.get("magic", 0),
+            abilities=data.get("abilities"),
         )
 
         # Restore state

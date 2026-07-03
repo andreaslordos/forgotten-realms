@@ -7,7 +7,7 @@ from models.Weapon import Weapon
 
 def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
     """
-    Define mob templates for the Valley of Barovia.
+    Define mob templates for the Mournvale.
 
     Returns:
         dict: Dictionary of mob_definition_id -> mob template
@@ -91,7 +91,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
     )
 
     return {
-        # ===== VILLAGE OF BAROVIA =====
+        # ===== VILLAGE OF GRAVENMOOR =====
         # Peaceful peasant - frightened villager
         "peasant": {
             "name": "peasant",
@@ -112,7 +112,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "point_value": 0,
             "pronouns": "he",
         },
-        # Barkeep at Blood of the Vine
+        # Barkeep at the Weeping Stag
         "barkeep": {
             "name": "barkeep",
             "description": "The barkeep wearily polishes a glass, staring at nothing.",
@@ -135,7 +135,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         # Village priest
         "priest": {
             "name": "priest",
-            "description": "The village priest, Father Donavich, kneels in prayer, his robes tattered and stained.",
+            "description": "The village priest, Father Corvin, kneels in prayer, his robes tattered and stained.",
             "strength": 12,
             "dexterity": 10,
             "max_stamina": 40,
@@ -150,10 +150,10 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "point_value": 0,
             "pronouns": "he",
         },
-        # Bildrath the greedy shopkeeper
+        # Bram the greedy shopkeeper
         "bildrath": {
-            "name": "Bildrath",
-            "description": "Bildrath, a portly man with beady eyes and greasy hair, watches your every move with suspicion.",
+            "name": "Bram",
+            "description": "Bram, a portly man with beady eyes and greasy hair, watches your every move with suspicion.",
             "strength": 20,
             "dexterity": 15,
             "max_stamina": 60,
@@ -214,7 +214,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "point_value": 75,
             "pronouns": "it",
         },
-        # ===== SVALICH WOODS =====
+        # ===== THE GLOOMWOOD =====
         # Wolf - aggressive pack hunter
         "wolf": {
             "name": "wolf",
@@ -245,10 +245,10 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             # The old shrine's nature blessing makes wolves ignore you.
             "spares_flagged": "nature_blessing",
         },
-        # Vistani trader
+        # Veyra trader
         "vistani": {
             "name": "vistani",
-            "description": "A colorfully dressed Vistani eyes you with knowing amusement.",
+            "description": "A colorfully dressed Veyra trader eyes you with knowing amusement.",
             "strength": 20,
             "dexterity": 25,
             "max_stamina": 60,
@@ -303,10 +303,10 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "pronouns": "they",
         },
         # ===== OLD BONEGRINDER =====
-        # Morgantha the hag - BOSS
+        # Grelka the hag - BOSS
         "hag": {
             "name": "hag",
-            "description": "The hag Morgantha, a hideous crone with grey-green skin and needle teeth, grins at you with malevolent glee.",
+            "description": "The hag Grelka, a hideous crone with grey-green skin and needle teeth, grins at you with malevolent glee.",
             "strength": 50,
             "dexterity": 35,
             "max_stamina": 150,
@@ -325,11 +325,21 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 200,
             "pronouns": "she",
+            "magic": 30,
+            "mob_abilities": [
+                {
+                    "spell": "blind",
+                    "chance": 0.25,
+                    "cooldown_ticks": 4,
+                    "duration_seconds": 15,
+                    "message": "The hag hurls a hex of clotted darkness at your eyes!",
+                }
+            ],
         },
         # Hag daughter
         "daughter": {
             "name": "daughter",
-            "description": "Morgantha's daughter, a younger hag with stringy hair and a cruel smile, lurks nearby.",
+            "description": "The hag's daughter, a younger crone with stringy hair and a cruel smile, lurks nearby.",
             "strength": 40,
             "dexterity": 30,
             "max_stamina": 100,
@@ -426,12 +436,13 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 80,
             "pronouns": "it",
+            "magic": 30,
         },
         # ===== VALLAKI =====
         # Town guard
         "guard": {
             "name": "guard",
-            "description": "A Vallaki guard in threadbare uniform watches with suspicious eyes.",
+            "description": "A town guard in threadbare uniform watches with suspicious eyes.",
             "strength": 30,
             "dexterity": 25,
             "max_stamina": 80,
@@ -570,6 +581,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 120,
             "pronouns": "it",
+            "magic": 40,
         },
         # Vampire consort
         "consort": {
@@ -620,6 +632,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 500,
             "pronouns": "he",
+            "magic": 60,
             # Forward-compat hook for a future respawn system (None = never).
             "respawn_seconds": None,
             "death_broadcast": (

@@ -91,6 +91,8 @@ class MobManager:
             current_room=room_id,
             death_broadcast=template.get("death_broadcast"),
             spares_flagged=template.get("spares_flagged"),
+            magic=template.get("magic", 0),
+            abilities=template.get("mob_abilities"),
         )
 
         # Initialize aggro delay

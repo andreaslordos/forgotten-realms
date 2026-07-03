@@ -27,7 +27,10 @@ from commands.magic import (
     get_level_index,
     get_magic_sleep_duration,
     find_target_player_or_mob,
+    pay_casting_costs,
     SPELL_DEFINITIONS,
+    SPELL_STAMINA_COSTS,
+    SPELL_COOLDOWN_SECONDS,
     LEVEL_NAMES,
     MAGIC_SLEEP_MIN_DURATION,
     MAGIC_SLEEP_MAX_DURATION,
@@ -41,10 +44,12 @@ from commands.magic import (
     handle_sleep_spell,
     handle_deafen,
     handle_blind,
+    handle_bolt,
     handle_dumb,
     handle_cripple,
     handle_fod,
 )
+from models.Mobile import Mobile
 
 
 class CalculateSuccessChanceTest(unittest.TestCase):
@@ -263,6 +268,7 @@ class HandleSpellsTest(unittest.IsolatedAsyncioTestCase):
         """Test FOD is shown to Archmages."""
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
 
         result = await handle_spells(
             {},
@@ -319,6 +325,7 @@ class HandleCureTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Caster"
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
 
         self.game_state = Mock()
         self.player_manager = Mock()
@@ -874,6 +881,7 @@ class HandleSummonTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Caster"
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
         self.player.current_room = "room1"
 
         self.target = Mock()
@@ -1060,6 +1068,7 @@ class HandleForceTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Caster"
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
 
         self.target = Mock()
         self.target.name = "Target"
@@ -1244,6 +1253,7 @@ class HandleChangeTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Caster"
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
         self.player.sex = "M"
 
         self.target = Mock()
@@ -1372,6 +1382,7 @@ class HandleSleepSpellTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Caster"
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
         self.player.current_room = "room1"
 
         self.target = Mock()
@@ -1432,6 +1443,7 @@ class HandleAfflictionSpellsTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Caster"
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
 
         self.target = Mock()
         self.target.name = "Target"
@@ -1540,6 +1552,7 @@ class HandleFodTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Caster"
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
         self.player.current_room = "room1"
         self.player.inventory = []
 
@@ -1634,6 +1647,7 @@ class HandleSleepSpellSuccessTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Caster"
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
         self.player.current_room = "room1"
 
         self.target = Mock()
@@ -1750,6 +1764,7 @@ class HandleAfflictionSpellSuccessTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Caster"
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
 
         self.target = Mock()
         self.target.name = "Target"
@@ -1992,6 +2007,7 @@ class HandleForceSuccessTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Caster"
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
         self.player.current_room = "room1"
         self.player.inventory = []
 
@@ -2098,6 +2114,7 @@ class HandleSummonSuccessPathTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Caster"
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
         self.player.current_room = "room1"
         self.player.inventory = []
 
@@ -2190,6 +2207,7 @@ class HandleWhereSuccessTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Caster"
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
         self.player.current_room = "room1"
 
         self.target = Mock()
@@ -2304,6 +2322,7 @@ class HandleFodSuccessTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Caster"
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
         self.player.current_room = "room1"
         self.player.inventory = []
 
@@ -2408,6 +2427,7 @@ class HandleCureOtherTest(unittest.IsolatedAsyncioTestCase):
         self.player.name = "Caster"
         self.player.level = "Archmage"
         self.player.magic = 100
+        self.player.stamina = 45
 
         self.target = Mock()
         self.target.name = "Target"
@@ -2446,6 +2466,493 @@ class HandleCureOtherTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("cure", result.lower())
         self.assertEqual(online_sessions["target_sid"]["afflictions"], {})
+
+
+class PayCastingCostsTest(unittest.TestCase):
+    """Test pay_casting_costs cooldown, stamina, and combat-cast handling."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from commands.combat import active_combats
+
+        active_combats.clear()
+
+        self.player = Mock()
+        self.player.name = "Caster"
+        self.player.stamina = 45
+
+        self.session = {"player": self.player}
+        self.online_sessions = {"caster_sid": self.session}
+
+    def tearDown(self):
+        """Clear global combat state."""
+        from commands.combat import active_combats
+
+        active_combats.clear()
+
+    def test_pay_casting_costs_returns_error_when_cooldown_active(self):
+        """Test pay_casting_costs refuses while the spell cooldown is active."""
+        # Arrange
+        import time as time_module
+
+        self.session["spell_cooldowns"] = {"bolt": time_module.time() + 10}
+
+        # Act
+        result = pay_casting_costs("bolt", self.player, self.online_sessions)
+
+        # Assert
+        self.assertIsNotNone(result)
+        self.assertIn("still settling", result)
+        self.assertEqual(self.player.stamina, 45)
+
+    def test_pay_casting_costs_refuses_when_too_exhausted(self):
+        """Test pay_casting_costs refuses when stamina <= spell cost."""
+        # Arrange - bolt costs 4 stamina
+        self.player.stamina = 4
+
+        # Act
+        result = pay_casting_costs("bolt", self.player, self.online_sessions)
+
+        # Assert
+        self.assertIsNotNone(result)
+        self.assertIn("too exhausted", result)
+        self.assertEqual(self.player.stamina, 4)
+
+    def test_pay_casting_costs_charges_stamina_on_success(self):
+        """Test pay_casting_costs deducts the spell's stamina cost."""
+        # Act
+        result = pay_casting_costs("bolt", self.player, self.online_sessions)
+
+        # Assert
+        self.assertIsNone(result)
+        self.assertEqual(self.player.stamina, 45 - SPELL_STAMINA_COSTS["bolt"])
+
+    def test_pay_casting_costs_sets_cooldown_on_success(self):
+        """Test pay_casting_costs records the spell cooldown in the session."""
+        # Arrange
+        import time as time_module
+
+        before = time_module.time()
+
+        # Act
+        pay_casting_costs("sleep", self.player, self.online_sessions)
+
+        # Assert
+        cooldowns = self.session["spell_cooldowns"]
+        self.assertIn("sleep", cooldowns)
+        self.assertGreaterEqual(
+            cooldowns["sleep"], before + SPELL_COOLDOWN_SECONDS["sleep"]
+        )
+
+    def test_pay_casting_costs_free_spell_charges_nothing(self):
+        """Test spells without an entry in the cost tables are free."""
+        # Act
+        result = pay_casting_costs("where", self.player, self.online_sessions)
+
+        # Assert
+        self.assertIsNone(result)
+        self.assertEqual(self.player.stamina, 45)
+        self.assertNotIn("where", self.session.get("spell_cooldowns", {}))
+
+    def test_pay_casting_costs_notes_combat_cast_when_in_combat(self):
+        """Test casting mid-combat flags skip_next_attack on the combat entry."""
+        # Arrange
+        from commands.combat import active_combats
+
+        active_combats["Caster"] = {
+            "target": Mock(),
+            "target_sid": None,
+            "weapon": None,
+            "initiative": True,
+            "last_turn": None,
+            "is_mob": False,
+            "entity": self.player,
+        }
+
+        # Act
+        result = pay_casting_costs("bolt", self.player, self.online_sessions)
+
+        # Assert
+        self.assertIsNone(result)
+        self.assertTrue(active_combats["Caster"].get("skip_next_attack"))
+
+    def test_pay_casting_costs_no_skip_flag_when_not_in_combat(self):
+        """Test no combat entry is created when the caster is not fighting."""
+        # Arrange
+        from commands.combat import active_combats
+
+        # Act
+        pay_casting_costs("bolt", self.player, self.online_sessions)
+
+        # Assert
+        self.assertNotIn("Caster", active_combats)
+
+
+class HandleBoltTest(unittest.IsolatedAsyncioTestCase):
+    """Test handle_bolt offensive spell."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from commands.combat import active_combats
+
+        active_combats.clear()
+
+        self.player = Mock()
+        self.player.name = "Caster"
+        self.player.level = "Warlock"
+        self.player.magic = 60
+        self.player.stamina = 45
+        self.player.current_room = "room1"
+
+        self.mob = Mobile(
+            "goblin",
+            "goblin_1",
+            "A snarling goblin.",
+            max_stamina=50,
+            magic=0,
+            current_room="room1",
+        )
+
+        self.online_sessions = {"caster_sid": {"player": self.player}}
+
+        self.game_state = Mock()
+        self.player_manager = Mock()
+        self.sio = Mock()
+        self.utils = Mock()
+        self.utils.send_message = AsyncMock()
+        self.utils.send_stats_update = AsyncMock()
+        self.utils.mob_manager = Mock()
+        self.utils.mob_manager.get_mobs_in_room = Mock(return_value=[self.mob])
+
+    def tearDown(self):
+        """Clear global combat state."""
+        from commands.combat import active_combats
+
+        active_combats.clear()
+
+    async def _cast_bolt(self, subject="goblin"):
+        """Invoke handle_bolt with the shared fixtures."""
+        cmd = {"verb": "bolt", "subject": subject}
+        return await handle_bolt(
+            cmd,
+            self.player,
+            self.game_state,
+            self.player_manager,
+            self.online_sessions,
+            self.sio,
+            self.utils,
+        )
+
+    async def test_handle_bolt_refuses_neophyte(self):
+        """Test bolt requires at least Acolyte level."""
+        # Arrange
+        self.player.level = "Neophyte"
+
+        # Act
+        result = await self._cast_bolt()
+
+        # Assert
+        self.assertIn("Acolyte", result)
+
+    async def test_handle_bolt_allows_acolyte(self):
+        """Test an Acolyte passes the level gate."""
+        # Arrange
+        self.player.level = "Acolyte"
+
+        # Act
+        with patch("commands.magic.roll_spell_success", return_value=True):
+            with patch("commands.magic.roll_resistance", return_value=False):
+                result = await self._cast_bolt()
+
+        # Assert
+        self.assertNotIn("must be at least", result)
+
+    async def test_handle_bolt_requires_target(self):
+        """Test bolt without a subject asks whom to bolt."""
+        # Act
+        result = await self._cast_bolt(subject=None)
+
+        # Assert
+        self.assertIn("whom", result.lower())
+
+    async def test_handle_bolt_refuses_self_target(self):
+        """Test bolt cannot target the caster."""
+        # Act
+        result = await self._cast_bolt(subject="Caster")
+
+        # Assert
+        self.assertIn("unwise", result.lower())
+
+    async def test_handle_bolt_success_damages_mob(self):
+        """Test successful bolt applies 8 + magic//5 damage to the mob."""
+        # Arrange - magic 60 -> base 8 + 12 = 20, uniform pinned to 1.0
+        with patch("commands.magic.roll_spell_success", return_value=True):
+            with patch("commands.magic.roll_resistance", return_value=False):
+                with patch("commands.magic.random.uniform", return_value=1.0):
+                    # Act
+                    result = await self._cast_bolt()
+
+        # Assert
+        self.assertEqual(self.mob.stamina, 30)
+        self.assertIn("for 20 damage", result)
+
+    async def test_handle_bolt_success_engages_combat_with_mob(self):
+        """Test bolting an unengaged mob starts combat for both parties."""
+        # Arrange
+        from commands.combat import active_combats
+
+        with patch("commands.magic.roll_spell_success", return_value=True):
+            with patch("commands.magic.roll_resistance", return_value=False):
+                with patch("commands.magic.random.uniform", return_value=1.0):
+                    # Act
+                    await self._cast_bolt()
+
+        # Assert
+        self.assertIn("Caster", active_combats)
+        self.assertIn("goblin_1", active_combats)
+        self.assertIs(self.mob.target_player, self.player)
+
+    async def test_handle_bolt_kill_calls_handle_mob_defeat(self):
+        """Test a lethal bolt hands the mob to handle_mob_defeat."""
+        # Arrange
+        self.mob.stamina = 1
+        mock_defeat = AsyncMock()
+
+        with patch("commands.magic.roll_spell_success", return_value=True):
+            with patch("commands.magic.roll_resistance", return_value=False):
+                with patch("commands.magic.random.uniform", return_value=1.0):
+                    with patch("commands.combat.handle_mob_defeat", mock_defeat):
+                        # Act
+                        result = await self._cast_bolt()
+
+        # Assert
+        mock_defeat.assert_awaited_once()
+        self.assertIn("slaying", result)
+
+    async def test_handle_bolt_resisted_by_target(self):
+        """Test target resistance shrugs off the bolt."""
+        # Arrange
+        with patch("commands.magic.roll_spell_success", return_value=True):
+            with patch("commands.magic.roll_resistance", return_value=True):
+                # Act
+                result = await self._cast_bolt()
+
+        # Assert
+        self.assertIn("shrugs off", result)
+        self.assertEqual(self.mob.stamina, 50)
+
+    async def test_handle_bolt_backfire_sears_caster(self):
+        """Test backfiring bolt burns the caster for half damage."""
+        # Arrange - stamina 45 -> 41 after cost, backlash 20//2 = 10 -> 31
+        with patch("commands.magic.roll_spell_success", return_value=False):
+            with patch("commands.magic.should_backfire", return_value=True):
+                with patch("commands.magic.random.uniform", return_value=1.0):
+                    # Act
+                    result = await self._cast_bolt()
+
+        # Assert
+        self.assertIn("backlash", result.lower())
+        self.assertEqual(self.player.stamina, 31)
+
+    async def test_handle_bolt_backfire_never_drops_stamina_below_one(self):
+        """Test backfire damage cannot reduce caster stamina below 1."""
+        # Arrange - stamina 5 -> 1 after cost, backlash clamps at 1
+        self.player.stamina = 5
+
+        with patch("commands.magic.roll_spell_success", return_value=False):
+            with patch("commands.magic.should_backfire", return_value=True):
+                with patch("commands.magic.random.uniform", return_value=1.0):
+                    # Act
+                    await self._cast_bolt()
+
+        # Assert
+        self.assertEqual(self.player.stamina, 1)
+
+    async def test_handle_bolt_fizzles_without_backfire(self):
+        """Test failed bolt without backfire just fizzles."""
+        # Arrange
+        with patch("commands.magic.roll_spell_success", return_value=False):
+            with patch("commands.magic.should_backfire", return_value=False):
+                # Act
+                result = await self._cast_bolt()
+
+        # Assert
+        self.assertIn("fizzles", result)
+        self.assertEqual(self.mob.stamina, 50)
+
+
+class HandleAfflictionSpellMobTargetTest(unittest.IsolatedAsyncioTestCase):
+    """Test affliction spells (blind) cast on mobs."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from commands.combat import active_combats
+
+        active_combats.clear()
+
+        self.player = Mock()
+        self.player.name = "Caster"
+        self.player.level = "Archmage"
+        self.player.magic = 100
+        self.player.stamina = 45
+        self.player.current_room = "room1"
+
+        self.mob = Mobile(
+            "goblin",
+            "goblin_1",
+            "A snarling goblin.",
+            max_stamina=50,
+            magic=0,
+            current_room="room1",
+        )
+
+        self.online_sessions = {"caster_sid": {"player": self.player}}
+
+        self.game_state = Mock()
+        self.player_manager = Mock()
+        self.sio = Mock()
+        self.utils = Mock()
+        self.utils.send_message = AsyncMock()
+        self.utils.mob_manager = Mock()
+        self.utils.mob_manager.get_mobs_in_room = Mock(return_value=[self.mob])
+
+    def tearDown(self):
+        """Clear global combat state."""
+        from commands.combat import active_combats
+
+        active_combats.clear()
+
+    async def test_handle_blind_applies_affliction_to_mob(self):
+        """Test blind on a mob writes 'blind' into mob.afflictions."""
+        # Arrange
+        cmd = {"verb": "blind", "subject": "goblin"}
+
+        # Act - Archmage auto-succeeds; resistance pinned off
+        with patch("commands.magic.roll_resistance", return_value=False):
+            result = await handle_blind(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert
+        self.assertIn("blind", self.mob.afflictions)
+        self.assertIn("blind goblin", result)
+        self.assertIn("eyes film over", result)
+
+    async def test_handle_blind_mob_resists(self):
+        """Test a resisting mob does not gain the affliction."""
+        # Arrange
+        cmd = {"verb": "blind", "subject": "goblin"}
+
+        # Act
+        with patch("commands.magic.roll_resistance", return_value=True):
+            result = await handle_blind(
+                cmd,
+                self.player,
+                self.game_state,
+                self.player_manager,
+                self.online_sessions,
+                self.sio,
+                self.utils,
+            )
+
+        # Assert
+        self.assertNotIn("blind", self.mob.afflictions)
+        self.assertIn("resists", result)
+
+
+class HandleSleepSpellMobTargetTest(unittest.IsolatedAsyncioTestCase):
+    """Test sleep spell cast on mobs (allowed even in combat)."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from commands.combat import active_combats
+
+        active_combats.clear()
+
+        self.player = Mock()
+        self.player.name = "Caster"
+        self.player.level = "Archmage"
+        self.player.magic = 100
+        self.player.stamina = 45
+        self.player.current_room = "room1"
+
+        self.mob = Mobile(
+            "goblin",
+            "goblin_1",
+            "A snarling goblin.",
+            max_stamina=50,
+            magic=0,
+            current_room="room1",
+        )
+
+        self.online_sessions = {"caster_sid": {"player": self.player}}
+
+        self.game_state = Mock()
+        self.player_manager = Mock()
+        self.sio = Mock()
+        self.utils = Mock()
+        self.utils.send_message = AsyncMock()
+        self.utils.mob_manager = Mock()
+        self.utils.mob_manager.get_mobs_in_room = Mock(return_value=[self.mob])
+
+    def tearDown(self):
+        """Clear global combat state."""
+        from commands.combat import active_combats
+
+        active_combats.clear()
+
+    async def test_handle_sleep_spell_applies_magic_sleep_to_mob(self):
+        """Test sleep on a mob puts magic_sleep in mob.afflictions."""
+        # Arrange
+        cmd = {"verb": "sleep", "subject": "goblin"}
+
+        # Act
+        with patch("commands.magic.roll_resistance", return_value=False):
+            with patch("services.notifications.broadcast_room", new_callable=AsyncMock):
+                result = await handle_sleep_spell(
+                    cmd,
+                    self.player,
+                    self.game_state,
+                    self.player_manager,
+                    self.online_sessions,
+                    self.sio,
+                    self.utils,
+                )
+
+        # Assert
+        self.assertIn("magic_sleep", self.mob.afflictions)
+        self.assertIn("You put goblin to sleep", result)
+
+    async def test_handle_sleep_spell_allows_mob_in_combat(self):
+        """Test sleeping a mob that is IN COMBAT is not refused as too alert."""
+        # Arrange - simulate the mob mid-combat with the caster
+        from commands.combat import active_combats
+
+        active_combats["goblin"] = {"target": self.player}
+        cmd = {"verb": "sleep", "subject": "goblin"}
+
+        # Act
+        with patch("commands.magic.roll_resistance", return_value=False):
+            with patch("services.notifications.broadcast_room", new_callable=AsyncMock):
+                result = await handle_sleep_spell(
+                    cmd,
+                    self.player,
+                    self.game_state,
+                    self.player_manager,
+                    self.online_sessions,
+                    self.sio,
+                    self.utils,
+                )
+
+        # Assert
+        self.assertNotIn("too alert", result)
+        self.assertIn("magic_sleep", self.mob.afflictions)
 
 
 if __name__ == "__main__":

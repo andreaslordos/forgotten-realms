@@ -2813,5 +2813,494 @@ class RespawnIssuesTest(unittest.IsolatedAsyncioTestCase):
         )
 
 
+class AdjustedHitChanceTest(unittest.TestCase):
+    """Test _adjusted_hit_chance affliction modifiers."""
+
+    def setUp(self):
+        """Set up common test fixtures."""
+        active_combats.clear()
+
+        self.player = Mock()
+        self.player.name = "TestPlayer"
+        self.player_session = {"player": self.player}
+        self.online_sessions = {"player_sid": self.player_session}
+
+        self.mob = Mobile("goblin", "goblin_1", "A goblin.", current_room="room1")
+
+    def tearDown(self):
+        """Clear global combat state."""
+        active_combats.clear()
+
+    def test_adjusted_hit_chance_unchanged_without_afflictions(self):
+        """Test hit chance passes through when no one is afflicted."""
+        from commands.combat import _adjusted_hit_chance
+
+        result = _adjusted_hit_chance(50, self.player, self.mob, self.online_sessions)
+
+        self.assertEqual(result, 50)
+
+    def test_adjusted_hit_chance_blind_mob_attacker_penalized(self):
+        """Test a blind mob attacker loses 25 hit chance."""
+        # Arrange
+        from commands.combat import _adjusted_hit_chance
+        from services.affliction_service import apply_affliction_to_mob
+
+        apply_affliction_to_mob(self.mob, "blind", 60, "Caster")
+
+        # Act
+        result = _adjusted_hit_chance(50, self.mob, self.player, self.online_sessions)
+
+        # Assert
+        self.assertEqual(result, 25)
+
+    def test_adjusted_hit_chance_blind_penalty_floors_at_five(self):
+        """Test the blind penalty cannot drop hit chance below 5."""
+        # Arrange
+        from commands.combat import _adjusted_hit_chance
+        from services.affliction_service import apply_affliction_to_mob
+
+        apply_affliction_to_mob(self.mob, "blind", 60, "Caster")
+
+        # Act
+        result = _adjusted_hit_chance(20, self.mob, self.player, self.online_sessions)
+
+        # Assert
+        self.assertEqual(result, 5)
+
+    def test_adjusted_hit_chance_blind_player_attacker_penalized(self):
+        """Test a blind player attacker (session affliction) loses 25 hit chance."""
+        # Arrange
+        from commands.combat import _adjusted_hit_chance
+        from services.affliction_service import apply_affliction
+
+        apply_affliction(self.player_session, "blind", 60, "Caster")
+
+        # Act
+        result = _adjusted_hit_chance(60, self.player, self.mob, self.online_sessions)
+
+        # Assert
+        self.assertEqual(result, 35)
+
+    def test_adjusted_hit_chance_sleeping_defender_always_hit(self):
+        """Test a sleeping defender makes hit chance 100."""
+        # Arrange
+        from commands.combat import _adjusted_hit_chance
+        from services.affliction_service import apply_affliction_to_mob
+
+        apply_affliction_to_mob(self.mob, "magic_sleep", 10, "Caster")
+
+        # Act
+        result = _adjusted_hit_chance(50, self.player, self.mob, self.online_sessions)
+
+        # Assert
+        self.assertEqual(result, 100)
+
+    def test_adjusted_hit_chance_sleep_overrides_blind_penalty(self):
+        """Test a blind attacker still auto-hits a sleeping defender."""
+        # Arrange
+        from commands.combat import _adjusted_hit_chance
+        from services.affliction_service import (
+            apply_affliction,
+            apply_affliction_to_mob,
+        )
+
+        apply_affliction(self.player_session, "blind", 60, "Caster")
+        apply_affliction_to_mob(self.mob, "magic_sleep", 10, "Caster")
+
+        # Act
+        result = _adjusted_hit_chance(50, self.player, self.mob, self.online_sessions)
+
+        # Assert
+        self.assertEqual(result, 100)
+
+    def test_adjusted_hit_chance_expired_blind_has_no_effect(self):
+        """Test an expired blind affliction does not penalize the attacker."""
+        # Arrange
+        import time
+
+        from commands.combat import _adjusted_hit_chance
+
+        self.mob.afflictions["blind"] = {
+            "applied_at": time.time() - 120,
+            "expires_at": time.time() - 60,
+            "caster": "Caster",
+        }
+
+        # Act
+        result = _adjusted_hit_chance(50, self.mob, self.player, self.online_sessions)
+
+        # Assert
+        self.assertEqual(result, 50)
+
+
+class WakeIfSleepingTest(unittest.IsolatedAsyncioTestCase):
+    """Test _wake_if_sleeping damage-breaks-sleep helper."""
+
+    def setUp(self):
+        """Set up common test fixtures."""
+        self.sio = Mock()
+        self.utils = Mock()
+        self.utils.send_message = AsyncMock()
+
+    async def test_wake_if_sleeping_removes_mob_magic_sleep(self):
+        """Test removes magic_sleep from a sleeping mob's store."""
+        # Arrange
+        from commands.combat import _wake_if_sleeping
+        from services.affliction_service import apply_affliction_to_mob
+
+        mob = Mobile("goblin", "goblin_1", "A goblin.")
+        apply_affliction_to_mob(mob, "magic_sleep", 10, "Caster")
+
+        # Act
+        await _wake_if_sleeping(mob, {}, self.sio, self.utils)
+
+        # Assert
+        self.assertNotIn("magic_sleep", mob.afflictions)
+        self.utils.send_message.assert_not_called()
+
+    async def test_wake_if_sleeping_wakes_player_and_notifies(self):
+        """Test removes player's magic_sleep, clears sleeping, sends message."""
+        # Arrange
+        from commands.combat import _wake_if_sleeping
+        from services.affliction_service import apply_affliction
+
+        player = Mock()
+        player.name = "Sleeper"
+        session = {"player": player, "sleeping": True}
+        apply_affliction(session, "magic_sleep", 10, "Caster")
+        online_sessions = {"sleeper_sid": session}
+
+        # Act
+        await _wake_if_sleeping(player, online_sessions, self.sio, self.utils)
+
+        # Assert
+        self.assertNotIn("magic_sleep", session["afflictions"])
+        self.assertFalse(session["sleeping"])
+        self.utils.send_message.assert_called_once()
+        call_args = self.utils.send_message.call_args[0]
+        self.assertEqual(call_args[1], "sleeper_sid")
+        self.assertIn("Pain jolts you awake!", call_args[2])
+
+    async def test_wake_if_sleeping_no_message_when_not_sleeping(self):
+        """Test a player without magic_sleep is left alone."""
+        # Arrange
+        from commands.combat import _wake_if_sleeping
+
+        player = Mock()
+        player.name = "Awake"
+        session = {"player": player, "sleeping": False}
+        online_sessions = {"awake_sid": session}
+
+        # Act
+        await _wake_if_sleeping(player, online_sessions, self.sio, self.utils)
+
+        # Assert
+        self.utils.send_message.assert_not_called()
+        self.assertFalse(session["sleeping"])
+
+    async def test_wake_if_sleeping_handles_missing_session(self):
+        """Test a player with no session does not crash."""
+        # Arrange
+        from commands.combat import _wake_if_sleeping
+
+        player = Mock()
+        player.name = "Ghost"
+
+        # Act - should not raise
+        await _wake_if_sleeping(player, {}, self.sio, self.utils)
+
+        # Assert
+        self.utils.send_message.assert_not_called()
+
+
+class NoteCombatCastTest(unittest.TestCase):
+    """Test note_combat_cast skip-next-attack flagging."""
+
+    def setUp(self):
+        """Set up common test fixtures."""
+        active_combats.clear()
+
+    def tearDown(self):
+        """Clear global combat state."""
+        active_combats.clear()
+
+    def test_note_combat_cast_sets_skip_flag(self):
+        """Test note_combat_cast sets skip_next_attack on the combat entry."""
+        # Arrange
+        from commands.combat import note_combat_cast
+
+        active_combats["Caster"] = {"target": Mock(), "initiative": True}
+
+        # Act
+        note_combat_cast("Caster")
+
+        # Assert
+        self.assertTrue(active_combats["Caster"]["skip_next_attack"])
+
+    def test_note_combat_cast_ignores_players_not_in_combat(self):
+        """Test note_combat_cast does nothing for a player without an entry."""
+        # Arrange
+        from commands.combat import note_combat_cast
+
+        # Act - should not raise
+        note_combat_cast("NotFighting")
+
+        # Assert
+        self.assertNotIn("NotFighting", active_combats)
+
+
+class ProcessCombatTickSkipCastTest(unittest.IsolatedAsyncioTestCase):
+    """Test process_combat_tick consuming the skip_next_attack flag."""
+
+    def setUp(self):
+        """Set up a full PvP combat pair."""
+        active_combats.clear()
+
+        self.player1 = Mock()
+        self.player1.name = "Player1"
+        self.player1.current_room = "room1"
+        self.player1.strength = 50
+        self.player1.dexterity = 50
+        self.player1.stamina = 100
+        self.player1.get_effective_dexterity = (
+            lambda *args, **kwargs: self.player1.dexterity
+        )
+
+        self.player2 = Mock()
+        self.player2.name = "Player2"
+        self.player2.current_room = "room1"
+        self.player2.strength = 40
+        self.player2.dexterity = 40
+        self.player2.stamina = 100
+        self.player2.get_effective_dexterity = (
+            lambda *args, **kwargs: self.player2.dexterity
+        )
+
+        active_combats["Player1"] = {
+            "target": self.player2,
+            "target_sid": "player2_sid",
+            "weapon": None,
+            "initiative": True,
+            "last_turn": None,
+            "is_mob": False,
+            "entity": self.player1,
+            "skip_next_attack": True,
+        }
+        active_combats["Player2"] = {
+            "target": self.player1,
+            "target_sid": "player1_sid",
+            "weapon": None,
+            "initiative": False,
+            "last_turn": None,
+            "is_mob": False,
+            "entity": self.player2,
+        }
+
+        self.online_sessions = {
+            "player1_sid": {"player": self.player1},
+            "player2_sid": {"player": self.player2},
+        }
+
+        self.sio = AsyncMock()
+        self.player_manager = Mock()
+        self.game_state = Mock()
+        self.utils = Mock()
+        self.utils.send_message = AsyncMock()
+        self.utils.send_stats_update = AsyncMock()
+
+    def tearDown(self):
+        """Clear global combat state."""
+        active_combats.clear()
+
+    async def test_process_combat_tick_skips_attack_after_cast(self):
+        """Test the initiative holder's attack is skipped and flag consumed."""
+        # Arrange
+        from commands.combat import process_combat_tick
+
+        # Act
+        await process_combat_tick(
+            self.sio,
+            self.online_sessions,
+            self.player_manager,
+            self.game_state,
+            self.utils,
+            Mock(),
+        )
+
+        # Assert - defender took no damage this tick
+        self.assertEqual(self.player2.stamina, 100)
+
+        # Assert - the attacker was told they are recovering from casting
+        recovery_messages = [
+            call.args
+            for call in self.utils.send_message.call_args_list
+            if len(call.args) >= 3
+            and call.args[1] == "player1_sid"
+            and "recovering from your casting" in call.args[2]
+        ]
+        self.assertEqual(len(recovery_messages), 1)
+
+        # Assert - the flag was cleared (consumed, not left for next tick)
+        self.assertNotIn("skip_next_attack", active_combats["Player1"])
+
+    async def test_process_combat_tick_toggles_initiative_after_skip(self):
+        """Test initiative still passes to the defender after a skipped swing."""
+        # Arrange
+        from commands.combat import process_combat_tick
+
+        # Act
+        await process_combat_tick(
+            self.sio,
+            self.online_sessions,
+            self.player_manager,
+            self.game_state,
+            self.utils,
+            Mock(),
+        )
+
+        # Assert
+        self.assertFalse(active_combats["Player1"]["initiative"])
+        self.assertTrue(active_combats["Player2"]["initiative"])
+
+
+class MaybeFireMobAbilityTest(unittest.IsolatedAsyncioTestCase):
+    """Test _maybe_fire_mob_ability spell-like mob abilities."""
+
+    def setUp(self):
+        """Set up common test fixtures."""
+        active_combats.clear()
+
+        self.mob = Mobile(
+            "hag",
+            "hag_1",
+            "A crooked hag.",
+            current_room="room1",
+            abilities=[
+                {
+                    "spell": "blind",
+                    "chance": 1.0,
+                    "cooldown_ticks": 4,
+                    "duration_seconds": 15,
+                    "message": "Hex!",
+                }
+            ],
+        )
+
+        self.player = Mock()
+        self.player.name = "Defender"
+        self.player.magic = 0
+
+        self.session = {"player": self.player}
+        self.online_sessions = {"defender_sid": self.session}
+
+        self.sio = Mock()
+        self.utils = Mock()
+        self.utils.send_message = AsyncMock()
+
+    def tearDown(self):
+        """Clear global combat state."""
+        active_combats.clear()
+
+    async def _fire(self):
+        """Invoke _maybe_fire_mob_ability with the shared fixtures."""
+        from commands.combat import _maybe_fire_mob_ability
+
+        return await _maybe_fire_mob_ability(
+            self.mob, self.player, self.online_sessions, self.sio, self.utils
+        )
+
+    async def test_maybe_fire_mob_ability_applies_affliction(self):
+        """Test a firing ability afflicts the player and sets the cooldown."""
+        # Arrange - chance roll pinned to fire, resist roll pinned to fail
+        with patch("commands.combat.random.random", return_value=0.0):
+            with patch("commands.combat.random.randint", return_value=50):
+                # Act
+                result = await self._fire()
+
+        # Assert
+        self.assertTrue(result)
+        self.assertIn("blind", self.session["afflictions"])
+        self.assertEqual(self.mob.ability_cooldowns["blind"], 4)
+        call_args = self.utils.send_message.call_args[0]
+        self.assertEqual(call_args[1], "defender_sid")
+        self.assertIn("Hex!", call_args[2])
+
+    async def test_maybe_fire_mob_ability_blocked_by_cooldown(self):
+        """Test the ability cannot fire again while its cooldown is running."""
+        # Arrange - fire once to start the cooldown
+        with patch("commands.combat.random.random", return_value=0.0):
+            with patch("commands.combat.random.randint", return_value=50):
+                await self._fire()
+        self.session["afflictions"] = {}  # Clear so only the cooldown gates
+
+        # Act - second call in the next combat tick
+        with patch("commands.combat.random.random", return_value=0.0):
+            with patch("commands.combat.random.randint", return_value=50):
+                result = await self._fire()
+
+        # Assert
+        self.assertFalse(result)
+        self.assertEqual(self.session["afflictions"], {})
+        self.assertEqual(self.mob.ability_cooldowns["blind"], 3)
+
+    async def test_maybe_fire_mob_ability_resisted_by_high_magic(self):
+        """Test a high-magic player resists but the ability still fired."""
+        # Arrange
+        self.player.magic = 100
+
+        with patch("commands.combat.random.random", return_value=0.0):
+            with patch("commands.combat.random.randint", return_value=50):
+                # Act
+                result = await self._fire()
+
+        # Assert - fired (replaces the swing) but no affliction landed
+        self.assertTrue(result)
+        self.assertNotIn("blind", self.session.get("afflictions", {}))
+        call_args = self.utils.send_message.call_args[0]
+        self.assertIn("hex breaks", call_args[2])
+
+    async def test_maybe_fire_mob_ability_returns_false_without_abilities(self):
+        """Test a mob with no abilities never fires."""
+        # Arrange
+        plain_mob = Mobile("rat", "rat_1", "A rat.")
+
+        from commands.combat import _maybe_fire_mob_ability
+
+        # Act
+        result = await _maybe_fire_mob_ability(
+            plain_mob, self.player, self.online_sessions, self.sio, self.utils
+        )
+
+        # Assert
+        self.assertFalse(result)
+
+    async def test_maybe_fire_mob_ability_returns_false_without_defender_sid(self):
+        """Test the ability does not fire when the defender has no session."""
+        # Act
+        with patch("commands.combat.random.random", return_value=0.0):
+            from commands.combat import _maybe_fire_mob_ability
+
+            result = await _maybe_fire_mob_ability(
+                self.mob, self.player, {}, self.sio, self.utils
+            )
+
+        # Assert
+        self.assertFalse(result)
+        self.assertNotIn("blind", self.session.get("afflictions", {}))
+
+    async def test_maybe_fire_mob_ability_skips_when_chance_roll_fails(self):
+        """Test the ability does not fire when the chance roll misses."""
+        # Arrange - random.random() >= chance means no fire
+        self.mob.abilities[0]["chance"] = 0.5
+
+        with patch("commands.combat.random.random", return_value=0.9):
+            # Act
+            result = await self._fire()
+
+        # Assert
+        self.assertFalse(result)
+        self.assertNotIn("blind", self.session.get("afflictions", {}))
+
+
 if __name__ == "__main__":
     unittest.main()

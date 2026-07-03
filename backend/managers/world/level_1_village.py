@@ -1532,7 +1532,7 @@ class Level1Village(LevelGenerator):
                 mob_manager = getattr(utils_module, "mob_manager", None)
             if mob_manager:
                 for mob in mob_manager.get_mobs_in_room("shop"):
-                    if mob.name.lower() == "bildrath":
+                    if mob.name.lower() == "bram":
                         return True
             return False
 

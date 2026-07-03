@@ -163,13 +163,14 @@ class TickService:
             )
 
     async def _process_affliction_expiry(self) -> None:
-        """Process affliction expiration for all players."""
+        """Process affliction expiration for all players and mobs."""
         from services.affliction_service import process_affliction_expiry
 
         await process_affliction_expiry(
             self.sio,
             self.online_sessions,
             self.utils,
+            mob_manager=self._get_mob_manager(),
         )
 
     async def _process_invisibility_expiry(self) -> None:

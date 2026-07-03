@@ -439,5 +439,234 @@ class MobileSerializationTest(unittest.TestCase):
         self.assertTrue(mob.is_mob())
 
 
+class MobileTacticalInitializationTest(unittest.TestCase):
+    """Test Mobile initialization of tactical-combat attributes."""
+
+    def test___init___defaults_magic_to_zero(self):
+        """Test __init__ defaults magic to 0."""
+        mob = Mobile("Orc", "orc_1", "desc")
+
+        self.assertEqual(mob.magic, 0)
+
+    def test___init___sets_magic_from_param(self):
+        """Test __init__ sets magic from constructor parameter."""
+        mob = Mobile("Orc", "orc_1", "desc", magic=40)
+
+        self.assertEqual(mob.magic, 40)
+
+    def test___init___creates_empty_afflictions_dict(self):
+        """Test __init__ creates an empty afflictions dict."""
+        mob = Mobile("Orc", "orc_1", "desc")
+
+        self.assertEqual(mob.afflictions, {})
+
+    def test___init___defaults_abilities_to_empty_list(self):
+        """Test __init__ defaults abilities to an empty list."""
+        mob = Mobile("Orc", "orc_1", "desc")
+
+        self.assertEqual(mob.abilities, [])
+
+    def test___init___sets_abilities_from_param(self):
+        """Test __init__ sets abilities from constructor parameter."""
+        abilities = [{"spell": "blind", "chance": 0.5, "cooldown_ticks": 4}]
+
+        mob = Mobile("Hag", "hag_1", "desc", abilities=abilities)
+
+        self.assertEqual(mob.abilities, abilities)
+
+    def test___init___creates_empty_ability_cooldowns(self):
+        """Test __init__ creates an empty ability_cooldowns dict."""
+        mob = Mobile("Orc", "orc_1", "desc")
+
+        self.assertEqual(mob.ability_cooldowns, {})
+
+    def test___init___defaults_death_broadcast_to_none(self):
+        """Test __init__ defaults death_broadcast to None."""
+        mob = Mobile("Orc", "orc_1", "desc")
+
+        self.assertIsNone(mob.death_broadcast)
+
+    def test___init___sets_death_broadcast_from_param(self):
+        """Test __init__ sets death_broadcast from constructor parameter."""
+        mob = Mobile(
+            "Dragon", "dragon_1", "desc", death_broadcast="The dragon has fallen!"
+        )
+
+        self.assertEqual(mob.death_broadcast, "The dragon has fallen!")
+
+    def test___init___defaults_spares_flagged_to_none(self):
+        """Test __init__ defaults spares_flagged to None."""
+        mob = Mobile("Wolf", "wolf_1", "desc")
+
+        self.assertIsNone(mob.spares_flagged)
+
+    def test___init___sets_spares_flagged_from_param(self):
+        """Test __init__ sets spares_flagged from constructor parameter."""
+        mob = Mobile("Wolf", "wolf_1", "desc", spares_flagged="nature_blessing")
+
+        self.assertEqual(mob.spares_flagged, "nature_blessing")
+
+
+class MobileCrippleMovementTest(unittest.TestCase):
+    """Test should_move interaction with the cripple affliction."""
+
+    def _make_patrolling_mob(self):
+        """Build a mob that is otherwise eligible to move."""
+        mob = Mobile(
+            "Orc",
+            "orc_1",
+            "desc",
+            patrol_rooms=["room1", "room2"],
+            movement_interval=5,
+        )
+        mob.last_move_tick = 0
+        return mob
+
+    def test_should_move_returns_false_when_crippled(self):
+        """Test should_move returns False while the mob is crippled."""
+        # Arrange
+        from services.affliction_service import apply_affliction_to_mob
+
+        mob = self._make_patrolling_mob()
+        apply_affliction_to_mob(mob, "cripple", 60, "Caster")
+
+        # Act
+        result = mob.should_move(current_tick=10)
+
+        # Assert
+        self.assertFalse(result)
+
+    def test_should_move_returns_true_after_cripple_removed(self):
+        """Test should_move returns True once the cripple is removed."""
+        # Arrange
+        from services.affliction_service import (
+            apply_affliction_to_mob,
+            remove_mob_affliction,
+        )
+
+        mob = self._make_patrolling_mob()
+        apply_affliction_to_mob(mob, "cripple", 60, "Caster")
+        remove_mob_affliction(mob, "cripple")
+
+        # Act
+        result = mob.should_move(current_tick=10)
+
+        # Assert
+        self.assertTrue(result)
+
+    def test_should_move_returns_true_when_cripple_expired(self):
+        """Test should_move returns True when the cripple has expired."""
+        # Arrange
+        import time
+
+        mob = self._make_patrolling_mob()
+        mob.afflictions["cripple"] = {
+            "applied_at": time.time() - 120,
+            "expires_at": time.time() - 60,
+            "caster": "Caster",
+        }
+
+        # Act
+        result = mob.should_move(current_tick=10)
+
+        # Assert
+        self.assertTrue(result)
+
+    def test_should_move_returns_false_when_crippled_even_if_other_afflicted(self):
+        """Test non-cripple afflictions do not block movement."""
+        # Arrange
+        from services.affliction_service import apply_affliction_to_mob
+
+        mob = self._make_patrolling_mob()
+        apply_affliction_to_mob(mob, "blind", 60, "Caster")
+
+        # Act
+        result = mob.should_move(current_tick=10)
+
+        # Assert
+        self.assertTrue(result)
+
+
+class MobileTacticalSerializationTest(unittest.TestCase):
+    """Test serialization round-trip of tactical-combat attributes."""
+
+    def test_to_dict_includes_magic(self):
+        """Test to_dict includes the magic stat."""
+        mob = Mobile("Orc", "orc_1", "desc", magic=35)
+
+        data = mob.to_dict()
+
+        self.assertEqual(data["magic"], 35)
+
+    def test_to_dict_includes_abilities(self):
+        """Test to_dict includes the abilities list."""
+        abilities = [{"spell": "blind", "chance": 0.25, "cooldown_ticks": 4}]
+        mob = Mobile("Hag", "hag_1", "desc", abilities=abilities)
+
+        data = mob.to_dict()
+
+        self.assertEqual(data["abilities"], abilities)
+
+    def test_to_dict_includes_death_broadcast_and_spares_flagged(self):
+        """Test to_dict includes death_broadcast and spares_flagged."""
+        mob = Mobile(
+            "Dragon",
+            "dragon_1",
+            "desc",
+            death_broadcast="The dragon has fallen!",
+            spares_flagged="nature_blessing",
+        )
+
+        data = mob.to_dict()
+
+        self.assertEqual(data["death_broadcast"], "The dragon has fallen!")
+        self.assertEqual(data["spares_flagged"], "nature_blessing")
+
+    def test_from_dict_round_trips_tactical_fields(self):
+        """Test from_dict restores magic/abilities/death_broadcast/spares_flagged."""
+        # Arrange
+        abilities = [
+            {
+                "spell": "blind",
+                "chance": 1.0,
+                "cooldown_ticks": 4,
+                "duration_seconds": 15,
+                "message": "Hex!",
+            }
+        ]
+        original = Mobile(
+            "Hag",
+            "hag_1",
+            "desc",
+            magic=40,
+            abilities=abilities,
+            death_broadcast="The hag shrieks her last!",
+            spares_flagged="witch_charm",
+        )
+
+        # Act
+        restored = Mobile.from_dict(original.to_dict())
+
+        # Assert
+        self.assertEqual(restored.magic, 40)
+        self.assertEqual(restored.abilities, abilities)
+        self.assertEqual(restored.death_broadcast, "The hag shrieks her last!")
+        self.assertEqual(restored.spares_flagged, "witch_charm")
+
+    def test_from_dict_defaults_tactical_fields_when_absent(self):
+        """Test from_dict uses safe defaults when tactical keys are missing."""
+        # Arrange - minimal legacy-style data
+        data = {"name": "Orc", "id": "orc_1", "description": "desc"}
+
+        # Act
+        mob = Mobile.from_dict(data)
+
+        # Assert
+        self.assertEqual(mob.magic, 0)
+        self.assertEqual(mob.abilities, [])
+        self.assertIsNone(mob.death_broadcast)
+        self.assertIsNone(mob.spares_flagged)
+
+
 if __name__ == "__main__":
     unittest.main()

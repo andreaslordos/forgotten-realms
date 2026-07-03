@@ -14,6 +14,7 @@ Afflictions (DEAF, BLIND, DUMB, CRIPPLE) last 60 seconds by default.
 import logging
 import os
 import random
+import time
 from collections import defaultdict
 from datetime import datetime
 from enum import Enum
@@ -25,6 +26,7 @@ from commands.registry import command_registry
 from commands.natural_language_parser import vocabulary_manager
 from services.affliction_service import (
     apply_affliction,
+    apply_affliction_to_mob,
     cure_all_afflictions,
     find_player_by_name,
     find_player_sid,
@@ -91,7 +93,43 @@ def get_level_index(level_name: str) -> int:
         return 0
 
 
+# Casting economics: combat spells cost stamina (charged on the attempt)
+# and carry per-spell cooldowns. Spells absent from these tables are free.
+SPELL_STAMINA_COSTS: Dict[str, int] = {
+    "bolt": 4,
+    "blind": 6,
+    "cripple": 6,
+    "dumb": 6,
+    "deafen": 6,
+    "sleep": 8,
+}
+
+SPELL_COOLDOWN_SECONDS: Dict[str, float] = {
+    "bolt": 6.0,
+    "blind": 15.0,
+    "cripple": 15.0,
+    "dumb": 15.0,
+    "deafen": 15.0,
+    "sleep": 30.0,
+}
+
+
 SPELL_DEFINITIONS: Dict[str, SpellDefinition] = {
+    "bolt": {
+        "name": "Bolt",
+        "base_chance": 12,
+        "min_level": 2,  # Acolyte
+        "spell_type": SpellType.OFFENSIVE,
+        "affliction_type": None,
+        "duration_seconds": 0,
+        "archmage_only": False,
+        "backfire_on_failure": True,
+        "backfire_affects_self": True,
+        "resistable": True,
+        "requires_target": True,
+        "help_text": "Hurl raw force at a target. Cannot be dodged, only "
+        "resisted by magic - strong against the quick, weak against the arcane.",
+    },
     "summon": {
         "name": "Summon",
         "base_chance": 4,
@@ -404,6 +442,47 @@ def check_min_level(player: Any, spell_def: SpellDefinition) -> bool:
 
 
 # ===== HELPER FUNCTIONS =====
+
+
+def pay_casting_costs(
+    spell_name: str,
+    player: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+) -> Optional[str]:
+    """
+    Enforce casting economics: cooldown gate, stamina cost (charged on the
+    attempt, success or fail) and the mid-combat swing trade (casting consumes
+    the caster's next combat attack).
+
+    Returns an error message if the cast cannot proceed, else None.
+    """
+    caster_sid = find_player_sid(player, online_sessions)
+    session = online_sessions.get(caster_sid, {}) if caster_sid else {}
+
+    cooldowns: Dict[str, float] = session.setdefault("spell_cooldowns", {})
+    now = time.time()
+    ready_at = cooldowns.get(spell_name, 0.0)
+    if now < ready_at:
+        return (
+            f"The {spell_name} spell is still settling in your mind "
+            f"({int(ready_at - now) + 1}s)."
+        )
+
+    cost = SPELL_STAMINA_COSTS.get(spell_name, 0)
+    if cost and player.stamina <= cost:
+        return f"You are too exhausted to cast {spell_name}."
+    if cost:
+        player.stamina -= cost
+
+    cooldown = SPELL_COOLDOWN_SECONDS.get(spell_name)
+    if cooldown:
+        cooldowns[spell_name] = now + cooldown
+
+    from commands.combat import is_in_combat, note_combat_cast
+
+    if is_in_combat(player.name):
+        note_combat_cast(player.name)
+    return None
 
 
 def find_target_player_or_mob(
@@ -897,19 +976,26 @@ async def handle_sleep_spell(
     if not target_name:
         return "Put whom to sleep?"
 
-    # Find target
-    target, target_sid = find_player_by_name(target_name, online_sessions)
+    # Find target (players anywhere, mobs in the caster's room)
+    target, target_sid, is_mob = find_target_player_or_mob(
+        target_name, player, game_state, online_sessions, utils
+    )
     if not target:
         return f"There is no one called '{target_name}' here."
 
-    # Check if target is in combat
+    # Players in combat are too alert; sleeping a combat MOB is the point —
+    # it grants one guaranteed hit or a chance to flee.
     from commands.combat import is_in_combat
 
-    if is_in_combat(target.name):
+    if not is_mob and is_in_combat(target.name):
         return f"{target.name} is too alert in combat to be put to sleep!"
 
     # Find caster's session
     caster_sid = find_player_sid(player, online_sessions)
+
+    cost_error = pay_casting_costs("sleep", player, online_sessions)
+    if cost_error:
+        return cost_error
 
     # Archmages always succeed
     if player.level == "Archmage":
@@ -930,7 +1016,7 @@ async def handle_sleep_spell(
         return "Your sleep spell fizzles and fails."
 
     # Check resistance
-    if spell_def["resistable"] and roll_resistance(target.magic):
+    if spell_def["resistable"] and roll_resistance(getattr(target, "magic", 0)):
         if target_sid:
             await utils.send_message(
                 sio, target_sid, f"You resist {player.name}'s sleep spell!"
@@ -938,7 +1024,11 @@ async def handle_sleep_spell(
         return f"{target.name} resists your sleep spell!"
 
     # Success! Apply magic sleep
-    if target_sid:
+    if is_mob:
+        apply_affliction_to_mob(
+            target, "magic_sleep", get_magic_sleep_duration(), player.name
+        )
+    elif target_sid:
         target_session = online_sessions.get(target_sid, {})
         apply_affliction(
             target_session, "magic_sleep", get_magic_sleep_duration(), player.name
@@ -956,6 +1046,130 @@ async def handle_sleep_spell(
     )
 
     return f"You put {target.name} to sleep!"
+
+
+def _bolt_damage(caster_magic: int) -> int:
+    """Bolt damage scales with the magic stat: 8 + magic//5, ±20%."""
+    base = 8 + caster_magic // 5
+    return max(1, int(base * random.uniform(0.8, 1.2)))
+
+
+async def handle_bolt(
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
+    """
+    BOLT spell - hurl raw force at a player or mob.
+
+    Cannot be dodged (no dexterity roll) but is resisted by the target's
+    magic stat: strong against quick foes, useless against arcane ones.
+    """
+    spell_def = SPELL_DEFINITIONS["bolt"]
+
+    if not check_min_level(player, spell_def):
+        min_level_name = LEVEL_NAMES[spell_def["min_level"]]
+        return f"You must be at least a {min_level_name} to cast {spell_def['name']}."
+
+    target_name = cmd.get("subject")
+    if not target_name:
+        return "Bolt whom?"
+
+    target, target_sid, is_mob = find_target_player_or_mob(
+        target_name, player, game_state, online_sessions, utils
+    )
+    if not target:
+        return f"There is no one called '{target_name}' here."
+    if target is player:
+        return "Turning your own force against yourself seems unwise."
+
+    cost_error = pay_casting_costs("bolt", player, online_sessions)
+    if cost_error:
+        return cost_error
+
+    break_invisibility(player, online_sessions, reason="casting bolt")
+
+    if player.level == "Archmage":
+        success = True
+    else:
+        success = roll_spell_success(player.magic, spell_def["base_chance"])
+
+    if not success:
+        if should_backfire(player.magic, spell_def):
+            backlash = max(1, _bolt_damage(player.magic) // 2)
+            player.stamina = max(1, player.stamina - backlash)
+            return (
+                "Your bolt collapses in on itself! The backlash sears you "
+                f"for {backlash} damage."
+            )
+        return "Your bolt fizzles into harmless sparks."
+
+    if spell_def["resistable"] and roll_resistance(getattr(target, "magic", 0)):
+        if target_sid:
+            await utils.send_message(
+                sio, target_sid, f"You shrug off {player.name}'s bolt of force!"
+            )
+        return f"{target.name} shrugs off your bolt - their will is too strong!"
+
+    damage = _bolt_damage(player.magic)
+
+    from commands.combat import (
+        _wake_if_sleeping,
+        ensure_combat_with_mob,
+        handle_mob_defeat,
+        handle_player_defeat,
+        is_in_combat,
+    )
+
+    if is_mob:
+        is_dead, _remaining = target.take_damage(damage)
+        await _wake_if_sleeping(target, online_sessions, sio, utils)
+        if is_dead:
+            mob_manager = getattr(utils, "mob_manager", None)
+            caster_sid = find_player_sid(player, online_sessions)
+            await handle_mob_defeat(
+                player,
+                target,
+                caster_sid,
+                game_state,
+                player_manager,
+                online_sessions,
+                mob_manager,
+                sio,
+                utils,
+            )
+            return f"Your bolt slams into {target.name} for {damage} - slaying it!"
+        if not is_in_combat(player.name):
+            caster_sid = find_player_sid(player, online_sessions)
+            ensure_combat_with_mob(player, target, caster_sid)
+        return f"Your bolt slams into {target.name} for {damage} damage!"
+
+    # Player target
+    target.stamina = max(0, target.stamina - damage)
+    await _wake_if_sleeping(target, online_sessions, sio, utils)
+    if target_sid:
+        await utils.send_message(
+            sio,
+            target_sid,
+            f"{player.name}'s bolt of force slams into you for {damage} damage!",
+        )
+        await utils.send_stats_update(sio, target_sid, target)
+    if target.stamina <= 0 and target_sid:
+        await handle_player_defeat(
+            player,
+            target,
+            target_sid,
+            game_state,
+            player_manager,
+            online_sessions,
+            sio,
+            utils,
+        )
+    return f"Your bolt slams into {target.name} for {damage} damage!"
 
 
 async def handle_wish(
@@ -1045,13 +1259,19 @@ async def handle_affliction_spell(
     if not target_name:
         return f"{spell_def['name']} whom?"
 
-    # Find target
-    target, target_sid = find_player_by_name(target_name, online_sessions)
+    # Find target (players anywhere, mobs in the caster's room)
+    target, target_sid, is_mob = find_target_player_or_mob(
+        target_name, player, game_state, online_sessions, utils
+    )
     if not target:
         return f"There is no one called '{target_name}' here."
 
     # Find caster's session
     caster_sid = find_player_sid(player, online_sessions)
+
+    cost_error = pay_casting_costs(spell_name, player, online_sessions)
+    if cost_error:
+        return cost_error
 
     # Archmages always succeed
     if player.level == "Archmage":
@@ -1077,7 +1297,7 @@ async def handle_affliction_spell(
         return f"Your {spell_name} spell fizzles and fails."
 
     # Check resistance
-    if spell_def["resistable"] and roll_resistance(target.magic):
+    if spell_def["resistable"] and roll_resistance(getattr(target, "magic", 0)):
         if target_sid:
             await utils.send_message(
                 sio, target_sid, f"You resist {player.name}'s {spell_name} spell!"
@@ -1090,6 +1310,19 @@ async def handle_affliction_spell(
         break_invisibility(player, online_sessions, reason=f"casting {spell_name}")
 
     # Success! Apply affliction
+    if is_mob:
+        apply_affliction_to_mob(target, affliction_type, 60, player.name)
+        mob_effect_messages = {
+            "blind": f"{target.name.capitalize()}'s eyes film over with darkness!",
+            "cripple": f"{target.name.capitalize()}'s limbs twist and seize!",
+            "deaf": f"{target.name.capitalize()} shakes its head, suddenly deaf.",
+            "dumb": f"{target.name.capitalize()}'s voice dies to silence.",
+        }
+        effect_msg = mob_effect_messages.get(
+            affliction_type, f"{target.name.capitalize()} is {affliction_type}ed!"
+        )
+        return f"You {spell_name} {target.name}!\n{effect_msg}"
+
     if target_sid:
         target_session = online_sessions.get(target_sid, {})
         apply_affliction(target_session, affliction_type, 60, player.name)
@@ -1576,6 +1809,9 @@ def register_spell_commands() -> None:
     command_registry.register("dumb", handle_dumb, "Make target unable to speak.")
     command_registry.register("cripple", handle_cripple, "Make target unable to move.")
     command_registry.register(
+        "bolt", handle_bolt, "Hurl raw force at a target (resisted by magic)."
+    )
+    command_registry.register(
         "cure", handle_cure, "Remove all afflictions from target."
     )
     command_registry.register(
@@ -1596,6 +1832,7 @@ def register_spell_commands() -> None:
         "blind",
         "dumb",
         "cripple",
+        "bolt",
         "cure",
         "fod",
         "spells",

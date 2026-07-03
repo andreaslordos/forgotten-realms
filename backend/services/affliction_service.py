@@ -1,10 +1,11 @@
 # backend/services/affliction_service.py
 
 """
-Service for managing player afflictions (DEAF, BLIND, DUMB, CRIPPLE, MAGIC_SLEEP).
+Service for managing afflictions (DEAF, BLIND, DUMB, CRIPPLE, MAGIC_SLEEP).
 
-Afflictions are stored in online_sessions[sid]["afflictions"] as a dict mapping
-affliction type to its data (applied_at, expires_at, caster).
+Players store afflictions in online_sessions[sid]["afflictions"]; mobs store
+them directly on Mobile.afflictions. Both use the same record shape
+(applied_at, expires_at, caster) via the shared _apply/_is_active primitives.
 """
 
 import logging
@@ -38,6 +39,35 @@ def set_context(
     logger.info("Affliction service context set successfully")
 
 
+def _apply_to_store(
+    store: Dict[str, Dict[str, Any]],
+    affliction_type: str,
+    duration_seconds: int,
+    caster_name: str,
+) -> bool:
+    """Write an affliction record into a store (session sub-dict or mob dict)."""
+    current_time = time.time()
+    store[affliction_type] = {
+        "applied_at": current_time,
+        "expires_at": current_time + duration_seconds,
+        "caster": caster_name,
+    }
+    logger.debug(
+        f"Applied {affliction_type} affliction for {duration_seconds}s by {caster_name}"
+    )
+    return True
+
+
+def _store_has_affliction(
+    store: Dict[str, Dict[str, Any]], affliction_type: str
+) -> bool:
+    """Check a store for an unexpired affliction."""
+    if affliction_type not in store:
+        return False
+    expires_at: float = store[affliction_type]["expires_at"]
+    return time.time() < expires_at
+
+
 def apply_affliction(
     session: Dict[str, Any],
     affliction_type: str,
@@ -56,19 +86,8 @@ def apply_affliction(
     Returns:
         True if affliction was applied successfully
     """
-    if "afflictions" not in session:
-        session["afflictions"] = {}
-
-    current_time = time.time()
-    session["afflictions"][affliction_type] = {
-        "applied_at": current_time,
-        "expires_at": current_time + duration_seconds,
-        "caster": caster_name,
-    }
-    logger.debug(
-        f"Applied {affliction_type} affliction for {duration_seconds}s by {caster_name}"
-    )
-    return True
+    store = session.setdefault("afflictions", {})
+    return _apply_to_store(store, affliction_type, duration_seconds, caster_name)
 
 
 def has_affliction(session: Dict[str, Any], affliction_type: str) -> bool:
@@ -82,13 +101,38 @@ def has_affliction(session: Dict[str, Any], affliction_type: str) -> bool:
     Returns:
         True if player has the active affliction
     """
-    afflictions = session.get("afflictions", {})
-    if affliction_type not in afflictions:
-        return False
+    return _store_has_affliction(session.get("afflictions", {}), affliction_type)
 
-    affliction = afflictions[affliction_type]
-    expires_at: float = affliction["expires_at"]
-    return time.time() < expires_at
+
+def apply_affliction_to_mob(
+    mob: Any,
+    affliction_type: str,
+    duration_seconds: int,
+    caster_name: str,
+) -> bool:
+    """Apply an affliction to a mob (stored on Mobile.afflictions)."""
+    if not isinstance(getattr(mob, "afflictions", None), dict):
+        mob.afflictions = {}
+    return _apply_to_store(
+        mob.afflictions, affliction_type, duration_seconds, caster_name
+    )
+
+
+def mob_has_affliction(mob: Any, affliction_type: str) -> bool:
+    """Check if a mob has a specific unexpired affliction."""
+    store = getattr(mob, "afflictions", None)
+    if not isinstance(store, dict):
+        return False
+    return _store_has_affliction(store, affliction_type)
+
+
+def remove_mob_affliction(mob: Any, affliction_type: str) -> bool:
+    """Remove a specific affliction from a mob."""
+    store = getattr(mob, "afflictions", None)
+    if isinstance(store, dict) and affliction_type in store:
+        del store[affliction_type]
+        return True
+    return False
 
 
 def get_active_afflictions(session: Dict[str, Any]) -> Set[str]:
@@ -174,17 +218,30 @@ async def process_affliction_expiry(
     sio: Any,
     online_sessions: Dict[str, Dict[str, Any]],
     utils: Any,
+    mob_manager: Any = None,
 ) -> None:
     """
-    Process affliction expiration for all players.
+    Process affliction expiration for all players and (optionally) mobs.
     Called by tick service each tick.
 
     Args:
         sio: Socket.IO server instance
         online_sessions: The global online sessions dict
         utils: Utilities module with send_message
+        mob_manager: Optional MobManager whose mobs' afflictions also expire
     """
     current_time = time.time()
+
+    if mob_manager is not None:
+        for mob in list(getattr(mob_manager, "mobs", {}).values()):
+            store = getattr(mob, "afflictions", None)
+            if not isinstance(store, dict) or not store:
+                continue
+            for aff_type in [
+                t for t, data in store.items() if current_time >= data["expires_at"]
+            ]:
+                del store[aff_type]
+                logger.debug(f"Affliction {aff_type} expired for mob {mob.name}")
 
     for sid, session in online_sessions.items():
         player = session.get("player")

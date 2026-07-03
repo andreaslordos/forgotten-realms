@@ -512,6 +512,171 @@ async def handle_flee(
 
 
 # ===== COMBAT TICK PROCESSING =====
+def _has_combat_affliction(
+    entity: Any, online_sessions: Dict[str, Dict[str, Any]], affliction_type: str
+) -> bool:
+    """Check an affliction on either a mob or a player (via their session)."""
+    from models.Mobile import Mobile
+    from services.affliction_service import has_affliction, mob_has_affliction
+
+    if isinstance(entity, Mobile):
+        return mob_has_affliction(entity, affliction_type)
+    sid = find_player_sid(entity, online_sessions)
+    if sid is None:
+        return False
+    return has_affliction(online_sessions.get(sid, {}), affliction_type)
+
+
+def _adjusted_hit_chance(
+    hit_chance: int,
+    attacker: Any,
+    defender: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+) -> int:
+    """Apply affliction modifiers: blind attackers fumble, sleepers can't dodge."""
+    if _has_combat_affliction(attacker, online_sessions, "blind"):
+        hit_chance = max(5, hit_chance - 25)
+    if _has_combat_affliction(defender, online_sessions, "magic_sleep"):
+        hit_chance = 100
+    return hit_chance
+
+
+async def _wake_if_sleeping(
+    defender: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> None:
+    """Damage breaks magical sleep."""
+    from models.Mobile import Mobile
+    from services.affliction_service import (
+        mob_has_affliction,
+        remove_affliction,
+        remove_mob_affliction,
+    )
+
+    if isinstance(defender, Mobile):
+        if mob_has_affliction(defender, "magic_sleep"):
+            remove_mob_affliction(defender, "magic_sleep")
+        return
+    sid = find_player_sid(defender, online_sessions)
+    if sid is None:
+        return
+    session = online_sessions.get(sid, {})
+    if remove_affliction(session, "magic_sleep"):
+        session["sleeping"] = False
+        await utils.send_message(sio, sid, "Pain jolts you awake!")
+
+
+async def _maybe_fire_mob_ability(
+    mob: Any,
+    defender: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> bool:
+    """
+    Roll the mob's spell-like abilities. Returns True if one fired (which
+    replaces the mob's physical attack this tick). Player magic resists.
+    """
+    abilities = getattr(mob, "abilities", None)
+    if not abilities:
+        return False
+
+    # Cooldowns count down once per combat tick.
+    for spell, ticks in list(mob.ability_cooldowns.items()):
+        if ticks > 0:
+            mob.ability_cooldowns[spell] = ticks - 1
+
+    defender_sid = find_player_sid(defender, online_sessions)
+    if defender_sid is None:
+        return False
+
+    from services.affliction_service import apply_affliction, has_affliction
+
+    for ability in abilities:
+        spell = ability.get("spell")
+        if not spell:
+            continue
+        if mob.ability_cooldowns.get(spell, 0) > 0:
+            continue
+        if random.random() >= ability.get("chance", 0.0):
+            continue
+
+        mob.ability_cooldowns[spell] = int(ability.get("cooldown_ticks", 4))
+        message = ability.get(
+            "message", f"{mob.name.capitalize()} weaves a malignant hex!"
+        )
+
+        session = online_sessions.get(defender_sid, {})
+        if has_affliction(session, spell):
+            return False  # already afflicted; the hex fizzles into the old one
+
+        # The defender's magic stat resists (magic 40 -> 40% resist).
+        if random.randint(1, 100) <= getattr(defender, "magic", 0):
+            await utils.send_message(
+                sio,
+                defender_sid,
+                f"{message}\nYour will hardens - the hex breaks against you!",
+            )
+            return True
+
+        apply_affliction(
+            session, spell, int(ability.get("duration_seconds", 15)), mob.name
+        )
+        effect_lines = {
+            "blind": "The world goes dark before your eyes!",
+            "cripple": "Your limbs seize and twist!",
+            "dumb": "Your voice dies in your throat!",
+            "deaf": "Sound drains out of the world!",
+        }
+        await utils.send_message(
+            sio,
+            defender_sid,
+            f"{message}\n{effect_lines.get(spell, 'Foul magic grips you!')}",
+        )
+        return True
+    return False
+
+
+def ensure_combat_with_mob(player: Any, mob: Any, player_sid: Optional[str]) -> None:
+    """
+    Engage combat tracking with a mob without an immediate swing (used when a
+    spell strikes an unengaged mob). The mob gets initiative — you provoked it.
+    """
+    if player.name in active_combats or mob.id in active_combats:
+        return
+    active_combats[player.name] = {
+        "target": mob,
+        "target_sid": None,
+        "weapon": None,
+        "initiative": False,
+        "last_turn": None,
+        "is_mob": False,
+        "entity": player,
+    }
+    active_combats[mob.id] = {
+        "target": player,
+        "target_sid": player_sid,
+        "weapon": None,
+        "initiative": True,
+        "last_turn": None,
+        "is_mob": True,
+        "entity": mob,
+    }
+    mob.target_player = player
+
+
+def note_combat_cast(player_name: str) -> None:
+    """
+    Mark that a player cast a spell mid-combat: casting consumes their next
+    swing — the core swing-vs-cast trade-off.
+    """
+    entry = active_combats.get(player_name)
+    if entry is not None:
+        entry["skip_next_attack"] = True
+
+
 async def process_combat_tick(
     sio: Any,
     online_sessions: Dict[str, Dict[str, Any]],
@@ -683,7 +848,36 @@ async def process_combat_tick(
             attacker_entry_ref.get("weapon") if attacker_entry_ref else None
         )
 
-        if attacker_is_mob or defender_is_mob:
+        # Affliction/casting gates: the attacker may lose this swing.
+        skip_attack = False
+        if attacker_entry_ref and attacker_entry_ref.pop("skip_next_attack", False):
+            skip_attack = True
+            if attacker_sid:
+                await utils.send_message(
+                    sio, attacker_sid, "You are still recovering from your casting."
+                )
+        elif _has_combat_affliction(attacker, online_sessions, "magic_sleep"):
+            skip_attack = True  # sleepers cannot act
+        elif (
+            _has_combat_affliction(attacker, online_sessions, "cripple")
+            and random.random() < 0.5
+        ):
+            skip_attack = True
+            attacker_name = getattr(attacker, "name", "Your opponent")
+            if attacker_sid:
+                await utils.send_message(
+                    sio, attacker_sid, "Your crippled limbs buckle - the blow goes wide!"
+                )
+            if defender_sid:
+                await utils.send_message(
+                    sio,
+                    defender_sid,
+                    f"{attacker_name.capitalize()} stumbles on crippled limbs!",
+                )
+
+        if skip_attack:
+            pass
+        elif attacker_is_mob or defender_is_mob:
             if mob_manager:
                 logger.info(
                     "Processing mob combat: %s vs %s",
@@ -793,6 +987,7 @@ async def process_combat_attack(
     )
 
     hit_chance = min(90, 50 + (attacker_dex - defender_dex) // 2)
+    hit_chance = _adjusted_hit_chance(hit_chance, attacker, defender, online_sessions)
 
     # Determine if the attack hits
     roll = random.randint(1, 100)
@@ -800,6 +995,7 @@ async def process_combat_attack(
     if roll <= hit_chance:
         # Attack hits - apply damage to defender
         defender.stamina = max(0, defender.stamina - damage)
+        await _wake_if_sleeping(defender, online_sessions, sio, utils)
 
         # Send messages about the hit
         if damage > base_damage:  # Critical hit (high roll)
@@ -1445,6 +1641,13 @@ async def process_mob_combat_attack(
     attacker_is_mob = isinstance(attacker, Mobile)
     defender_is_mob = isinstance(defender, Mobile)
 
+    # Spell-like mob abilities replace the physical attack when they fire.
+    if attacker_is_mob and not defender_is_mob:
+        if await _maybe_fire_mob_ability(
+            attacker, defender, online_sessions, sio, utils
+        ):
+            return
+
     # Verify weapon is in inventory (for player attackers)
     if not attacker_is_mob and weapon:
         weapon_in_inventory = weapon in attacker.inventory
@@ -1483,6 +1686,7 @@ async def process_mob_combat_attack(
         )
 
     hit_chance = min(90, 50 + (attacker_dex - defender_dex) // 2)
+    hit_chance = _adjusted_hit_chance(hit_chance, attacker, defender, online_sessions)
 
     # Determine if attack hits
     roll = random.randint(1, 100)
@@ -1494,6 +1698,7 @@ async def process_mob_combat_attack(
         else:
             defender.stamina = max(0, defender.stamina - damage)
             is_dead = defender.stamina <= 0
+        await _wake_if_sleeping(defender, online_sessions, sio, utils)
 
         # Send hit messages
         if attacker_is_mob:
