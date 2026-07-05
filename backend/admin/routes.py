@@ -8,6 +8,11 @@ from typing import Any, Callable, Dict, List, Optional
 
 from aiohttp import web
 
+from globals import SPAWN_ROOM
+from managers.mob_definitions import get_mob_definitions
+from models.Levels import levels
+from models.Mobile import Mobile
+
 ADMIN_USERNAME = "stupidgem"
 
 
@@ -63,6 +68,75 @@ def _error_response(error: str, message: str, status: int) -> web.Response:
     return _json_response({"error": error, "message": message}, status=status)
 
 
+# Mobile constructor parameters a definition may override. Anything absent
+# falls back to the defaults declared on Mobile.__init__ itself, so the
+# stat defaults live in exactly one place (models/Mobile.py).
+_MOB_DEFINITION_STAT_FIELDS = (
+    "strength",
+    "dexterity",
+    "max_stamina",
+    "damage",
+    "aggressive",
+    "aggro_delay_min",
+    "aggro_delay_max",
+    "patrol_rooms",
+    "movement_interval",
+    "point_value",
+    "pronouns",
+    "instant_death",
+)
+
+
+def _serialize_mob_definition(
+    definition_id: str, definition: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Serialize a mob template, applying the Mobile model defaults.
+
+    A throwaway Mobile is instantiated from the definition the same way
+    MobManager.spawn_mob does, so unspecified stats pick up the defaults
+    from Mobile.__init__ instead of a duplicated table here.
+    """
+    overrides = {
+        field: definition[field]
+        for field in _MOB_DEFINITION_STAT_FIELDS
+        if field in definition
+    }
+    mob = Mobile(
+        name=str(definition.get("name") or definition_id),
+        id=definition_id,
+        description=str(definition.get("description") or ""),
+        **overrides,
+    )
+    loot_table: List[Dict[str, Any]] = []
+    for entry in definition.get("loot_table") or []:
+        if not isinstance(entry, dict):
+            continue
+        item = entry.get("item")
+        if item is None or not hasattr(item, "to_dict"):
+            continue
+        loot_table.append(
+            {"item": item.to_dict(), "chance": float(entry.get("chance", 0.0))}
+        )
+    return {
+        "id": definition_id,
+        "name": mob.name,
+        "description": mob.description,
+        "strength": int(mob.strength),
+        "dexterity": int(mob.dexterity),
+        "max_stamina": int(mob.max_stamina),
+        "damage": int(mob.damage),
+        "aggressive": bool(mob.aggressive),
+        "aggro_delay_min": int(mob.aggro_delay_min),
+        "aggro_delay_max": int(mob.aggro_delay_max),
+        "movement_interval": int(mob.movement_interval),
+        "patrol_rooms": [str(room_id) for room_id in mob.patrol_rooms],
+        "point_value": int(mob.point_value),
+        "pronouns": str(mob.pronouns),
+        "instant_death": bool(mob.instant_death),
+        "loot_table": loot_table,
+    }
+
+
 class AdminRouteController:
     """Request handlers for admin world-builder APIs."""
 
@@ -113,17 +187,18 @@ class AdminRouteController:
         except json.JSONDecodeError:
             return _error_response("invalid_json", "Request body must be JSON.", 400)
         if not isinstance(payload, dict):
-            return _error_response("invalid_json", "Request body must be a JSON object.", 400)
+            return _error_response(
+                "invalid_json", "Request body must be a JSON object.", 400
+            )
         return payload
-
-    def _spawn_room(self) -> Optional[str]:
-        return getattr(self.game_state, "spawn_room", None) or "square"
 
     async def options(self, request: Any) -> web.Response:
         return _json_response({}, status=204)
 
     async def session(self, request: Any) -> web.Response:
-        admin_session = _find_admin_session(self.online_sessions, _extract_token(request))
+        admin_session = _find_admin_session(
+            self.online_sessions, _extract_token(request)
+        )
         if not admin_session:
             return _json_response({"admin": False})
         player = admin_session.get("player")
@@ -147,6 +222,24 @@ class AdminRouteController:
                     payload["draft"] = draft
                     break
         return _json_response(payload)
+
+    async def list_mob_definitions(self, request: Any) -> web.Response:
+        unauthorized = self._require_admin(request)
+        if unauthorized is not None:
+            return unauthorized
+
+        definitions = get_mob_definitions()
+        return _json_response(
+            {
+                "mob_definitions": [
+                    _serialize_mob_definition(definition_id, definition)
+                    for definition_id, definition in definitions.items()
+                ],
+                # Level names feed the weapon min-level dropdown; they live in
+                # the same reference payload to avoid a second round trip.
+                "levels": [stats["name"] for stats in levels.values()],
+            }
+        )
 
     async def save_world(self, request: Any) -> web.Response:
         unauthorized = self._require_admin(request)
@@ -196,7 +289,9 @@ class AdminRouteController:
             )
 
         save_result = self.world_builder.save(world_data)
-        apply_validation = self._validation_to_dict(self.world_builder.apply(world_data))
+        apply_validation = self._validation_to_dict(
+            self.world_builder.apply(world_data)
+        )
         if not apply_validation.get("ok", False):
             return _json_response(
                 {"error": "validation_failed", "validation": apply_validation},
@@ -307,7 +402,9 @@ class AdminRouteController:
             return _error_response("invalid_draft", str(error), 400)
         if isinstance(loaded, dict) and "world" in loaded:
             return _json_response(loaded)
-        return _json_response({"world": loaded, "draft": self._draft_summary(effective_draft_id)})
+        return _json_response(
+            {"world": loaded, "draft": self._draft_summary(effective_draft_id)}
+        )
 
     async def save_world_draft(
         self, request: Any, draft_id: Optional[str] = None
@@ -520,16 +617,16 @@ class AdminRouteController:
 
     def _validation_to_dict(self, validation: Any) -> Dict[str, Any]:
         if hasattr(validation, "to_dict"):
-            return validation.to_dict()
-        return validation
+            validation = validation.to_dict()
+        return dict(validation)
 
     def _publish_to_dict(self, publish_result: Any) -> Dict[str, Any]:
         if hasattr(publish_result, "to_dict"):
-            data = publish_result.to_dict()
+            data: Dict[str, Any] = dict(publish_result.to_dict())
             data.setdefault("committed", bool(data.get("ok")))
             data.setdefault("pushed", bool(data.get("ok")))
             return data
-        return publish_result
+        return dict(publish_result)
 
     def _publish_ok(self, publish_payload: Dict[str, Any]) -> bool:
         if "ok" in publish_payload:
@@ -558,7 +655,7 @@ class AdminRouteController:
 
     def _draft_summary(self, draft_id: str) -> Dict[str, Any]:
         for draft in self.world_builder.list_drafts().get("drafts", []):
-            if draft.get("id") == draft_id:
+            if isinstance(draft, dict) and draft.get("id") == draft_id:
                 return draft
         return {"id": draft_id}
 
@@ -583,7 +680,7 @@ def register_admin_routes(
             mob_manager=mob_manager,
             data_path=backend_dir / "storage" / "world_builder" / "draft_world.json",
             repo_path=repo_dir,
-            spawn_room_id="square",
+            spawn_room_id=SPAWN_ROOM,
         )
 
     controller = AdminRouteController(
@@ -595,13 +692,16 @@ def register_admin_routes(
         publish_checks=publish_checks,
     )
 
-    routes = {
+    routes: Dict[str, Dict[str, Any]] = {
         "/admin/api/session": {
             "GET": controller.session,
         },
         "/admin/api/world": {
             "GET": controller.get_world,
             "POST": controller.save_world,
+        },
+        "/admin/api/world/mob-definitions": {
+            "GET": controller.list_mob_definitions,
         },
         "/admin/api/world/validate": {
             "POST": controller.validate_world,

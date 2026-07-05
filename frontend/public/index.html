@@ -11,6 +11,17 @@
       gtag('config', 'G-S2B7EW9KCL');
     </script>
     <meta charset="utf-8" />
+    <script>
+      // "ResizeObserver loop" errors are benign browser noise (React Flow
+      // observes many nodes at once) but the dev-server overlay treats any
+      // window error as fatal. This listener registers before the bundle's,
+      // so it can swallow just that message. No effect on real errors.
+      window.addEventListener('error', function (event) {
+        if (event.message && event.message.indexOf('ResizeObserver loop') === 0) {
+          event.stopImmediatePropagation();
+        }
+      });
+    </script>
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />

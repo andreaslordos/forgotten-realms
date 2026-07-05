@@ -3,7 +3,12 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-from admin.routes import AdminRouteController, create_admin_token, is_admin_session
+from admin.routes import (
+    AdminRouteController,
+    _serialize_mob_definition,
+    create_admin_token,
+    is_admin_session,
+)
 
 
 class FakeRequest:
@@ -72,7 +77,9 @@ class FakeWorldBuilder:
             "world": self.draft_worlds[draft_id],
             "saved": {
                 "path": f"storage/world_builder/drafts/{draft_id}.json",
-                "draft": next(draft for draft in self.drafts if draft["id"] == draft_id),
+                "draft": next(
+                    draft for draft in self.drafts if draft["id"] == draft_id
+                ),
                 "manifest": self.list_drafts(),
             },
         }
@@ -84,7 +91,9 @@ class FakeWorldBuilder:
     def list_drafts(self):
         return {"active_draft_id": self.active_draft_id, "drafts": self.drafts}
 
-    def create_draft(self, *, name, source="active", source_draft_id=None, description=""):
+    def create_draft(
+        self, *, name, source="active", source_draft_id=None, description=""
+    ):
         draft_id = name.lower().replace(" ", "-")
         draft = {
             "id": draft_id,
@@ -97,7 +106,11 @@ class FakeWorldBuilder:
         }
         self.drafts.append(draft)
         self.draft_worlds[draft_id] = dict(self.world_data)
-        return {"draft": draft, "world": self.draft_worlds[draft_id], "manifest": self.list_drafts()}
+        return {
+            "draft": draft,
+            "world": self.draft_worlds[draft_id],
+            "manifest": self.list_drafts(),
+        }
 
     def load_draft(self, draft_id):
         if draft_id not in self.draft_worlds:
@@ -151,9 +164,7 @@ class FakeWorldBuilder:
 class AdminRouteControllerTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.player = SimpleNamespace(name="Stupidgem")
-        self.sessions = {
-            "sid1": {"player": self.player, "admin_token": "token-123"}
-        }
+        self.sessions = {"sid1": {"player": self.player, "admin_token": "token-123"}}
         self.builder = FakeWorldBuilder()
         self.controller = AdminRouteController(
             game_state=SimpleNamespace(rooms={}),
@@ -339,7 +350,176 @@ class AdminRouteControllerTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.builder.reset_called)
         self.assertEqual(body["world"]["rooms"][0]["id"], "draft-baseline")
         self.assertEqual(body["draft"]["id"], draft_id)
-        self.assertEqual(self.builder.draft_worlds[draft_id]["rooms"][0]["id"], "draft-baseline")
+        self.assertEqual(
+            self.builder.draft_worlds[draft_id]["rooms"][0]["id"], "draft-baseline"
+        )
+
+    async def test_mob_definitions_rejects_missing_admin_token(self):
+        response = await self.controller.list_mob_definitions(FakeRequest())
+
+        self.assertEqual(response.status, 401)
+        self.assertEqual(self.decode(response)["error"], "unauthorized")
+
+    async def test_mob_definitions_returns_serialized_definitions(self):
+        response = await self.controller.list_mob_definitions(self.request())
+
+        self.assertEqual(response.status, 200)
+        definitions = self.decode(response)["mob_definitions"]
+        self.assertGreater(len(definitions), 0)
+        expected_keys = {
+            "id",
+            "name",
+            "description",
+            "strength",
+            "dexterity",
+            "max_stamina",
+            "damage",
+            "aggressive",
+            "aggro_delay_min",
+            "aggro_delay_max",
+            "movement_interval",
+            "patrol_rooms",
+            "point_value",
+            "pronouns",
+            "instant_death",
+            "loot_table",
+        }
+        for definition in definitions:
+            self.assertEqual(expected_keys, set(definition))
+
+        by_id = {definition["id"]: definition for definition in definitions}
+        peasant = by_id["peasant"]
+        self.assertEqual(peasant["name"], "peasant")
+        self.assertFalse(peasant["aggressive"])
+        self.assertEqual(peasant["patrol_rooms"], ["square", "road", "shop"])
+        self.assertEqual(peasant["movement_interval"], 150)
+        self.assertEqual(peasant["loot_table"][0]["chance"], 0.3)
+        self.assertEqual(peasant["loot_table"][0]["item"]["id"], "coin")
+
+    async def test_mob_definitions_includes_level_names(self):
+        response = await self.controller.list_mob_definitions(self.request())
+
+        level_names = self.decode(response)["levels"]
+        self.assertIn("Neophyte", level_names)
+        self.assertGreater(len(level_names), 3)
+        self.assertTrue(all(isinstance(name, str) and name for name in level_names))
+
+    async def test_mob_definitions_serializes_weapon_loot_items(self):
+        response = await self.controller.list_mob_definitions(self.request())
+
+        guard = next(
+            definition
+            for definition in self.decode(response)["mob_definitions"]
+            if definition["id"] == "guard"
+        )
+        dagger = guard["loot_table"][0]["item"]
+        self.assertEqual(dagger["id"], "dagger")
+        self.assertEqual(dagger["item_type"], "weapon")
+        self.assertEqual(dagger["damage"], 4)
+
+    def test_serialize_mob_definition_applies_mobile_defaults(self):
+        serialized = _serialize_mob_definition(
+            "ghost", {"name": "ghost", "description": "Boo."}
+        )
+
+        self.assertEqual(serialized["id"], "ghost")
+        self.assertEqual(serialized["strength"], 20)
+        self.assertEqual(serialized["dexterity"], 20)
+        self.assertEqual(serialized["max_stamina"], 100)
+        self.assertEqual(serialized["damage"], 5)
+        self.assertFalse(serialized["aggressive"])
+        self.assertEqual(serialized["aggro_delay_min"], 0)
+        self.assertEqual(serialized["aggro_delay_max"], 0)
+        self.assertEqual(serialized["movement_interval"], 10)
+        self.assertEqual(serialized["patrol_rooms"], [])
+        self.assertEqual(serialized["point_value"], 0)
+        self.assertEqual(serialized["pronouns"], "it")
+        self.assertFalse(serialized["instant_death"])
+        self.assertEqual(serialized["loot_table"], [])
+
+    def test_serialize_mob_definition_skips_malformed_loot_entries(self):
+        serialized = _serialize_mob_definition(
+            "ghost",
+            {
+                "name": "ghost",
+                "description": "Boo.",
+                "loot_table": [
+                    "bad-entry",
+                    {"chance": 0.5},
+                    {"item": object(), "chance": 0.5},
+                ],
+            },
+        )
+
+        self.assertEqual(serialized["loot_table"], [])
+
+    def test_serialize_mob_definition_defaults_come_from_mobile_constructor(self):
+        """Stat defaults must be sourced from Mobile.__init__, not a copy."""
+        import inspect
+
+        from models.Mobile import Mobile
+
+        defaults = {
+            name: parameter.default
+            for name, parameter in inspect.signature(Mobile.__init__).parameters.items()
+            if parameter.default is not inspect.Parameter.empty
+        }
+
+        serialized = _serialize_mob_definition(
+            "ghost", {"name": "ghost", "description": "Boo."}
+        )
+
+        for field in (
+            "strength",
+            "dexterity",
+            "max_stamina",
+            "damage",
+            "aggressive",
+            "aggro_delay_min",
+            "aggro_delay_max",
+            "movement_interval",
+            "point_value",
+            "pronouns",
+            "instant_death",
+        ):
+            self.assertEqual(serialized[field], defaults[field], field)
+
+    def test_serialize_mob_definition_passes_through_definition_overrides(self):
+        serialized = _serialize_mob_definition(
+            "ogre",
+            {
+                "name": "Ogre",
+                "description": "Big and mean.",
+                "strength": 55,
+                "dexterity": 11,
+                "max_stamina": 250,
+                "damage": 17,
+                "aggressive": True,
+                "aggro_delay_min": 2,
+                "aggro_delay_max": 6,
+                "movement_interval": 40,
+                "patrol_rooms": ["cave", "bridge"],
+                "point_value": 120,
+                "pronouns": "he",
+                "instant_death": True,
+            },
+        )
+
+        self.assertEqual(serialized["id"], "ogre")
+        self.assertEqual(serialized["name"], "Ogre")
+        self.assertEqual(serialized["description"], "Big and mean.")
+        self.assertEqual(serialized["strength"], 55)
+        self.assertEqual(serialized["dexterity"], 11)
+        self.assertEqual(serialized["max_stamina"], 250)
+        self.assertEqual(serialized["damage"], 17)
+        self.assertTrue(serialized["aggressive"])
+        self.assertEqual(serialized["aggro_delay_min"], 2)
+        self.assertEqual(serialized["aggro_delay_max"], 6)
+        self.assertEqual(serialized["movement_interval"], 40)
+        self.assertEqual(serialized["patrol_rooms"], ["cave", "bridge"])
+        self.assertEqual(serialized["point_value"], 120)
+        self.assertEqual(serialized["pronouns"], "he")
+        self.assertTrue(serialized["instant_death"])
 
     async def test_draft_routes_apply_publish_delete_and_missing_draft(self):
         draft_id = self.builder.create_draft(name="Experiment")["draft"]["id"]
@@ -363,6 +543,146 @@ class AdminRouteControllerTest(unittest.IsolatedAsyncioTestCase):
         missing = await self.controller.get_world_draft(self.request(), draft_id)
         self.assertEqual(missing.status, 404)
         self.assertEqual(self.decode(missing)["error"], "draft_not_found")
+
+
+class AdminRouteAuthorizationTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.player = SimpleNamespace(name="Stupidgem")
+        self.sessions = {"sid1": {"player": self.player, "admin_token": "token-123"}}
+        self.controller = AdminRouteController(
+            game_state=SimpleNamespace(rooms={}),
+            mob_manager=SimpleNamespace(mobs={}),
+            online_sessions=self.sessions,
+            world_builder=FakeWorldBuilder(),
+            world_factory=Mock(return_value={}),
+        )
+
+    def decode(self, response):
+        return json.loads(response.text)
+
+    def all_handlers(self):
+        return [
+            self.controller.get_world,
+            self.controller.save_world,
+            self.controller.validate_world,
+            self.controller.apply_world,
+            self.controller.reset_world,
+            self.controller.publish_world,
+            self.controller.list_world_drafts,
+            self.controller.create_world_draft,
+            self.controller.get_world_draft,
+            self.controller.save_world_draft,
+            self.controller.update_world_draft,
+            self.controller.delete_world_draft,
+            self.controller.activate_world_draft,
+            self.controller.reset_world_draft,
+            self.controller.apply_world_draft,
+            self.controller.publish_world_draft,
+            self.controller.list_mob_definitions,
+        ]
+
+    async def test_every_admin_handler_rejects_missing_token(self):
+        for handler in self.all_handlers():
+            response = await handler(FakeRequest())
+
+            self.assertEqual(response.status, 401, handler.__name__)
+            self.assertEqual(self.decode(response)["error"], "unauthorized")
+
+    async def test_every_admin_handler_rejects_unknown_token(self):
+        for handler in self.all_handlers():
+            request = FakeRequest(headers={"Authorization": "Bearer wrong-token"})
+
+            response = await handler(request)
+
+            self.assertEqual(response.status, 401, handler.__name__)
+
+    async def test_world_body_handlers_reject_missing_world_object(self):
+        handlers = [
+            self.controller.validate_world,
+            self.controller.apply_world,
+            self.controller.publish_world,
+            self.controller.save_world_draft,
+            self.controller.apply_world_draft,
+            self.controller.publish_world_draft,
+        ]
+        for handler in handlers:
+            request = FakeRequest(
+                headers={"Authorization": "Bearer token-123"},
+                payload={"not_world": True},
+            )
+
+            response = await handler(request)
+
+            self.assertEqual(response.status, 400, handler.__name__)
+            self.assertEqual(self.decode(response)["error"], "invalid_world")
+
+    async def test_json_body_handlers_reject_invalid_json(self):
+        request = FakeRequest(headers={"Authorization": "Bearer token-123"})
+
+        response = await self.controller.create_world_draft(request)
+
+        self.assertEqual(response.status, 400)
+        self.assertEqual(self.decode(response)["error"], "invalid_json")
+
+    async def test_json_body_handlers_reject_non_object_payload(self):
+        request = FakeRequest(
+            headers={"Authorization": "Bearer token-123"},
+            payload=["not", "an", "object"],
+        )
+
+        response = await self.controller.update_world_draft(request, "main")
+
+        self.assertEqual(response.status, 400)
+        self.assertEqual(self.decode(response)["error"], "invalid_json")
+
+    async def test_options_returns_no_content_with_cors_headers(self):
+        response = await self.controller.options(FakeRequest())
+
+        self.assertEqual(response.status, 204)
+        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+
+
+class RegisterAdminRoutesTest(unittest.TestCase):
+    def test_register_admin_routes_registers_world_and_mob_definition_routes(self):
+        from aiohttp import web
+
+        from admin.routes import register_admin_routes
+
+        app = web.Application()
+        controller = register_admin_routes(
+            app,
+            game_state=SimpleNamespace(rooms={}),
+            mob_manager=SimpleNamespace(mobs={}),
+            online_sessions={},
+            world_factory=Mock(return_value={}),
+            world_builder=FakeWorldBuilder(),
+        )
+
+        registered = {
+            (route.method, route.resource.canonical) for route in app.router.routes()
+        }
+        self.assertIn(("GET", "/admin/api/world"), registered)
+        self.assertIn(("GET", "/admin/api/world/mob-definitions"), registered)
+        self.assertIn(("OPTIONS", "/admin/api/world/mob-definitions"), registered)
+        self.assertIn(("POST", "/admin/api/world/validate"), registered)
+        self.assertIsInstance(controller, AdminRouteController)
+
+    def test_register_admin_routes_defaults_world_builder_spawn_to_global(self):
+        from aiohttp import web
+        from globals import SPAWN_ROOM
+
+        from admin.routes import register_admin_routes
+
+        app = web.Application()
+        controller = register_admin_routes(
+            app,
+            game_state=SimpleNamespace(rooms={}),
+            mob_manager=SimpleNamespace(mobs={}),
+            online_sessions={},
+            world_factory=Mock(return_value={}),
+        )
+
+        self.assertEqual(controller.world_builder.spawn_room_id, SPAWN_ROOM)
 
 
 if __name__ == "__main__":

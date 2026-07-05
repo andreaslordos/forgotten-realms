@@ -534,6 +534,431 @@ class WorldBuilderValidationTests(unittest.TestCase):
         ]
         self.assertEqual(3, len(conflicts), result.to_dict())
 
+    def test_validate_world_data_accepts_rooms_referencing_declared_world_tags(self):
+        """Guard: tags declared in world.tags keep room tag refs valid."""
+        data = {
+            "version": 1,
+            "tags": [
+                {"id": "safe", "label": "Safe"},
+                {"id": "shop", "label": "Shop"},
+            ],
+            "rooms": [
+                {
+                    "id": "spawn",
+                    "name": "Spawn",
+                    "description": "Start.",
+                    "tags": ["safe", "shop"],
+                },
+                {
+                    "id": "market",
+                    "name": "Market",
+                    "description": "Stalls.",
+                    "tags": ["shop"],
+                },
+            ],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        self.assertTrue(result.ok, result.to_dict())
+        self.assertNotIn(
+            "invalid_room_tag_ref", {issue.code for issue in result.errors}
+        )
+
+    def test_validate_world_data_accepts_null_layout_coordinates(self):
+        """Null layout x/y mark rooms the editor has not placed yet."""
+        data = {
+            "version": 1,
+            "rooms": [
+                {
+                    "id": "spawn",
+                    "name": "Spawn",
+                    "description": "Start.",
+                    "layout": {"x": None, "y": None},
+                }
+            ],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        self.assertTrue(result.ok, result.to_dict())
+
+        game_state = GameState()
+        apply_result = apply_world_data(data, game_state)
+        self.assertTrue(apply_result.ok)
+        self.assertIn("spawn", game_state.rooms)
+
+    def test_validate_world_data_rejects_non_finite_layout_coordinates(self):
+        for bad_value in ("east", float("nan"), float("inf"), True):
+            data = {
+                "version": 1,
+                "rooms": [
+                    {
+                        "id": "spawn",
+                        "name": "Spawn",
+                        "description": "Start.",
+                        "layout": {"x": bad_value, "y": 5},
+                    }
+                ],
+                "mobs": [],
+            }
+
+            result = validate_world_data(data)
+
+            coordinate_errors = [
+                issue.to_dict()
+                for issue in result.errors
+                if issue.code == "invalid_room_layout_coordinate"
+            ]
+            self.assertEqual(1, len(coordinate_errors), repr(bad_value))
+            self.assertEqual(coordinate_errors[0]["room_id"], "spawn")
+
+
+class WorldBuilderSpawnPrecedenceTests(unittest.TestCase):
+    def test_validate_world_data_world_spawn_wins_over_constructor_default(self):
+        data = {
+            "version": 1,
+            "spawn_room_id": "plaza",
+            "rooms": [{"id": "plaza", "name": "Plaza", "description": "Open."}],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data, spawn_room_id="square")
+
+        self.assertTrue(result.ok, result.to_dict())
+
+    def test_validate_world_data_uses_constructor_spawn_when_world_undeclared(self):
+        rooms = [{"id": "square", "name": "Square", "description": "Square."}]
+
+        ok_result = validate_world_data(
+            {"version": 1, "rooms": rooms, "mobs": []}, spawn_room_id="square"
+        )
+        missing_result = validate_world_data(
+            {"version": 1, "rooms": rooms, "mobs": []}, spawn_room_id="ghost"
+        )
+
+        self.assertTrue(ok_result.ok, ok_result.to_dict())
+        self.assertFalse(missing_result.ok)
+        self.assertIn(
+            "spawn_room_missing", {issue.code for issue in missing_result.errors}
+        )
+
+    def test_world_builder_validate_accepts_world_without_default_spawn_room(self):
+        """Renaming/deleting 'square' must not brick worlds that declare spawn."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            builder = WorldBuilder(
+                game_state=GameState(),
+                data_path=Path(tmpdir) / "world.json",
+                spawn_room_id="square",
+            )
+            data = {
+                "version": 1,
+                "spawn_room_id": "plaza",
+                "rooms": [{"id": "plaza", "name": "Plaza", "description": "Open."}],
+                "mobs": [],
+            }
+
+            result = builder.validate(data)
+
+        self.assertTrue(result.ok, result.to_dict())
+
+
+class WorldBuilderIssueRoomExtraTests(unittest.TestCase):
+    def _issues_by_code(self, result):
+        issues = {}
+        for issue in result.errors + result.warnings:
+            issues.setdefault(issue.code, []).append(issue.to_dict())
+        return issues
+
+    def test_validate_world_data_room_scoped_issues_include_room_id(self):
+        data = {
+            "version": 1,
+            "tags": [],
+            "layers": [{"id": "surface", "name": "Surface", "z": 1}],
+            "rooms": [
+                {
+                    "id": "spawn",
+                    "name": "",
+                    "description": "Start.",
+                    "exits": {"north": "missing"},
+                    "tags": ["missing_tag"],
+                    "x": 1,
+                    "y": 2,
+                    "z": 0,
+                    "layout": {"x": "east", "y": 2, "layer_id": "surface"},
+                },
+                {"id": "spawn", "name": "Duplicate", "description": "Dup."},
+            ],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+        issues = self._issues_by_code(result)
+
+        for code in (
+            "missing_room_name",
+            "broken_exit",
+            "duplicate_room_id",
+            "invalid_room_tag_ref",
+            "invalid_room_layout_coordinate",
+            "legacy_layout_conflict",
+        ):
+            self.assertIn(code, issues, result.to_dict())
+            for issue in issues[code]:
+                self.assertEqual(issue["room_id"], "spawn", issue)
+
+    def test_validate_world_data_missing_room_id_error_has_no_room_id_extra(self):
+        data = {
+            "version": 1,
+            "rooms": [{"id": "", "name": "Nameless", "description": "Lost."}],
+            "mobs": [],
+        }
+
+        result = validate_world_data(data)
+
+        errors = [
+            issue.to_dict()
+            for issue in result.errors
+            if issue.code == "missing_room_id"
+        ]
+        self.assertEqual(1, len(errors))
+        self.assertNotIn("room_id", errors[0])
+
+    def test_validate_world_data_mob_item_and_script_errors_include_room_id(self):
+        data = {
+            "version": 1,
+            "rooms": [
+                {
+                    "id": "spawn",
+                    "name": "Spawn",
+                    "description": "Start.",
+                    "items": [
+                        {
+                            "id": "relic",
+                            "name": "Relic",
+                            "description": "Odd.",
+                            "room_id": "missing",
+                        }
+                    ],
+                }
+            ],
+            "mobs": [
+                {
+                    "id": "ghost",
+                    "name": "Ghost",
+                    "description": "Boo.",
+                    "current_room": "missing",
+                },
+                {
+                    "id": "wolf",
+                    "name": "Wolf",
+                    "description": "A wolf.",
+                    "current_room": "spawn",
+                    "patrol_rooms": ["spawn", "missing"],
+                },
+            ],
+            "scripts": [
+                {
+                    "id": "greeter",
+                    "path": "backend/world_scripts/greeter.py",
+                    "room_id": "missing",
+                }
+            ],
+        }
+
+        result = validate_world_data(data)
+        issues = self._issues_by_code(result)
+
+        self.assertEqual(issues["invalid_item_room_ref"][0]["room_id"], "missing")
+        self.assertEqual(issues["invalid_mob_room_ref"][0]["room_id"], "missing")
+        self.assertEqual(issues["invalid_mob_patrol_ref"][0]["room_id"], "spawn")
+        self.assertEqual(issues["invalid_script_room_ref"][0]["room_id"], "missing")
+
+
+class WorldBuilderApplyParityValidationTests(unittest.TestCase):
+    def _world(self, **overrides):
+        data = {
+            "version": 1,
+            "rooms": [{"id": "spawn", "name": "Spawn", "description": "Start."}],
+            "mobs": [],
+        }
+        data.update(overrides)
+        return data
+
+    def _errors_with_code(self, result, code):
+        return [issue.to_dict() for issue in result.errors if issue.code == code]
+
+    def test_validate_world_data_rejects_non_mapping_room_exits(self):
+        data = self._world(
+            rooms=[
+                {
+                    "id": "spawn",
+                    "name": "Spawn",
+                    "description": "Start.",
+                    "exits": ["north"],
+                }
+            ]
+        )
+
+        result = validate_world_data(data)
+
+        errors = self._errors_with_code(result, "invalid_room_exits")
+        self.assertEqual(1, len(errors))
+        self.assertIn("spawn", errors[0]["message"])
+        self.assertEqual(errors[0]["room_id"], "spawn")
+
+    def test_validate_world_data_accepts_absent_or_null_room_exits(self):
+        data = self._world(
+            rooms=[
+                {"id": "spawn", "name": "Spawn", "description": "Start."},
+                {
+                    "id": "hall",
+                    "name": "Hall",
+                    "description": "Hall.",
+                    "exits": None,
+                },
+            ]
+        )
+
+        result = validate_world_data(data)
+
+        self.assertEqual([], self._errors_with_code(result, "invalid_room_exits"))
+
+    def test_validate_world_data_requires_item_description(self):
+        data = self._world(
+            rooms=[
+                {
+                    "id": "spawn",
+                    "name": "Spawn",
+                    "description": "Start.",
+                    "items": [{"id": "key", "name": "Key"}],
+                }
+            ]
+        )
+
+        result = validate_world_data(data)
+
+        errors = self._errors_with_code(result, "missing_item_description")
+        self.assertEqual(1, len(errors))
+        self.assertEqual(errors[0]["room_id"], "spawn")
+
+    def test_validate_world_data_requires_nested_item_descriptions(self):
+        data = self._world(
+            rooms=[
+                {
+                    "id": "spawn",
+                    "name": "Spawn",
+                    "description": "Start.",
+                    "items": [
+                        {
+                            "type": "container_item",
+                            "id": "bag",
+                            "name": "Bag",
+                            "description": "A bag.",
+                            "items": [{"id": "coin", "name": "Coin"}],
+                        }
+                    ],
+                    "hidden_items": [
+                        {"id": "gem", "item": {"id": "gem", "name": "Gem"}}
+                    ],
+                }
+            ]
+        )
+
+        result = validate_world_data(data)
+
+        errors = self._errors_with_code(result, "missing_item_description")
+        self.assertEqual(2, len(errors))
+        for error in errors:
+            self.assertEqual(error["room_id"], "spawn")
+
+    def test_validate_world_data_requires_mob_description(self):
+        data = self._world(
+            mobs=[{"id": "ghost", "name": "Ghost", "current_room": "spawn"}]
+        )
+
+        result = validate_world_data(data)
+
+        errors = self._errors_with_code(result, "missing_mob_description")
+        self.assertEqual(1, len(errors))
+        self.assertEqual(errors[0]["room_id"], "spawn")
+
+    def test_validate_world_data_rejects_malformed_mob_loot_entries(self):
+        data = self._world(
+            mobs=[
+                {
+                    "id": "ghost",
+                    "name": "Ghost",
+                    "description": "Boo.",
+                    "current_room": "spawn",
+                    "loot_table": [
+                        "bad-entry",
+                        {"chance": 0.5},
+                        {
+                            "item": {
+                                "id": "coin",
+                                "name": "Coin",
+                                "description": "A coin.",
+                            }
+                        },
+                        {"item": "coin", "chance": 0.5},
+                    ],
+                }
+            ]
+        )
+
+        result = validate_world_data(data)
+
+        errors = self._errors_with_code(result, "invalid_mob_loot_entry")
+        self.assertEqual(4, len(errors))
+        for error in errors:
+            self.assertEqual(error["room_id"], "spawn")
+
+    def test_validate_world_data_rejects_non_list_mob_loot_table(self):
+        data = self._world(
+            mobs=[
+                {
+                    "id": "ghost",
+                    "name": "Ghost",
+                    "description": "Boo.",
+                    "loot_table": None,
+                }
+            ]
+        )
+
+        result = validate_world_data(data)
+
+        errors = self._errors_with_code(result, "invalid_mob_loot_entry")
+        self.assertEqual(1, len(errors))
+
+    def test_validate_world_data_accepts_well_formed_mob_loot_table(self):
+        data = self._world(
+            mobs=[
+                {
+                    "id": "ghost",
+                    "name": "Ghost",
+                    "description": "Boo.",
+                    "current_room": "spawn",
+                    "loot_table": [
+                        {
+                            "item": {
+                                "id": "coin",
+                                "name": "Coin",
+                                "description": "A coin.",
+                            },
+                            "chance": 0.5,
+                        }
+                    ],
+                }
+            ]
+        )
+
+        result = validate_world_data(data)
+
+        self.assertTrue(result.ok, result.to_dict())
+
 
 class WorldBuilderAsymmetricExitTests(unittest.TestCase):
     def _room(self, room_id, exits=None):

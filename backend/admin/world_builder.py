@@ -41,7 +41,34 @@ DEFAULT_REGION_ID = "world"
 DEFAULT_REGION_COLOR = "#8b5a3c"
 DEFAULT_LAYER_ID = "surface"
 DEFAULT_GRID_SIZE = 24
+DEFAULT_SPAWN_ROOM_ID = "square"
 DRAFT_MANIFEST_VERSION = 1
+
+REGION_COLOR_PALETTE: Tuple[str, ...] = (
+    "#4f8fba",
+    "#75a743",
+    "#c65197",
+    "#de9e41",
+    "#a53030",
+    "#7a367b",
+    "#468232",
+    "#3c5e8b",
+)
+
+OPPOSITE_DIRECTIONS: Dict[str, str] = {
+    "north": "south",
+    "south": "north",
+    "east": "west",
+    "west": "east",
+    "northeast": "southwest",
+    "southwest": "northeast",
+    "northwest": "southeast",
+    "southeast": "northwest",
+    "up": "down",
+    "down": "up",
+    "in": "out",
+    "out": "in",
+}
 
 
 @dataclass(frozen=True)
@@ -50,14 +77,17 @@ class ValidationIssue:
     code: str
     message: str
     path: str = ""
+    extra: Mapping[str, Any] = field(default_factory=dict, compare=False)
 
     def to_dict(self) -> JsonDict:
-        return {
+        data: JsonDict = {
             "severity": self.severity,
             "code": self.code,
             "message": self.message,
             "path": self.path,
         }
+        data.update(self.extra)
+        return data
 
 
 @dataclass
@@ -104,11 +134,17 @@ def export_live_world(
     spawn_room_id: Optional[str] = None,
     metadata: Optional[Mapping[str, Any]] = None,
 ) -> JsonDict:
+    region_id_by_room, regions = _level_regions()
     rooms = [
-        _serialize_room(room, index=index)
+        _serialize_room(
+            room,
+            index=index,
+            derived_region_id=region_id_by_room.get(room.room_id),
+        )
         for index, room in enumerate(game_state.rooms.values())
         if isinstance(room, Room)
     ]
+    _append_missing_room_regions(regions, rooms)
     mobs = [
         _serialize_mob(mob)
         for mob in (mob_manager.get_all_mobs() if mob_manager else [])
@@ -118,9 +154,7 @@ def export_live_world(
         "version": WORLD_DATA_VERSION,
         "spawn_room_id": spawn_room_id,
         "metadata": _json_safe(dict(metadata or {})),
-        "regions": [
-            {"id": DEFAULT_REGION_ID, "name": "World", "color": DEFAULT_REGION_COLOR}
-        ],
+        "regions": regions,
         "layers": [
             {"id": DEFAULT_LAYER_ID, "name": "Surface", "z": 0, "visible": True}
         ],
@@ -135,6 +169,72 @@ def export_live_world(
     }
 
 
+def _level_generators() -> List[Any]:
+    """Return level generators sorted by level number, or [] if unavailable."""
+    try:
+        from managers.world import LEVEL_GENERATORS
+    except Exception:  # pragma: no cover - defensive import guard
+        return []
+    return sorted(
+        LEVEL_GENERATORS,
+        key=lambda generator: int(getattr(generator, "level_number", 0)),
+    )
+
+
+def _region_color(index: int) -> str:
+    return REGION_COLOR_PALETTE[index % len(REGION_COLOR_PALETTE)]
+
+
+def _level_regions() -> Tuple[Dict[str, str], List[JsonDict]]:
+    """Derive region metadata from the level generators that own each room.
+
+    Returns a (room_id -> region_id) mapping and the exported regions list.
+    Generators whose rooms have not been generated yet (e.g. before boot)
+    simply contribute no room mappings.
+    """
+    regions: List[JsonDict] = [
+        {"id": DEFAULT_REGION_ID, "name": "World", "color": DEFAULT_REGION_COLOR}
+    ]
+    region_id_by_room: Dict[str, str] = {}
+    seen_region_ids: Set[str] = {DEFAULT_REGION_ID}
+    for index, generator in enumerate(_level_generators()):
+        level_name = str(getattr(generator, "level_name", "") or "")
+        if not level_name:
+            continue
+        region_id = _slugify(level_name)
+        if region_id not in seen_region_ids:
+            seen_region_ids.add(region_id)
+            regions.append(
+                {
+                    "id": region_id,
+                    "name": level_name,
+                    "color": _region_color(index),
+                }
+            )
+        for room_id in _list_value(getattr(generator, "room_ids", [])):
+            region_id_by_room.setdefault(str(room_id), region_id)
+    return region_id_by_room, regions
+
+
+def _append_missing_room_regions(
+    regions: List[JsonDict], rooms: Sequence[Mapping[str, Any]]
+) -> None:
+    """Ensure every region referenced by an exported room has a region entry."""
+    known_region_ids = {str(region.get("id")) for region in regions}
+    for room in rooms:
+        region_id = str(room.get("region_id") or "")
+        if not region_id or region_id in known_region_ids:
+            continue
+        known_region_ids.add(region_id)
+        regions.append(
+            {
+                "id": region_id,
+                "name": region_id.replace("-", " ").title(),
+                "color": _region_color(len(regions) - 1),
+            }
+        )
+
+
 def validate_world_data(
     world_data: Mapping[str, Any], *, spawn_room_id: Optional[str] = None
 ) -> ValidationResult:
@@ -143,6 +243,11 @@ def validate_world_data(
     room_ids = [_room_id(room) for _, _, room in room_entries]
     non_empty_room_ids = [room_id for room_id in room_ids if room_id]
     room_id_set = set(non_empty_room_ids)
+    rooms_by_id: Dict[str, Mapping[str, Any]] = {}
+    for _, _, entry_room in room_entries:
+        entry_room_id = _room_id(entry_room)
+        if entry_room_id and entry_room_id not in rooms_by_id:
+            rooms_by_id[entry_room_id] = entry_room
     metadata = _validate_authoring_metadata(result, world_data)
 
     for room_id, count in Counter(non_empty_room_ids).items():
@@ -153,6 +258,7 @@ def validate_world_data(
                     "duplicate_room_id",
                     f"Room id '{room_id}' appears {count} times.",
                     "rooms",
+                    extra=_room_extra(room_id),
                 )
             )
 
@@ -174,11 +280,23 @@ def validate_world_data(
                     "missing_room_name",
                     f"Room '{room_id or '<missing>'}' is missing a name.",
                     f"{path}.name",
+                    extra=_room_extra(room_id),
                 )
             )
 
-        exits = room.get("exits", {}) or {}
-        if isinstance(exits, Mapping):
+        exits = room.get("exits")
+        if exits is not None and not isinstance(exits, Mapping):
+            result.errors.append(
+                ValidationIssue(
+                    "error",
+                    "invalid_room_exits",
+                    f"Room '{room_id or '<missing>'}' exits must be an object "
+                    "mapping directions to room ids.",
+                    f"{path}.exits",
+                    extra=_room_extra(room_id),
+                )
+            )
+        elif isinstance(exits, Mapping):
             for direction, target_room_id in exits.items():
                 if target_room_id not in room_id_set:
                     result.errors.append(
@@ -187,20 +305,34 @@ def validate_world_data(
                             "broken_exit",
                             f"Room '{room_id}' exit '{direction}' points to missing room '{target_room_id}'.",
                             f"{path}.exits.{direction}",
+                            extra=_room_extra(room_id),
                         )
                     )
+                    continue
+                _warn_for_asymmetric_exit(
+                    result,
+                    rooms_by_id,
+                    room_id,
+                    str(direction),
+                    str(target_room_id),
+                    path,
+                )
 
-        _validate_items_for_room_refs(result, room.get("items", []), room_id_set, path)
+        _validate_items_for_room_refs(
+            result, room.get("items", []), room_id_set, path, room_id=room_id
+        )
         _validate_hidden_items_for_room_refs(
-            result, room.get("hidden_items", []), room_id_set, path
+            result, room.get("hidden_items", []), room_id_set, path, room_id=room_id
         )
         _validate_room_authoring_metadata(result, room, path, metadata)
+        _warn_for_stripped_python_logic(result, room, room_id, path)
 
     for index, mob in enumerate(_list_value(world_data.get("mobs", []))):
         if not isinstance(mob, Mapping):
             continue
         mob_id = str(mob.get("id") or "")
         mob_path = f"mobs[{index}]"
+        mob_room_extra = _room_extra(str(mob.get("current_room") or ""))
         if not mob_id:
             result.errors.append(
                 ValidationIssue(
@@ -208,6 +340,7 @@ def validate_world_data(
                     "missing_mob_id",
                     "Mob is missing an id.",
                     mob_path,
+                    extra=mob_room_extra,
                 )
             )
         if not mob.get("name"):
@@ -217,8 +350,20 @@ def validate_world_data(
                     "missing_mob_name",
                     f"Mob '{mob_id or '<missing>'}' is missing a name.",
                     f"{mob_path}.name",
+                    extra=mob_room_extra,
                 )
             )
+        if "description" not in mob:
+            result.errors.append(
+                ValidationIssue(
+                    "error",
+                    "missing_mob_description",
+                    f"Mob '{mob_id or '<missing>'}' is missing a description.",
+                    f"{mob_path}.description",
+                    extra=mob_room_extra,
+                )
+            )
+        _validate_mob_loot_table(result, mob, mob_id, mob_path, mob_room_extra)
         current_room = mob.get("current_room")
         if current_room and current_room not in room_id_set:
             result.errors.append(
@@ -227,6 +372,7 @@ def validate_world_data(
                     "invalid_mob_room_ref",
                     f"Mob '{mob_id}' references missing current_room '{current_room}'.",
                     f"{mob_path}.current_room",
+                    extra=mob_room_extra,
                 )
             )
         for patrol_index, patrol_room_id in enumerate(
@@ -239,6 +385,7 @@ def validate_world_data(
                         "invalid_mob_patrol_ref",
                         f"Mob '{mob_id}' patrol room '{patrol_room_id}' does not exist.",
                         f"{mob_path}.patrol_rooms[{patrol_index}]",
+                        extra=mob_room_extra,
                     )
                 )
 
@@ -255,7 +402,10 @@ def validate_world_data(
                     script_ref_path,
                 )
             )
-        if not script_path or _resolve_world_script_path(Path("."), script_path) is None:
+        if (
+            not script_path
+            or _resolve_world_script_path(Path("."), script_path) is None
+        ):
             result.errors.append(
                 ValidationIssue(
                     "error",
@@ -272,33 +422,58 @@ def validate_world_data(
                     "invalid_script_room_ref",
                     f"Script '{script_id or '<missing>'}' references missing room_id '{room_ref}'.",
                     f"{script_ref_path}.room_id",
+                    extra=_room_extra(str(room_ref)),
                 )
             )
 
-    effective_spawn_room_id = spawn_room_id or world_data.get("spawn_room_id")
+    declared_spawn_room_id = world_data.get("spawn_room_id") or spawn_room_id
+    if declared_spawn_room_id and declared_spawn_room_id not in room_id_set:
+        result.errors.append(
+            ValidationIssue(
+                "error",
+                "spawn_room_missing",
+                f"Spawn room '{declared_spawn_room_id}' does not exist.",
+                "spawn_room_id",
+            )
+        )
+
+    effective_spawn_room_id = _effective_spawn_room_id(
+        declared_spawn_room_id, room_id_set, non_empty_room_ids
+    )
     if effective_spawn_room_id:
-        if effective_spawn_room_id not in room_id_set:
-            result.errors.append(
+        reachable = _reachable_rooms(room_entries, effective_spawn_room_id)
+        for room_id in sorted(room_id_set - reachable):
+            result.warnings.append(
                 ValidationIssue(
-                    "error",
-                    "spawn_room_missing",
-                    f"Spawn room '{effective_spawn_room_id}' does not exist.",
-                    "spawn_room_id",
+                    "warning",
+                    "unreachable_room",
+                    f"Room '{room_id}' is unreachable from spawn '{effective_spawn_room_id}'.",
+                    f"rooms.{room_id}",
+                    extra={"room_id": room_id},
                 )
             )
-        else:
-            reachable = _reachable_rooms(room_entries, str(effective_spawn_room_id))
-            for room_id in sorted(room_id_set - reachable):
-                result.warnings.append(
-                    ValidationIssue(
-                        "warning",
-                        "unreachable_room",
-                        f"Room '{room_id}' is unreachable from spawn '{effective_spawn_room_id}'.",
-                        f"rooms.{room_id}",
-                    )
-                )
 
     return result
+
+
+def _effective_spawn_room_id(
+    declared_spawn_room_id: Any,
+    room_id_set: Set[str],
+    room_ids: Sequence[str],
+) -> str:
+    """Pick the spawn room used for reachability checks.
+
+    Prefers a declared spawn room that exists, then the conventional
+    default spawn room, then the first room in the world.
+    """
+    declared = str(declared_spawn_room_id or "")
+    if declared and declared in room_id_set:
+        return declared
+    if DEFAULT_SPAWN_ROOM_ID in room_id_set:
+        return DEFAULT_SPAWN_ROOM_ID
+    if room_ids:
+        return room_ids[0]
+    return ""
 
 
 def save_world_data(world_data: Mapping[str, Any], path: PathLike) -> None:
@@ -309,9 +484,7 @@ def save_world_data(world_data: Mapping[str, Any], path: PathLike) -> None:
         handle.write("\n")
 
 
-def save_script_files(
-    world_data: Mapping[str, Any], repo_path: PathLike
-) -> List[Path]:
+def save_script_files(world_data: Mapping[str, Any], repo_path: PathLike) -> List[Path]:
     """Write GUI-authored script entries with content to repo-relative files."""
     repo_root = Path(repo_path).resolve()
     written: List[Path] = []
@@ -364,7 +537,9 @@ def apply_world_data(
         room.speech_triggers = _strip_unserializable_markers(
             room_data.get("speech_triggers", {}) or {}
         )
-        room.authoring_metadata = _room_authoring_metadata_from_data(room_data)
+        setattr(  # noqa: B010 - Room stores authoring metadata dynamically
+            room, "authoring_metadata", _room_authoring_metadata_from_data(room_data)
+        )
 
         for item_data in _list_value(room_data.get("items", [])):
             if isinstance(item_data, Mapping):
@@ -443,8 +618,11 @@ def run_git_publish(
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace(
-        "+00:00", "Z"
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
     )
 
 
@@ -512,7 +690,9 @@ class DraftWorldStore:
     def load(self, draft_id: Optional[str] = None) -> JsonDict:
         manifest = self.ensure_manifest()
         effective_draft_id = draft_id or str(manifest.get("active_draft_id") or "")
-        return load_world_data(self._path_for_manifest_draft(effective_draft_id, manifest))
+        return load_world_data(
+            self._path_for_manifest_draft(effective_draft_id, manifest)
+        )
 
     def create(
         self,
@@ -592,7 +772,9 @@ class DraftWorldStore:
         if manifest.get("active_draft_id") == draft_id:
             fallback = max(
                 manifest["drafts"],
-                key=lambda draft: str(draft.get("updated_at") or draft.get("created_at") or ""),
+                key=lambda draft: str(
+                    draft.get("updated_at") or draft.get("created_at") or ""
+                ),
             )
             manifest["active_draft_id"] = fallback["id"]
             save_world_data(self.load(fallback["id"]), self.legacy_path)
@@ -620,7 +802,9 @@ class DraftWorldStore:
     def _save_manifest(self, manifest: Mapping[str, Any]) -> None:
         save_world_data(manifest, self.manifest_path)
 
-    def _path_for_manifest_draft(self, draft_id: str, manifest: Mapping[str, Any]) -> Path:
+    def _path_for_manifest_draft(
+        self, draft_id: str, manifest: Mapping[str, Any]
+    ) -> Path:
         self._find_draft(manifest, draft_id)
         return self._path_for_known_draft(draft_id)
 
@@ -849,8 +1033,13 @@ class WorldBuilder:
         )
 
 
-def _serialize_room(room: Room, *, index: int = 0) -> JsonDict:
+def _serialize_room(
+    room: Room, *, index: int = 0, derived_region_id: Optional[str] = None
+) -> JsonDict:
     authoring = _room_authoring_metadata(room, index)
+    region_id = str(authoring["region_id"] or DEFAULT_REGION_ID)
+    if derived_region_id and region_id == DEFAULT_REGION_ID:
+        region_id = derived_region_id
     return {
         "id": room.room_id,
         "name": room.name,
@@ -858,7 +1047,7 @@ def _serialize_room(room: Room, *, index: int = 0) -> JsonDict:
         "x": authoring["x"],
         "y": authoring["y"],
         "z": authoring["z"],
-        "region_id": authoring["region_id"],
+        "region_id": region_id,
         "tags": authoring["tags"],
         "layout": authoring["layout"],
         "exits": _json_safe(dict(room.exits)),
@@ -866,9 +1055,7 @@ def _serialize_room(room: Room, *, index: int = 0) -> JsonDict:
         "is_outdoor": room.is_outdoor,
         "swamp_direction": room.swamp_direction,
         "items": [
-            _serialize_item(item)
-            for item in room.items
-            if not isinstance(item, Mobile)
+            _serialize_item(item) for item in room.items if not isinstance(item, Mobile)
         ],
         "hidden_items": [
             {
@@ -899,7 +1086,9 @@ def _room_authoring_metadata_from_data(room_data: Mapping[str, Any]) -> JsonDict
         layout["x"] = x
     if y is not None:
         layout["y"] = y
-    layout["layer_id"] = str(layout.get("layer_id") or room_data.get("layer_id") or DEFAULT_LAYER_ID)
+    layout["layer_id"] = str(
+        layout.get("layer_id") or room_data.get("layer_id") or DEFAULT_LAYER_ID
+    )
     layout["pinned"] = bool(layout.get("pinned", True))
 
     return {
@@ -960,12 +1149,12 @@ def _serialize_item(item: Any) -> JsonDict:
         data = item.to_dict()
         data["type"] = "container_item"
         data["items"] = [_serialize_item(contained) for contained in item.items]
-        return _json_safe(data)
+        return _json_safe_dict(data)
 
     if isinstance(item, Weapon):
         data = item.to_dict()
         data["type"] = "weapon"
-        return _json_safe(data)
+        return _json_safe_dict(data)
 
     if isinstance(item, StatefulItem):
         data = item.to_dict()
@@ -975,14 +1164,14 @@ def _serialize_item(item: Any) -> JsonDict:
         data["interactions"] = item.interactions
         data["room_id"] = item.room_id
         data["linked_items"] = list(item.linked_items)
-        return _json_safe(data)
+        return _json_safe_dict(data)
 
     if isinstance(item, Item):
         data = item.to_dict()
         data["type"] = "item"
-        return _json_safe(data)
+        return _json_safe_dict(data)
 
-    return _json_safe({"type": "unknown", "repr": repr(item)})
+    return _json_safe_dict({"type": "unknown", "repr": repr(item)})
 
 
 def _serialize_mob(mob: Mobile) -> JsonDict:
@@ -993,7 +1182,7 @@ def _serialize_mob(mob: Mobile) -> JsonDict:
         for entry in mob.loot_table
         if isinstance(entry, Mapping) and entry.get("item") is not None
     ]
-    return _json_safe(data)
+    return _json_safe_dict(data)
 
 
 def _item_from_data(data: Mapping[str, Any]) -> Item:
@@ -1037,7 +1226,11 @@ def _item_from_data(data: Mapping[str, Any]) -> Item:
         container.update_description()
         return container
 
-    if item_type == "stateful_item" or "state" in sanitized or "interactions" in sanitized:
+    if (
+        item_type == "stateful_item"
+        or "state" in sanitized
+        or "interactions" in sanitized
+    ):
         item = StatefulItem.from_dict(sanitized)
         item.interactions = dict(sanitized.get("interactions", {}))
         item.linked_items = list(sanitized.get("linked_items", []))
@@ -1077,6 +1270,11 @@ def _room_entries(world_data: Mapping[str, Any]) -> List[Tuple[str, str, JsonDic
 
 def _room_id(room: Mapping[str, Any]) -> str:
     return str(room.get("id") or room.get("room_id") or "")
+
+
+def _room_extra(room_id: str) -> Dict[str, Any]:
+    """Issue extra payload pointing the frontend at the implicated room."""
+    return {"room_id": room_id} if room_id else {}
 
 
 def _validate_authoring_metadata(
@@ -1225,6 +1423,7 @@ def _validate_room_authoring_metadata(
                 "invalid_room_region_ref",
                 f"Room '{room_id}' references missing region_id '{region_ref}'.",
                 f"{path}.region_id",
+                extra=_room_extra(room_id),
             )
         )
 
@@ -1238,6 +1437,7 @@ def _validate_room_authoring_metadata(
                 "invalid_room_tags",
                 f"Room '{room_id}' tags must be a list.",
                 f"{path}.tags",
+                extra=_room_extra(room_id),
             )
         )
     else:
@@ -1249,6 +1449,7 @@ def _validate_room_authoring_metadata(
                         "invalid_room_tag_ref",
                         f"Room '{room_id}' references missing tag '{tag_ref}'.",
                         f"{path}.tags[{index}]",
+                        extra=_room_extra(room_id),
                     )
                 )
 
@@ -1262,18 +1463,26 @@ def _validate_room_authoring_metadata(
                 "invalid_room_layout",
                 f"Room '{room_id}' layout must be an object.",
                 f"{path}.layout",
+                extra=_room_extra(room_id),
             )
         )
         return
 
     for coordinate in ("x", "y"):
-        if coordinate in layout and _finite_number_value(layout.get(coordinate)) is None:
+        if coordinate not in layout:
+            continue
+        coordinate_value = layout.get(coordinate)
+        if coordinate_value is None:
+            # Null coordinates mark rooms the editor has not placed yet.
+            continue
+        if _finite_number_value(coordinate_value) is None:
             result.errors.append(
                 ValidationIssue(
                     "error",
                     "invalid_room_layout_coordinate",
                     f"Room '{room_id}' layout.{coordinate} must be a finite number.",
                     f"{path}.layout.{coordinate}",
+                    extra=_room_extra(room_id),
                 )
             )
 
@@ -1285,6 +1494,7 @@ def _validate_room_authoring_metadata(
                 "invalid_room_layer_ref",
                 f"Room '{room_id}' references missing layout.layer_id '{layer_ref}'.",
                 f"{path}.layout.layer_id",
+                extra=_room_extra(room_id),
             )
         )
 
@@ -1422,6 +1632,7 @@ def _warn_for_legacy_layout_conflicts(
                     "legacy_layout_conflict",
                     f"Room '{room_id}' legacy {coordinate} differs from layout.{coordinate}.",
                     f"{path}.layout.{coordinate}",
+                    extra=_room_extra(room_id),
                 )
             )
 
@@ -1440,8 +1651,137 @@ def _warn_for_legacy_layout_conflicts(
             "legacy_layout_conflict",
             f"Room '{room_id}' legacy z differs from layout.layer_id z.",
             f"{path}.layout.layer_id",
+            extra=_room_extra(room_id),
         )
     )
+
+
+def _warn_for_asymmetric_exit(
+    result: ValidationResult,
+    rooms_by_id: Mapping[str, Mapping[str, Any]],
+    room_id: str,
+    direction: str,
+    target_room_id: str,
+    path: str,
+) -> None:
+    """Warn when an exit with a canonical opposite has no reverse exit back."""
+    if not room_id:
+        return
+    opposite = OPPOSITE_DIRECTIONS.get(direction.lower())
+    if opposite is None:
+        return
+    target_room = rooms_by_id.get(target_room_id)
+    if target_room is None:
+        return
+    target_exits = target_room.get("exits", {}) or {}
+    if not isinstance(target_exits, Mapping):
+        target_exits = {}
+    reverse_target = target_exits.get(opposite)
+    if reverse_target is not None and str(reverse_target) == room_id:
+        return
+    result.warnings.append(
+        ValidationIssue(
+            "warning",
+            "asymmetric_exit",
+            f"Room '{room_id}' exit {direction} -> '{target_room_id}' has no "
+            f"reverse exit {opposite} back to '{room_id}'",
+            f"{path}.exits.{direction}",
+            extra={
+                "room_id": room_id,
+                "direction": direction,
+                "target": target_room_id,
+            },
+        )
+    )
+
+
+def _warn_for_stripped_python_logic(
+    result: ValidationResult,
+    room: Mapping[str, Any],
+    room_id: str,
+    path: str,
+) -> None:
+    """Warn once per room whose data contains stripped Python callables."""
+    item_ids = _item_ids_with_stripped_interactions(room.get("items", []))
+    hidden_item_ids = _hidden_item_ids_with_stripped_conditions(
+        room.get("hidden_items", [])
+    )
+    trigger_names = _speech_triggers_with_stripped_callables(
+        room.get("speech_triggers", {})
+    )
+    if not (item_ids or hidden_item_ids or trigger_names):
+        return
+
+    parts: List[str] = []
+    if item_ids:
+        parts.append(f"item interactions: {', '.join(item_ids)}")
+    if hidden_item_ids:
+        parts.append(f"hidden item conditions: {', '.join(hidden_item_ids)}")
+    if trigger_names:
+        parts.append(f"speech triggers: {', '.join(trigger_names)}")
+    result.warnings.append(
+        ValidationIssue(
+            "warning",
+            "python_logic_stripped",
+            f"Room '{room_id}' contains Python logic that cannot be edited "
+            f"as JSON and is stripped on apply ({'; '.join(parts)}).",
+            path,
+            extra={"room_id": room_id},
+        )
+    )
+
+
+def _dedupe_preserving_order(values: Iterable[str]) -> List[str]:
+    return list(dict.fromkeys(values))
+
+
+def _item_ids_with_stripped_interactions(items: Any) -> List[str]:
+    stripped: List[str] = []
+    for item in _list_value(items):
+        if not isinstance(item, Mapping):
+            continue
+        if _contains_unserializable_marker(item.get("interactions")):
+            stripped.append(str(item.get("id") or "<unknown>"))
+        stripped.extend(_item_ids_with_stripped_interactions(item.get("items", [])))
+    return _dedupe_preserving_order(stripped)
+
+
+def _hidden_item_ids_with_stripped_conditions(hidden_items: Any) -> List[str]:
+    stripped: List[str] = []
+    entries: List[Tuple[str, Any]]
+    if isinstance(hidden_items, Mapping):
+        entries = [(str(hidden_id), value) for hidden_id, value in hidden_items.items()]
+    else:
+        entries = [("", value) for value in _list_value(hidden_items)]
+    for hidden_id, value in entries:
+        if not isinstance(value, Mapping):
+            continue
+        if not _contains_unserializable_marker(value.get("condition")):
+            continue
+        item_data = value.get("item", {})
+        item_id = item_data.get("id") if isinstance(item_data, Mapping) else None
+        stripped.append(str(value.get("id") or hidden_id or item_id or "<unknown>"))
+    return _dedupe_preserving_order(stripped)
+
+
+def _speech_triggers_with_stripped_callables(speech_triggers: Any) -> List[str]:
+    if not isinstance(speech_triggers, Mapping):
+        return []
+    return _dedupe_preserving_order(
+        str(trigger)
+        for trigger, value in speech_triggers.items()
+        if _contains_unserializable_marker(value)
+    )
+
+
+def _contains_unserializable_marker(value: Any) -> bool:
+    if _is_unserializable_marker(value):
+        return True
+    if isinstance(value, Mapping):
+        return any(_contains_unserializable_marker(inner) for inner in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(_contains_unserializable_marker(inner) for inner in value)
+    return False
 
 
 def _is_valid_hex_color(value: Any) -> bool:
@@ -1475,6 +1815,7 @@ def _validate_items_for_room_refs(
     items: Any,
     room_id_set: Iterable[str],
     path: str,
+    room_id: str = "",
 ) -> None:
     valid_room_ids = set(room_id_set)
     for index, item in enumerate(_list_value(items)):
@@ -1489,6 +1830,7 @@ def _validate_items_for_room_refs(
                     "missing_item_id",
                     "Item is missing an id.",
                     item_path,
+                    extra=_room_extra(room_id),
                 )
             )
         if not item.get("name"):
@@ -1498,6 +1840,17 @@ def _validate_items_for_room_refs(
                     "missing_item_name",
                     f"Item '{item_id or '<missing>'}' is missing a name.",
                     f"{item_path}.name",
+                    extra=_room_extra(room_id),
+                )
+            )
+        if "description" not in item:
+            result.errors.append(
+                ValidationIssue(
+                    "error",
+                    "missing_item_description",
+                    f"Item '{item_id or '<missing>'}' is missing a description.",
+                    f"{item_path}.description",
+                    extra=_room_extra(room_id),
                 )
             )
         room_ref = item.get("room_id")
@@ -1508,6 +1861,7 @@ def _validate_items_for_room_refs(
                     "invalid_item_room_ref",
                     f"Item '{item_id}' references missing room_id '{room_ref}'.",
                     f"{item_path}.room_id",
+                    extra=_room_extra(str(room_ref)),
                 )
             )
         if item.get("type") == "container_item":
@@ -1516,6 +1870,7 @@ def _validate_items_for_room_refs(
                 item.get("items", []),
                 valid_room_ids,
                 item_path,
+                room_id=room_id,
             )
 
 
@@ -1524,6 +1879,7 @@ def _validate_hidden_items_for_room_refs(
     hidden_items: Any,
     room_id_set: Iterable[str],
     path: str,
+    room_id: str = "",
 ) -> None:
     for index, (_, item_data) in enumerate(_hidden_item_entries(hidden_items)):
         _validate_items_for_room_refs(
@@ -1531,13 +1887,58 @@ def _validate_hidden_items_for_room_refs(
             [item_data],
             room_id_set,
             f"{path}.hidden_items[{index}]",
+            room_id=room_id,
+        )
+
+
+def _validate_mob_loot_table(
+    result: ValidationResult,
+    mob: Mapping[str, Any],
+    mob_id: str,
+    mob_path: str,
+    mob_room_extra: Mapping[str, Any],
+) -> None:
+    """Reject loot tables that Mobile.from_dict would crash on during apply."""
+    if "loot_table" not in mob:
+        return
+    loot_table = mob.get("loot_table")
+    if not isinstance(loot_table, (list, tuple)):
+        result.errors.append(
+            ValidationIssue(
+                "error",
+                "invalid_mob_loot_entry",
+                f"Mob '{mob_id or '<missing>'}' loot_table must be a list.",
+                f"{mob_path}.loot_table",
+                extra=mob_room_extra,
+            )
+        )
+        return
+    for index, entry in enumerate(loot_table):
+        if (
+            isinstance(entry, Mapping)
+            and "item" in entry
+            and "chance" in entry
+            and isinstance(entry.get("item"), Mapping)
+        ):
+            continue
+        result.errors.append(
+            ValidationIssue(
+                "error",
+                "invalid_mob_loot_entry",
+                f"Mob '{mob_id or '<missing>'}' loot_table[{index}] must be an "
+                "object with 'item' and 'chance' keys.",
+                f"{mob_path}.loot_table[{index}]",
+                extra=mob_room_extra,
+            )
         )
 
 
 def _reachable_rooms(
     room_entries: Sequence[Tuple[str, str, Mapping[str, Any]]], spawn_room_id: str
 ) -> set[str]:
-    rooms_by_id = {_room_id(room): room for _, _, room in room_entries if _room_id(room)}
+    rooms_by_id = {
+        _room_id(room): room for _, _, room in room_entries if _room_id(room)
+    }
     reachable: set[str] = set()
     queue: deque[str] = deque([spawn_room_id])
     while queue:
@@ -1571,7 +1972,9 @@ def _hidden_item_entries(hidden_items: Any) -> List[Tuple[str, Mapping[str, Any]
             continue
         item_data = value.get("item", value)
         if isinstance(item_data, Mapping):
-            entries.append((str(value.get("id") or item_data.get("id") or ""), item_data))
+            entries.append(
+                (str(value.get("id") or item_data.get("id") or ""), item_data)
+            )
     return entries
 
 
@@ -1628,6 +2031,13 @@ def _json_safe(value: Any) -> Any:
             "kind": value.__class__.__name__,
             "repr": repr(value),
         }
+
+
+def _json_safe_dict(value: Mapping[str, Any]) -> JsonDict:
+    safe = _json_safe(dict(value))
+    if isinstance(safe, dict):
+        return safe
+    return {"value": safe}
 
 
 def _strip_unserializable_markers(value: Any) -> Any:
