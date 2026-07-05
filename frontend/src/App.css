@@ -400,12 +400,29 @@
   font-size: 0.7rem;
 }
 
+/* Direction anchors: inline left/top pin each handle to its spot on the
+   rectangle; the translate centers the dot on that point. Subtle at rest so
+   12 anchors per room don't read as noise. */
 .room-node__handle {
   width: 8px;
   height: 8px;
+  min-width: 8px;
+  min-height: 8px;
+  transform: translate(-50%, -50%);
   background: #7a5b2d;
   border: 1px solid #fff4d3;
-  opacity: 0.6;
+  border-radius: 999px;
+  opacity: 0.25;
+}
+
+.room-node:hover .room-node__handle,
+.react-flow__node.selected .room-node__handle {
+  opacity: 0.85;
+}
+
+.room-node__handle:hover {
+  opacity: 1;
+  background: #c9892a;
 }
 
 .react-flow__node.selected .room-node {
@@ -489,34 +506,40 @@
 
 .room-list__item {
   width: 100%;
-  min-height: 58px;
+  min-height: 52px;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
-  gap: 0.15rem 0.4rem;
+  align-items: center;
+  gap: 0.1rem 0.4rem;
+  padding: 0.35rem 0.55rem;
   text-align: left;
   border-radius: 6px;
 }
 
 .room-list__item strong {
+  grid-column: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 0.86rem;
 }
 
-.room-list__item span {
-  color: #4b5f56;
-  font-size: 0.78rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.room-list__badges {
+  grid-column: 2;
+  grid-row: 1;
+  display: inline-flex;
+  gap: 0.25rem;
+  font-size: 0.76rem;
 }
 
 .room-list__item small {
+  grid-column: 1 / -1;
+  grid-row: 2;
   color: #5d6f67;
-  grid-row: 1 / 3;
-  grid-column: 2;
-  align-self: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .room-list__item--selected {

@@ -66,7 +66,7 @@ function formatDraftOption(draft) {
   const roomCount = Number.isFinite(Number(draft.room_count))
     ? `${Number(draft.room_count)} rooms`
     : 'unknown rooms';
-  const updatedAt = draft.updated_at ? ` - ${draft.updated_at}` : '';
+  const updatedAt = draft.updated_at ? ` - ${String(draft.updated_at).slice(0, 10)}` : '';
   return `${draft.name} - ${roomCount}${updatedAt}`;
 }
 
@@ -419,7 +419,7 @@ export default function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
     });
   }, [applyWorldChange]);
 
-  const handleConnectRooms = useCallback((sourceId, targetId) => {
+  const handleConnectRooms = useCallback((sourceId, targetId, anchorDirection = null) => {
     const current = worldRef.current;
     const source = current.rooms.find((room) => room.id === sourceId);
     const target = current.rooms.find((room) => room.id === targetId);
@@ -427,11 +427,19 @@ export default function AdminWorldBuilder({ adminToken, onAdminTokenInvalid }) {
       return;
     }
     const taken = new Set(Object.keys(source.exits || {}));
-    const direction = directionBetween(getRoomPosition(source, 0), getRoomPosition(target, 0), taken);
+    if (anchorDirection && taken.has(anchorDirection)) {
+      setApiError(`'${sourceId}' already has a ${anchorDirection} exit.`);
+      return;
+    }
+    // The anchor the user dragged from names the direction; geometry is the
+    // fallback for connections without one (e.g. tests, older flows).
+    const direction = anchorDirection
+      || directionBetween(getRoomPosition(source, 0), getRoomPosition(target, 0), taken);
     if (!direction) {
       setApiError(`No free direction left on '${sourceId}'.`);
       return;
     }
+    setApiError('');
     const opposite = OPPOSITE_DIRECTIONS[direction];
     const reverseFree = opposite && !(target.exits || {})[opposite];
     applyWorldChange((currentWorld) => ({

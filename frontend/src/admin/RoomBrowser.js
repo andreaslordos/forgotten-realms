@@ -107,28 +107,40 @@ export default function RoomBrowser({
         {filteredRooms.length === 0 ? (
           <p className="admin-empty">{rooms.length === 0 ? 'No rooms loaded.' : 'No rooms match.'}</p>
         ) : null}
-        {filteredRooms.map((room) => (
-          <button
-            type="button"
-            key={room.id}
-            className={selectedRoomIdSet.has(room.id)
-              ? 'room-list__item room-list__item--selected'
-              : 'room-list__item'}
-            onClick={(event) => {
-              const additive = Boolean(event.metaKey || event.ctrlKey || event.shiftKey);
-              onSelectRoom(room.id, additive, !additive);
-            }}
-          >
-            <strong>{room.name}</strong>
-            <span>{room.id}</span>
-            <small>
-              {room.region_id} / {roomLayerId(room, world)} / {exitEntries(room.exits).length} exits
-              {room.is_dark ? ' · dark' : ''}
-              {roomHasPuzzle(room) ? ' · ⚙' : ''}
-              {roomHasStrippedLogic(room) ? ' · ƒ' : ''}
-            </small>
-          </button>
-        ))}
+        {filteredRooms.map((room) => {
+          const defaultLayerId = world.layout?.default_layer_id || world.layers?.[0]?.id;
+          const layerId = roomLayerId(room, world);
+          const exitCount = exitEntries(room.exits).length;
+          // Only surface region/layer when they differ from the defaults —
+          // "world / surface" on every row is noise that eats the room name.
+          const metaParts = [
+            room.id,
+            room.region_id !== 'world' ? room.region_id : null,
+            layerId !== defaultLayerId ? layerId : null,
+            `${exitCount} exit${exitCount === 1 ? '' : 's'}`,
+          ].filter(Boolean);
+          return (
+            <button
+              type="button"
+              key={room.id}
+              className={selectedRoomIdSet.has(room.id)
+                ? 'room-list__item room-list__item--selected'
+                : 'room-list__item'}
+              onClick={(event) => {
+                const additive = Boolean(event.metaKey || event.ctrlKey || event.shiftKey);
+                onSelectRoom(room.id, additive, !additive);
+              }}
+            >
+              <strong>{room.name}</strong>
+              <span className="room-list__badges">
+                {room.is_dark ? <span title="Dark room">☾</span> : null}
+                {roomHasPuzzle(room) ? <span title="Has stateful items / puzzle">⚙</span> : null}
+                {roomHasStrippedLogic(room) ? <span title="Carries Python-only logic">ƒ</span> : null}
+              </span>
+              <small>{metaParts.join(' · ')}</small>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

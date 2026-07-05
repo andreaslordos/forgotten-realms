@@ -24,10 +24,57 @@ import {
 const FIT_VIEW_OPTIONS = { padding: 0.2, duration: 250 };
 const MULTI_SELECTION_KEYS = ['Meta', 'Control', 'Shift'];
 
+const NODE_WIDTH = 136;
+const NODE_HEIGHT = 66;
+const HANDLE_SIZE = 8;
+
+// Every direction gets a fixed anchor on the room rectangle: north leaves the
+// top edge, northeast the top-right corner, and so on. up/down/in/out get
+// offset spots so they don't overlap the cardinals. Dragging a connection out
+// of an anchor creates an exit in that direction.
+const DIRECTION_ANCHORS = {
+  north: { x: NODE_WIDTH / 2, y: 0, position: Position.Top },
+  northeast: { x: NODE_WIDTH, y: 0, position: Position.Top },
+  east: { x: NODE_WIDTH, y: NODE_HEIGHT / 2, position: Position.Right },
+  southeast: { x: NODE_WIDTH, y: NODE_HEIGHT, position: Position.Bottom },
+  south: { x: NODE_WIDTH / 2, y: NODE_HEIGHT, position: Position.Bottom },
+  southwest: { x: 0, y: NODE_HEIGHT, position: Position.Bottom },
+  west: { x: 0, y: NODE_HEIGHT / 2, position: Position.Left },
+  northwest: { x: 0, y: 0, position: Position.Top },
+  up: { x: NODE_WIDTH * 0.75, y: 0, position: Position.Top },
+  down: { x: NODE_WIDTH * 0.25, y: NODE_HEIGHT, position: Position.Bottom },
+  in: { x: 0, y: NODE_HEIGHT * 0.25, position: Position.Left },
+  out: { x: NODE_WIDTH, y: NODE_HEIGHT * 0.75, position: Position.Right },
+};
+
+// Labels only where geometry doesn't already say it: the anchor encodes
+// compass directions, so those stay unlabeled unless the exit is one-way.
+const COMPASS_DIRECTIONS = new Set([
+  'north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest',
+]);
+
 function RoomNode({ data }) {
   return (
     <div className="room-node" style={{ borderColor: data.regionColor }}>
-      <Handle type="target" position={Position.Left} className="room-node__handle" />
+      {Object.entries(DIRECTION_ANCHORS).map(([direction, anchor]) => (
+        <React.Fragment key={direction}>
+          <Handle
+            type="target"
+            id={`t-${direction}`}
+            position={anchor.position}
+            className="room-node__handle"
+            style={{ left: anchor.x, top: anchor.y }}
+          />
+          <Handle
+            type="source"
+            id={`s-${direction}`}
+            position={anchor.position}
+            className="room-node__handle"
+            title={`Drag to dig or connect ${direction}`}
+            style={{ left: anchor.x, top: anchor.y }}
+          />
+        </React.Fragment>
+      ))}
       <div className="room-node__name">{data.label}</div>
       <div className="room-node__id">{data.roomId}</div>
       {(data.isDark || data.hasPuzzle || data.hasStrippedLogic || data.isSpawn) ? (
@@ -38,15 +85,32 @@ function RoomNode({ data }) {
           {data.hasStrippedLogic ? <span title="Carries Python-only logic that this editor cannot modify">ƒ</span> : null}
         </div>
       ) : null}
-      <Handle type="source" position={Position.Right} className="room-node__handle" />
     </div>
   );
 }
 
 const NODE_TYPES = { room: RoomNode };
 
-const NODE_WIDTH = 136;
-const NODE_HEIGHT = 66;
+const STATIC_HANDLES = Object.entries(DIRECTION_ANCHORS).flatMap(([direction, anchor]) => [
+  {
+    id: `t-${direction}`,
+    type: 'target',
+    position: anchor.position,
+    x: anchor.x - HANDLE_SIZE / 2,
+    y: anchor.y - HANDLE_SIZE / 2,
+    width: HANDLE_SIZE,
+    height: HANDLE_SIZE,
+  },
+  {
+    id: `s-${direction}`,
+    type: 'source',
+    position: anchor.position,
+    x: anchor.x - HANDLE_SIZE / 2,
+    y: anchor.y - HANDLE_SIZE / 2,
+    width: HANDLE_SIZE,
+    height: HANDLE_SIZE,
+  },
+]);
 
 function buildNodes(rooms, world, selectedRoomIdSet, spawnRoomId) {
   const regionById = new Map((world.regions || []).map((region) => [region.id, region]));
@@ -58,10 +122,7 @@ function buildNodes(rooms, world, selectedRoomIdSet, spawnRoomId) {
     // immediately instead of waiting on ResizeObserver measurement.
     width: NODE_WIDTH,
     height: NODE_HEIGHT,
-    handles: [
-      { type: 'target', position: Position.Left, x: -4, y: NODE_HEIGHT / 2 - 4, width: 8, height: 8 },
-      { type: 'source', position: Position.Right, x: NODE_WIDTH - 4, y: NODE_HEIGHT / 2 - 4, width: 8, height: 8 },
-    ],
+    handles: STATIC_HANDLES,
     selected: selectedRoomIdSet.has(room.id),
     data: {
       label: room.name,
@@ -97,11 +158,20 @@ function buildEdges(rooms) {
       if (isSymmetric) {
         consumed.add(`${targetId}|${opposite}|${room.id}`);
       }
+      // Anchor the line at the direction's spot on each rectangle: a north
+      // exit leaves the top of the source and enters the bottom (south side)
+      // of the target.
+      const sourceHandle = DIRECTION_ANCHORS[direction] ? `s-${direction}` : undefined;
+      const targetHandle = opposite && DIRECTION_ANCHORS[opposite] ? `t-${opposite}` : undefined;
+      const showLabel = !COMPASS_DIRECTIONS.has(direction) || !isSymmetric;
       edges.push({
         id: `${room.id}-${direction}-${targetId}`,
         source: room.id,
         target: targetId,
-        label: isSymmetric ? direction : `${direction} →`,
+        sourceHandle,
+        targetHandle,
+        type: 'straight',
+        ...(showLabel ? { label: isSymmetric ? direction : `${direction} →` } : {}),
         className: isSymmetric ? 'world-flow__edge' : 'world-flow__edge world-flow__edge--oneway',
         ...(isSymmetric ? {} : { style: { strokeDasharray: '6 4' } }),
       });
@@ -205,7 +275,13 @@ function GraphInner({
 
   const handleConnect = useCallback((connection) => {
     if (connection.source && connection.target && connection.source !== connection.target) {
-      onConnectRooms(connection.source, connection.target);
+      // The anchor the drag started from names the direction (s-north → north).
+      const handleDirection = (connection.sourceHandle || '').replace(/^[st]-/, '');
+      onConnectRooms(
+        connection.source,
+        connection.target,
+        DIRECTION_ANCHORS[handleDirection] ? handleDirection : null
+      );
     }
   }, [onConnectRooms]);
 
@@ -222,6 +298,7 @@ function GraphInner({
       onNodeDragStop={handleNodeDragStop}
       onConnect={handleConnect}
       connectionMode="loose"
+      connectionRadius={28}
       nodesDraggable
       panOnDrag
       selectionOnDrag
@@ -232,7 +309,14 @@ function GraphInner({
       fitViewOptions={FIT_VIEW_OPTIONS}
       proOptions={{ hideAttribution: true }}
     >
-      <MiniMap pannable zoomable />
+      <MiniMap
+        pannable
+        zoomable
+        bgColor="#e3cb92"
+        maskColor="rgba(58, 37, 24, 0.25)"
+        nodeColor="#a9834a"
+        nodeStrokeColor="#4c3218"
+      />
       <Controls />
       <Background gap={gridSize} />
     </ReactFlow>
