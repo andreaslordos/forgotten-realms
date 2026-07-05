@@ -150,6 +150,19 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         synonyms=["draught", "cure"],
     )
 
+    wine = Item(
+        name="wine",
+        id="tavern_wine",
+        description=(
+            "A dusty bottle of dark purple wine from a vineyard long "
+            "since lost to the mists."
+        ),
+        weight=1,
+        value=0,
+        takeable=True,
+        synonyms=["bottle", "wine bottle"],
+    )
+
     return {
         # ===== VILLAGE OF GRAVENMOOR =====
         # Peaceful peasant - frightened villager
@@ -193,6 +206,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "pronouns": "he",
             "shop_stock": [
                 {"item": healing_potion, "price": 25},
+                {"item": wine, "price": 10},
             ],
         },
         # Village priest

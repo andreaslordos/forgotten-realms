@@ -23,7 +23,11 @@ from commands.archmage import (
     handle_invisible,
     handle_visible,
     handle_godmode,
+    handle_conjure,
 )
+from models.ContainerItem import ContainerItem
+from models.Item import Item
+from models.Room import Room
 
 
 class AsyncTestCase(unittest.IsolatedAsyncioTestCase):
@@ -869,6 +873,275 @@ class HandleGodmodeTest(AsyncTestCase):
         # Stats update should not be called since no session
         self.mock_utils.send_stats_update.assert_not_called()
         self.assertIn("divine force", result)
+
+
+class ConjureTestCase(AsyncTestCase):
+    """Base class for conjure tests with a real room-backed world."""
+
+    def setUp(self):
+        """Set up a minimal real world for item lookups."""
+        super().setUp()
+        self.room = Room("test_room", "Test Room", "A room for testing.")
+        self.mock_game_state.rooms = {"test_room": self.room}
+        # Mock auto-attributes would break iteration; be explicit.
+        self.mock_utils.mob_manager = None
+        self.archmage_player.add_item = Mock(return_value=(True, "Added."))
+
+    async def conjure(self, original, player=None):
+        """Run handle_conjure with the given raw command string."""
+        cmd = {"verb": "conjure", "original": original}
+        return await handle_conjure(
+            cmd,
+            player or self.archmage_player,
+            self.mock_game_state,
+            self.mock_player_manager,
+            self.online_sessions,
+            self.mock_sio,
+            self.mock_utils,
+        )
+
+
+class HandleConjurePermissionTest(ConjureTestCase):
+    """Test handle_conjure permission checking."""
+
+    async def test_handle_conjure_denies_non_archmage(self):
+        """Test handle_conjure denies access to non-Archmage players."""
+        # Arrange / Act
+        result = await self.conjure("conjure wine", player=self.normal_player)
+
+        # Assert
+        self.assertIn("authority", result)
+
+    async def test_handle_conjure_requires_item_name(self):
+        """Test handle_conjure asks what to conjure when no name given."""
+        # Arrange / Act
+        result = await self.conjure("conjure")
+
+        # Assert
+        self.assertIn("Conjure what?", result)
+
+
+class HandleConjureLookupTest(ConjureTestCase):
+    """Test handle_conjure item lookup across all sources."""
+
+    async def test_handle_conjure_finds_room_item(self):
+        """Test handle_conjure clones an item lying in a room."""
+        # Arrange
+        gem = Item(
+            name="jet gem",
+            id="jet_gem",
+            description="A gem of polished jet.",
+            weight=0,
+            value=100,
+            takeable=True,
+        )
+        self.room.add_item(gem)
+
+        # Act
+        result = await self.conjure("conjure jet gem")
+
+        # Assert
+        self.assertIn("jet gem", result)
+        self.archmage_player.add_item.assert_called_once()
+        conjured = self.archmage_player.add_item.call_args[0][0]
+        self.assertIsNot(conjured, gem)
+        self.assertEqual(conjured.name, "jet gem")
+        self.assertIn(gem, self.room.items)
+        self.mock_player_manager.save_players.assert_called_once()
+
+    async def test_handle_conjure_finds_item_inside_container(self):
+        """Test handle_conjure finds items nested in containers."""
+        # Arrange
+        chest = ContainerItem(
+            name="chest",
+            id="test_chest",
+            description="A chest.",
+            state="open",
+            takeable=False,
+            capacity_limit=5,
+            capacity_weight=50,
+        )
+        ruby = Item(
+            name="ruby",
+            id="test_ruby",
+            description="A red gem.",
+            weight=0,
+            value=50,
+            takeable=True,
+        )
+        chest.items.append(ruby)
+        self.room.add_item(chest)
+
+        # Act
+        result = await self.conjure("conjure ruby")
+
+        # Assert
+        self.assertIn("ruby", result)
+        conjured = self.archmage_player.add_item.call_args[0][0]
+        self.assertEqual(conjured.id, "test_ruby")
+
+    async def test_handle_conjure_finds_hidden_item(self):
+        """Test handle_conjure finds hidden items even if unrevealed."""
+        # Arrange
+        medallion = Item(
+            name="medallion",
+            id="knight_medallion",
+            description="A silver medallion.",
+            weight=0,
+            value=50,
+            takeable=True,
+        )
+        self.room.add_hidden_item(medallion, lambda game_state: False)
+
+        # Act
+        result = await self.conjure("conjure medallion")
+
+        # Assert
+        self.assertIn("medallion", result)
+        conjured = self.archmage_player.add_item.call_args[0][0]
+        self.assertEqual(conjured.id, "knight_medallion")
+
+    async def test_handle_conjure_finds_mob_loot_item(self):
+        """Test handle_conjure finds items in mob loot tables."""
+        # Arrange
+        golden_key = Item(
+            name="golden key",
+            id="golden_key",
+            description="A key of warm gold.",
+            weight=1,
+            value=0,
+            takeable=True,
+        )
+        mob = Mock()
+        mob.loot_table = [{"item": golden_key, "chance": 0.02}]
+        mob.shop_stock = None
+        mob_manager = Mock()
+        mob_manager.mobs = {"mob_1": mob}
+        self.mock_utils.mob_manager = mob_manager
+
+        # Act
+        result = await self.conjure("conjure golden key")
+
+        # Assert
+        self.assertIn("golden key", result)
+        conjured = self.archmage_player.add_item.call_args[0][0]
+        self.assertEqual(conjured.id, "golden_key")
+
+    async def test_handle_conjure_finds_factory_item_wine(self):
+        """Test handle_conjure falls back to factories for unplaced items."""
+        # Arrange - world is empty; wine exists only as a factory
+
+        # Act
+        result = await self.conjure("conjure wine")
+
+        # Assert
+        self.assertIn("wine", result)
+        conjured = self.archmage_player.add_item.call_args[0][0]
+        self.assertEqual(conjured.id, "wine")
+
+    async def test_handle_conjure_matches_synonyms(self):
+        """Test handle_conjure matches items by synonym."""
+        # Arrange
+        amulet = Item(
+            name="amulet",
+            id="test_amulet",
+            description="A silver amulet.",
+            weight=0,
+            value=40,
+            takeable=True,
+            synonyms=["pendant"],
+        )
+        self.room.add_item(amulet)
+
+        # Act
+        result = await self.conjure("conjure pendant")
+
+        # Assert
+        self.assertIn("amulet", result)
+
+    async def test_handle_conjure_prefers_exact_name_over_partial(self):
+        """Test handle_conjure prefers an exact name match."""
+        # Arrange - "golden key" would partial-match "key" if seen first
+        golden_key = Item(
+            name="golden key",
+            id="golden_key",
+            description="A key of warm gold.",
+            weight=1,
+            value=0,
+            takeable=True,
+        )
+        plain_key = Item(
+            name="key",
+            id="cellar_key",
+            description="A plain brass key.",
+            weight=0,
+            value=5,
+            takeable=True,
+        )
+        self.room.add_item(golden_key)
+        self.room.add_item(plain_key)
+
+        # Act
+        await self.conjure("conjure key")
+
+        # Assert
+        conjured = self.archmage_player.add_item.call_args[0][0]
+        self.assertEqual(conjured.id, "cellar_key")
+
+    async def test_handle_conjure_skips_non_takeable_items(self):
+        """Test handle_conjure never clones fixtures."""
+        # Arrange
+        gates = Item(
+            name="gates",
+            id="castle_gates_item",
+            description="Massive iron gates.",
+            weight=100,
+            value=0,
+            takeable=False,
+        )
+        self.room.add_item(gates)
+
+        # Act
+        result = await self.conjure("conjure gates")
+
+        # Assert
+        self.assertIn("Nothing in this world matches", result)
+        self.archmage_player.add_item.assert_not_called()
+
+    async def test_handle_conjure_returns_not_found_for_unknown_item(self):
+        """Test handle_conjure reports unknown item names."""
+        # Arrange / Act
+        result = await self.conjure("conjure flurble")
+
+        # Assert
+        self.assertIn("Nothing in this world matches 'flurble'", result)
+
+
+class HandleConjureInventoryTest(ConjureTestCase):
+    """Test handle_conjure inventory handling."""
+
+    async def test_handle_conjure_reports_full_inventory(self):
+        """Test handle_conjure surfaces add_item failure and skips save."""
+        # Arrange
+        self.archmage_player.add_item = Mock(
+            return_value=(False, "You are carrying too much.")
+        )
+        torch = Item(
+            name="torch",
+            id="torch",
+            description="A torch.",
+            weight=1,
+            value=5,
+            takeable=True,
+        )
+        self.room.add_item(torch)
+
+        # Act
+        result = await self.conjure("conjure torch")
+
+        # Assert
+        self.assertEqual(result, "You are carrying too much.")
+        self.mock_player_manager.save_players.assert_not_called()
 
 
 if __name__ == "__main__":

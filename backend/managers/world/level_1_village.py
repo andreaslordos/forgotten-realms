@@ -1995,7 +1995,7 @@ class Level1Village(LevelGenerator):
                 utils: Any,
             ) -> None:
                 """Give coins for hints."""
-                player.add_points(10)
+                player.add_points(10, sio, online_sessions)
                 # Remove the peasant from the room
                 mob_manager.remove_mob(peasant.id, game_state)
 

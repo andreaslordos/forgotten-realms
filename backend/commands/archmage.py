@@ -1,7 +1,22 @@
 # backend/commands/archmage.py
 
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Iterator, Optional, Tuple
 from commands.registry import command_registry
+from managers.world.shared_items import (
+    create_bone,
+    create_coin,
+    create_holy_bones,
+    create_knight_medallion,
+    create_lantern,
+    create_mist_token,
+    create_rusty_dagger,
+    create_shadow_key,
+    create_short_sword,
+    create_silver_dagger,
+    create_torch,
+    create_wine,
+    create_wooden_club,
+)
 import logging
 import sys
 import os
@@ -292,6 +307,115 @@ async def handle_godmode(
     return "A divine force surges through you. You feel immensely powerful!"
 
 
+# Zero-argument factories for items that may not be placed anywhere in
+# the live world (e.g. wine) but should still be conjurable.
+_ITEM_FACTORIES: Tuple[Callable[[], Any], ...] = (
+    create_torch,
+    create_lantern,
+    create_coin,
+    create_bone,
+    create_holy_bones,
+    create_wine,
+    create_mist_token,
+    create_knight_medallion,
+    create_shadow_key,
+    create_rusty_dagger,
+    create_wooden_club,
+    create_short_sword,
+    create_silver_dagger,
+)
+
+
+def _iter_candidate_items(game_state: Any, utils: Any) -> Iterator[Any]:
+    """Yield every item in the live world, then factory templates.
+
+    Covers room items, container contents, hidden items, mob loot
+    tables and mob shop stock.
+    """
+    rooms = getattr(game_state, "rooms", None) or {}
+    for room in rooms.values():
+        for item in list(getattr(room, "items", None) or []):
+            yield item
+            for inner in list(getattr(item, "items", None) or []):
+                yield inner
+        hidden = getattr(room, "hidden_items", None) or {}
+        for hidden_item, _condition in hidden.values():
+            yield hidden_item
+            for inner in list(getattr(hidden_item, "items", None) or []):
+                yield inner
+
+    mob_manager = getattr(utils, "mob_manager", None)
+    if mob_manager is not None:
+        mobs = getattr(mob_manager, "mobs", None) or {}
+        for mob in mobs.values():
+            entries = list(getattr(mob, "loot_table", None) or [])
+            entries += list(getattr(mob, "shop_stock", None) or [])
+            for entry in entries:
+                item = entry.get("item")
+                if item is not None:
+                    yield item
+
+    for factory in _ITEM_FACTORIES:
+        yield factory()
+
+
+def _find_item_template(name: str, game_state: Any, utils: Any) -> Optional[Any]:
+    """Find a takeable item matching name.
+
+    An exact name/id match wins immediately; otherwise the first
+    synonym/substring match is used.
+    """
+    lowered = name.lower()
+    partial: Optional[Any] = None
+    for item in _iter_candidate_items(game_state, utils):
+        if not getattr(item, "takeable", False):
+            continue
+        item_id = str(getattr(item, "id", "") or "")
+        if item.name.lower() == lowered or item_id.lower() == lowered:
+            return item
+        if partial is None and item.matches_name(lowered):
+            partial = item
+    return partial
+
+
+async def handle_conjure(
+    cmd: Dict[str, Any],
+    player: Any,
+    game_state: Any,
+    player_manager: Any,
+    online_sessions: Dict[str, Dict[str, Any]],
+    sio: Any,
+    utils: Any,
+) -> str:
+    """
+    Conjure a fresh copy of any item defined in the world. Archmage-only.
+    Usage: conjure <item name>
+    """
+    if player.level != "Archmage":
+        return "You do not have the authority to use this command."
+
+    parts = cmd.get("original", "").split()
+    if parts and parts[0].lower() == "conjure":
+        parts = parts[1:]
+    item_name = " ".join(parts).strip() or (cmd.get("subject") or "")
+    if not item_name:
+        return "Conjure what? (Usage: conjure <item name>)"
+
+    template = _find_item_template(item_name, game_state, utils)
+    if template is None:
+        return f"Nothing in this world matches '{item_name}'."
+
+    # Clone so the live world never hands out a shared instance.
+    conjured = type(template).from_dict(template.to_dict())
+    success, message = player.add_item(conjured)
+    if not success:
+        return str(message)
+
+    player_manager.save_players()
+    logger.info(f"Archmage {player.name} conjured '{conjured.name}'")
+    return f"The mists coalesce in your hands - you conjure the {conjured.name}."
+
+
 # Register Archmage commands
 command_registry.register(
     "set", handle_set_points, "Set points for a player (Archmage only)."
@@ -309,6 +433,9 @@ command_registry.register(
     "visible", handle_visible, "Become visible again (Archmage only)."
 )
 command_registry.register_alias("vis", "visible")
+command_registry.register(
+    "conjure", handle_conjure, "Conjure any item into your hands (Archmage only)."
+)
 
 # Secret cheat code - not listed in help
 command_registry.register("godmodeplz", handle_godmode, hidden=True)

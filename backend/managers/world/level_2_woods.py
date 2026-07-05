@@ -2277,55 +2277,70 @@ class Level2Woods(LevelGenerator):
                 container.update_description()
 
                 # Grant points to the player
+                points_note = ""
                 try:
                     from globals import online_sessions
 
                     for sid, session in online_sessions.items():
                         player = session.get("player")
                         if player and player.current_room == "old_shrine":
-                            player.add_points(50)
+                            _, points_note = player.add_points(
+                                50, send_notification=False
+                            )
                             # Persisted; wolves check this when picking prey.
                             player.flags["nature_blessing"] = True
                 except ImportError:
                     pass
 
-                return (
+                message = (
                     "\nThe silver ring settles into the bowl and begins to glow!\n"
                     "A warm presence fills the shrine - the forgotten god remembers "
                     "those who remember him. Divine favor washes over you.\n"
-                    "You feel blessed by ancient powers. (+50 points)\n"
+                    "You feel blessed by ancient powers.\n"
                     "The wolves of these woods will no longer see you as prey."
                 )
+                if points_note:
+                    message += f"\n{points_note}"
+                return message
 
             # Coins are acceptable but not ideal
             elif "coin" in item_name or "gold" in item_name:
                 # Minor offering
+                points_note = ""
                 try:
                     from globals import online_sessions
 
                     for sid, session in online_sessions.items():
                         player = session.get("player")
                         if player and player.current_room == "old_shrine":
-                            player.add_points(10)
+                            _, points_note = player.add_points(
+                                10, send_notification=False
+                            )
                 except ImportError:
                     pass
 
-                return (
+                message = (
                     "\nThe coin clinks into the bowl. A faint warmth touches your "
                     "heart - the god acknowledges your offering, though it seems "
-                    "to desire something more personal. (+10 points)"
+                    "to desire something more personal."
                 )
+                if points_note:
+                    message += f"\n{points_note}"
+                return message
 
             # Wrong offering - punishment!
             else:
                 # Punish the player
+                points_note = ""
                 try:
                     from globals import online_sessions
 
                     for sid, session in online_sessions.items():
                         player = session.get("player")
                         if player and player.current_room == "old_shrine":
-                            player.add_points(-5)
+                            _, points_note = player.add_points(
+                                -5, send_notification=False
+                            )
                 except ImportError:
                     pass
 
@@ -2335,13 +2350,16 @@ class Level2Woods(LevelGenerator):
                 container.update_weight()
                 container.update_description()
 
-                return (
+                message = (
                     f"\nYou place the {item.name} in the bowl. A chill wind blows "
                     "through the shrine and the offering is flung back at you!\n"
                     "The forgotten god is displeased with such a meager gift. "
-                    "You feel a cold disapproval settle over you. (-5 points)\n"
+                    "You feel a cold disapproval settle over you.\n"
                     "Perhaps something silver would be more appropriate..."
                 )
+                if points_note:
+                    message += f"\n{points_note}"
+                return message
 
         silver_bowl.on_item_added = on_offering_placed
 

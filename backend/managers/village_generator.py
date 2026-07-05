@@ -9,7 +9,6 @@ from models.ContainerItem import ContainerItem
 from models.Weapon import Weapon
 from models.SpecializedRooms import SwampRoom
 
-
 # ============================================================================
 # PUZZLE CONDITION FUNCTIONS
 # These are used by StatefulItem.add_interaction(conditional_fn=...)
