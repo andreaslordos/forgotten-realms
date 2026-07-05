@@ -2530,7 +2530,7 @@ class Level2Woods(LevelGenerator):
             }
 
         # Veyra trader - accepts gold for information
-        trader = find_mob_in_room("vistani", "merchant_stall")
+        trader = find_mob_in_room("trader", "merchant_stall")
         if trader:
             trader.accepts_item = {
                 "coin": {

@@ -313,7 +313,7 @@ def register_handlers(
                 await post_login(sid, player)
                 return
 
-    @sio.event  # type: ignore[misc]
+    @sio.event  # type: ignore
     async def connect(sid: str, environ: Any, auth: Any) -> None:
         """
         Handles a new client connection.
@@ -328,24 +328,25 @@ def register_handlers(
             "failedAttempts": 0,
         }
         MYSTICAL_SPLASH = f"""\
-                  Valley of Barovia - Version {version}
+                    The Mournvale - Version {version}
 
                        Mors certa, hora incerta.
 ********************************************************************
-*  The mists have claimed you. There is no escape from Barovia.    *
+*  The mists have claimed you. There is no way out of the vale.    *
 *                                                                  *
-*  In this land of eternal twilight, a vampire lord rules from     *
-*  his castle above. The villagers whisper of curses and death.    *
-*  The wolves howl in the night.                                   *
+*  In this land of failing light, the Pale Sovereign watches       *
+*  from Bleakspire. In Gravenmoor they whisper of the Dawnfather,  *
+*  of the Gray Watch that fell, and of doors that should not be.   *
+*  The wolves grow bold when the sun goes down.                    *
 *                                                                  *
-*  Will you break the curse... or become another of his victims?   *
+*  Will you break the curse... or feed the mists another name?     *
 ********************************************************************
 
 You stumble through the mists... What is your name?
 """
         await utils.send_message(sio, sid, MYSTICAL_SPLASH)
 
-    @sio.event  # type: ignore[misc]
+    @sio.event  # type: ignore
     async def disconnect(sid: str) -> None:
         """
         Handles client disconnection.
@@ -398,7 +399,7 @@ You stumble through the mists... What is your name?
             # Remove the session
             del online_sessions[sid]
 
-    @sio.event  # type: ignore[misc]
+    @sio.event  # type: ignore
     async def command(sid: str, command_text: str) -> None:
         """
         Handles all commands from a client.

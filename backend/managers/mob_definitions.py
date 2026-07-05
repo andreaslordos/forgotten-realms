@@ -320,7 +320,7 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
         },
         # Veyra trader
         "vistani": {
-            "name": "vistani",
+            "name": "trader",
             "description": "A colorfully dressed Veyra trader eyes you with knowing amusement.",
             "strength": 20,
             "dexterity": 25,
