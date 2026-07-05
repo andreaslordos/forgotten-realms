@@ -4,11 +4,28 @@ import logging
 import os
 import ssl
 import sys
+from pathlib import Path
 from typing import Any, List
 
 import socketio
 import utils
 from aiohttp import web
+
+
+def _load_dotenv(path: Path) -> None:
+    """Load KEY=value lines from a local .env (never overrides real env)."""
+    if not path.is_file():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+# Local development secrets (gitignored); production injects real env vars.
+_load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from admin.routes import register_admin_routes
 from event_handlers import register_handlers

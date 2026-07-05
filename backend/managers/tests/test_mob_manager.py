@@ -694,8 +694,8 @@ class MobManagerRespawnSchedulingTest(unittest.TestCase):
         # Assert
         self.assertNotIn(mob.id, self.manager.spawn_records)
 
-    def test_remove_mob_schedules_default_respawn_after_300_seconds(self):
-        """Test remove_mob queues a respawn at now+300 for default templates."""
+    def test_remove_mob_default_is_permadeath(self):
+        """Test kills are permanent by default (no respawn queue entry)."""
         # Arrange
         mob = self.manager.spawn_mob("wolf", "room1")
 
@@ -703,10 +703,7 @@ class MobManagerRespawnSchedulingTest(unittest.TestCase):
         self.manager.remove_mob(mob.id)
 
         # Assert
-        self.assertEqual(
-            self.manager.respawn_queue,
-            [(self.fake.time() + 300.0, "wolf", "room1")],
-        )
+        self.assertEqual(self.manager.respawn_queue, [])
 
     def test_remove_mob_uses_template_respawn_seconds(self):
         """Test remove_mob honours a custom respawn_seconds value."""
@@ -753,7 +750,10 @@ class MobManagerProcessRespawnsTest(BaseAsyncTest):
         super().setUp()
         self.fake = _FakeTime()
         self.manager = MobManager(time_func=self.fake.time)
-        self.manager.load_mob_definitions({"wolf": {"name": "wolf"}})
+        # Respawn is opt-in (world default is permadeath until reset).
+        self.manager.load_mob_definitions(
+            {"wolf": {"name": "wolf", "respawn_seconds": 300}}
+        )
 
         self.game_state = GameState()
         self.room = Room("room1", "Clearing", "A quiet clearing.")

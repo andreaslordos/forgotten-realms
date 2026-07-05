@@ -25,7 +25,9 @@ class MobManager:
     mob_definitions: Dict[str, Dict[str, Any]]
     global_tick_counter: int
 
-    DEFAULT_RESPAWN_SECONDS = 300.0
+    # Kills are permanent until the weekly reset (None = never respawn).
+    # Definitions may opt in to timed repopulation via "respawn_seconds".
+    DEFAULT_RESPAWN_SECONDS: Optional[float] = None
 
     def __init__(self, *, time_func: Optional[Callable[[], float]] = None) -> None:
         self.mobs = {}  # Dict of mob_id -> Mobile instance
@@ -49,9 +51,7 @@ class MobManager:
         self.mob_definitions = definitions
         logger.info(f"Loaded {len(definitions)} mob definitions")
 
-    def add_mob_definition(
-        self, definition_id: str, template: Dict[str, Any]
-    ) -> None:
+    def add_mob_definition(self, definition_id: str, template: Dict[str, Any]) -> None:
         """Register a single definition at runtime (generated zone mobs)."""
         self.mob_definitions[definition_id] = template
         logger.info(f"Registered runtime mob definition '{definition_id}'")
@@ -140,10 +140,10 @@ class MobManager:
         schedule_respawn: bool = True,
     ) -> bool:
         """
-        Remove a mob from the game, optionally scheduling its respawn.
+        Remove a mob from the game.
 
-        Respawn delay comes from the definition's respawn_seconds (default
-        300; None means never — bosses stay dead until the world resets).
+        Kills are permanent until the weekly reset: nothing respawns unless
+        its definition explicitly opts in via "respawn_seconds".
 
         Args:
             mob_id (str): ID of the mob to remove

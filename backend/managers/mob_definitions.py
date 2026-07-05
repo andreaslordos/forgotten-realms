@@ -191,8 +191,6 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 0,
             "pronouns": "he",
-            # Quest NPC: killable for points but never world-bricking.
-            "respawn_seconds": 600,
             "shop_stock": [
                 {"item": healing_potion, "price": 25},
             ],
@@ -214,8 +212,6 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 0,
             "pronouns": "he",
-            # Quest NPC: killable for points but never world-bricking.
-            "respawn_seconds": 600,
         },
         # Bram the greedy shopkeeper
         "bildrath": {
@@ -238,8 +234,6 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 30,
             "pronouns": "he",
-            # Quest NPC: killable for points but never world-bricking.
-            "respawn_seconds": 600,
             "shop_stock": [
                 {"item": lantern, "price": 40},
                 {"item": healing_potion, "price": 25},
@@ -344,8 +338,6 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 20,
             "pronouns": "she",
-            # Quest NPC: killable for points but never world-bricking.
-            "respawn_seconds": 600,
         },
         # Madam Eva - fortune teller
         "seer": {
@@ -364,8 +356,6 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "instant_death": False,
             "point_value": 0,
             "pronouns": "she",
-            # Quest NPC: killable for points but never world-bricking.
-            "respawn_seconds": 600,
         },
         # Bat swarm
         "bats": {
@@ -409,8 +399,6 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "point_value": 200,
             "pronouns": "she",
             "gold_drop": (30, 60),
-            # Quest NPC: killable for points but never world-bricking.
-            "respawn_seconds": 600,
             "magic": 30,
             "mob_abilities": [
                 {
@@ -725,8 +713,6 @@ def get_mob_definitions() -> Dict[str, Dict[str, Any]]:
             "pronouns": "he",
             "gold_drop": (150, 300),
             "magic": 60,
-            # Forward-compat hook for a future respawn system (None = never).
-            "respawn_seconds": None,
             "death_broadcast": (
                 "Far away, the bells of Gravenmoor toll though no hand pulls "
                 "them. {player} has slain Lord Morvane, the Pale Sovereign! "
