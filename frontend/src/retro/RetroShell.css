@@ -1,0 +1,290 @@
+/* ============================================================= */
+/* The void                                                       */
+/* ============================================================= */
+
+.retro-stage {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(
+    ellipse at 50% 46%,
+    #08100e 0%,
+    #030505 55%,
+    #000 100%
+  );
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.retro-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 46vw 48vh at 50% 48%,
+    rgba(2, 255, 255, 0.13),
+    rgba(2, 255, 255, 0.04) 45%,
+    rgba(2, 255, 255, 0) 72%
+  );
+  opacity: 0.3;
+  transition: opacity 0.8s ease;
+}
+
+.retro-phase--booting .retro-glow {
+  opacity: 0.65;
+}
+
+.retro-phase--on .retro-glow {
+  opacity: 1;
+}
+
+/* ============================================================= */
+/* Landing: the way in                                            */
+/* ============================================================= */
+
+.retro-enter {
+  position: relative;
+  z-index: 10;
+  padding: clamp(14px, 2.2vw, 20px) clamp(24px, 5vw, 48px);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.8);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: clamp(13px, 1.6vw, 18px);
+  letter-spacing: 0.22em;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.retro-enter:hover,
+.retro-enter:active {
+  background: #fff;
+  border-color: #fff;
+  color: #000;
+}
+
+/* ============================================================= */
+/* The terminal                                                   */
+/* ============================================================= */
+
+.term-shell {
+  position: relative;
+  z-index: 5;
+  width: min(90vw, 1120px);
+  height: min(86vh, 880px);
+  height: min(86dvh, 880px);
+  background: #000;
+  border: 1px solid rgba(2, 255, 255, 0.25);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow:
+    0 0 44px rgba(2, 255, 255, 0.09),
+    0 26px 70px rgba(0, 0, 0, 0.65);
+}
+
+.retro-phase--landing .term-shell {
+  display: none;
+}
+
+.term-content {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+}
+
+.retro-phase--on .term-content {
+  animation: term-reveal 0.4s ease-out;
+}
+
+@keyframes term-reveal {
+  0% { opacity: 0.2; filter: brightness(2.4); }
+  100% { opacity: 1; filter: brightness(1); }
+}
+
+/* Readability inside the terminal, on any screen size */
+.term-content pre {
+  font-size: clamp(13px, 0.5vw + 9px, 16px);
+  line-height: 1.5;
+}
+
+.term-content .output-container {
+  width: 100%;
+  max-width: 92ch;
+}
+
+/* 16px+ keeps iOS Safari from zooming the page when the input focuses */
+.term-content input {
+  font-size: 16px;
+}
+
+/* ============================================================= */
+/* Boot overlay: dial-in ritual                                   */
+/* ============================================================= */
+
+.term-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+  background: #050605;
+}
+
+.boot-screen {
+  position: absolute;
+  inset: 0;
+  padding: clamp(16px, 4%, 44px) clamp(18px, 5%, 56px);
+}
+
+.boot-bloom {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: #fff;
+  animation: crt-bloom 0.9s ease-out forwards;
+}
+
+@keyframes crt-bloom {
+  0% { transform: scale(0.005, 0.004); opacity: 1; }
+  38% { transform: scale(1, 0.004); opacity: 1; }
+  72% { transform: scale(1, 1); opacity: 0.85; }
+  100% { transform: scale(1, 1); opacity: 0; visibility: hidden; }
+}
+
+.boot-screen pre {
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: clamp(12px, 1.1vw + 4px, 17px);
+  line-height: 1.55;
+  color: #cfd3c0;
+  text-shadow: 0 0 5px rgba(190, 255, 205, 0.35);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.boot-cursor {
+  animation: hard-blink 1s steps(1) infinite;
+}
+
+@keyframes hard-blink {
+  50% { opacity: 0; }
+}
+
+.boot-skip {
+  position: absolute;
+  right: 3.5%;
+  bottom: 3.5%;
+  z-index: 6;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid rgba(210, 220, 200, 0.25);
+  border-radius: 4px;
+  color: rgba(210, 220, 200, 0.5);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+}
+
+.boot-skip:hover {
+  border-color: rgba(2, 255, 255, 0.6);
+  color: #02ffff;
+}
+
+/* ============================================================= */
+/* Title card                                                     */
+/* ============================================================= */
+
+.boot-title {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4%;
+}
+
+.boot-title__frame {
+  padding: clamp(16px, 3.4vw, 38px) clamp(18px, 4.5vw, 54px);
+  text-align: center;
+  border: 4px double #02ffff;
+  background: rgba(0, 10, 12, 0.5);
+  box-shadow:
+    0 0 18px rgba(2, 255, 255, 0.35),
+    inset 0 0 18px rgba(2, 255, 255, 0.15);
+}
+
+.boot-title__frame h1 {
+  margin: 10px 0 8px;
+  color: #fe01ff;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: clamp(19px, 3.4vw, 42px);
+  letter-spacing: 0.14em;
+  text-shadow:
+    0 0 12px rgba(254, 1, 255, 0.7),
+    3px 3px 0 rgba(2, 255, 255, 0.35);
+}
+
+.boot-title__over {
+  margin: 0;
+  color: #9ba48e;
+  font-size: clamp(9px, 1vw, 12px);
+  letter-spacing: 0.3em;
+}
+
+.boot-title__sub {
+  margin: 0 0 8px;
+  color: #02ffff;
+  font-size: clamp(10px, 1.2vw, 14px);
+  letter-spacing: 0.2em;
+}
+
+.boot-title__conn {
+  margin: 0 0 14px;
+  color: #7d857a;
+  font-size: clamp(9px, 1vw, 12px);
+  letter-spacing: 0.18em;
+}
+
+.boot-title__press {
+  margin: 0;
+  color: #ffff00;
+  font-size: clamp(11px, 1.4vw, 16px);
+  letter-spacing: 0.26em;
+  text-shadow: 0 0 8px rgba(255, 255, 0, 0.5);
+  animation: hard-blink 1.2s steps(1) infinite;
+}
+
+/* ============================================================= */
+/* Small screens: give the terminal the whole viewport            */
+/* ============================================================= */
+
+@media (max-width: 700px), (max-height: 540px) {
+  .term-shell {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-bloom {
+    animation-duration: 0.12s;
+  }
+
+  .retro-phase--on .term-content {
+    animation: none;
+  }
+}

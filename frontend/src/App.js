@@ -5,6 +5,7 @@ import '@xyflow/react/dist/style.css';
 import './App.css';
 import { getBackendUrl } from './config';
 import AdminWorldBuilder from './admin/AdminWorldBuilder';
+import RetroShell from './retro/RetroShell';
 
 const ADMIN_PATH = '/admin/world-builder';
 
@@ -46,7 +47,9 @@ function App() {
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current && messagesEndRef.current.scrollIntoView) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      // block: 'nearest' keeps ancestor containers (the retro stage) from
+      // being scrolled out of position; only the output pane scrolls.
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [messages]);
 
@@ -250,21 +253,29 @@ function App() {
   }
 
   return (
-    <GameTerminal
-      playerName={playerName}
-      playerScore={playerScore}
-      playerStamina={playerStamina}
-      maxStamina={maxStamina}
-      messages={messages}
-      messagesEndRef={messagesEndRef}
-      command={command}
-      setCommand={setCommand}
-      inputType={inputType}
-      inputDisabled={inputDisabled}
-      inputRef={inputRef}
-      handleCommandSubmit={handleCommandSubmit}
-      handleKeyDown={handleKeyDown}
-    />
+    <RetroShell
+      onLit={() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }}
+    >
+      <GameTerminal
+        playerName={playerName}
+        playerScore={playerScore}
+        playerStamina={playerStamina}
+        maxStamina={maxStamina}
+        messages={messages}
+        messagesEndRef={messagesEndRef}
+        command={command}
+        setCommand={setCommand}
+        inputType={inputType}
+        inputDisabled={inputDisabled}
+        inputRef={inputRef}
+        handleCommandSubmit={handleCommandSubmit}
+        handleKeyDown={handleKeyDown}
+      />
+    </RetroShell>
   );
 }
 
@@ -351,7 +362,7 @@ function GameTerminal({
   handleKeyDown,
 }) {
   return (
-    <div style={{ fontFamily: "monospace", height: "100vh", display: "flex", flexDirection: "column" }}>
+    <div style={{ fontFamily: "monospace", height: "100%", display: "flex", flexDirection: "column" }}>
       {/* Top bar / HUD */}
       <div style={{ backgroundColor: "#fe01ff", color: "#000", padding: "0.5rem" }}>
         {playerName
