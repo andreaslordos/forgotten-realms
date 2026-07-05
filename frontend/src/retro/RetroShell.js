@@ -21,6 +21,13 @@ function prefersReducedMotion() {
 // boot overlay so the socket connects and the login prompt is ready.
 export default function RetroShell({ children, onLit }) {
   const [phase, setPhase] = useState('landing'); // landing | booting | on
+  const [fullscreen, setFullscreen] = useState(
+    () => localStorage.getItem('retroFullscreen') === '1'
+  );
+
+  useEffect(() => {
+    localStorage.setItem('retroFullscreen', fullscreen ? '1' : '0');
+  }, [fullscreen]);
 
   const finishBoot = useCallback(() => {
     stopAllAudio();
@@ -45,13 +52,34 @@ export default function RetroShell({ children, onLit }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [phase, finishBoot]);
 
+  const toggleFullscreen = () => {
+    setFullscreen((f) => !f);
+    // Hand focus straight back to the game input.
+    if (onLit) onLit();
+  };
+
   return (
-    <div className={`retro-stage retro-phase--${phase}`}>
+    <div
+      className={`retro-stage retro-phase--${phase}${
+        fullscreen ? ' retro-mode--full' : ''
+      }`}
+    >
       <div className="retro-glow" aria-hidden="true" />
 
       {phase === 'landing' && (
         <button type="button" className="retro-enter" onClick={enterRealm}>
           ENTER MOURNVALE
+        </button>
+      )}
+
+      {phase === 'on' && (
+        <button
+          type="button"
+          className="term-mode-toggle"
+          onClick={toggleFullscreen}
+          aria-label="Toggle fullscreen"
+        >
+          {fullscreen ? 'WINDOWED' : 'FULLSCREEN'}
         </button>
       )}
 

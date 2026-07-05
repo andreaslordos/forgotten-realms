@@ -95,6 +95,42 @@
   display: none;
 }
 
+/* Fullscreen mode: the terminal fills the viewport, like the original layout */
+.retro-mode--full .term-shell {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.term-mode-toggle {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 50;
+  padding: 5px 10px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.term-mode-toggle:hover {
+  background: #fff;
+  border-color: #fff;
+  color: #000;
+}
+
 .term-content {
   position: absolute;
   inset: 0;
@@ -276,6 +312,11 @@
     border: none;
     border-radius: 0;
     box-shadow: none;
+  }
+
+  /* Already fullscreen on small viewports — the toggle would be a no-op */
+  .term-mode-toggle {
+    display: none;
   }
 }
 

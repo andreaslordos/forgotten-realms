@@ -53,6 +53,23 @@ test('escape skips the boot straight into the game', () => {
   expect(screen.queryByRole('button', { name: /SKIP/ })).not.toBeInTheDocument();
 });
 
+test('fullscreen toggle switches modes and persists the choice', () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'ENTER MOURNVALE' }));
+  fireEvent.keyDown(window, { key: 'Escape' });
+
+  const toggle = screen.getByRole('button', { name: 'Toggle fullscreen' });
+  expect(toggle).toHaveTextContent('FULLSCREEN');
+
+  fireEvent.click(toggle);
+  expect(localStorage.getItem('retroFullscreen')).toBe('1');
+  expect(toggle).toHaveTextContent('WINDOWED');
+
+  fireEvent.click(toggle);
+  expect(localStorage.getItem('retroFullscreen')).toBe('0');
+  expect(toggle).toHaveTextContent('FULLSCREEN');
+});
+
 test('the skip button also ends the boot sequence', () => {
   render(<App />);
 
