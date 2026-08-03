@@ -16,7 +16,8 @@ function TitleCard() {
 }
 
 // Plays the dial-in boot ritual, then holds on the title card until the user
-// presses a key (or taps, on touch devices) before calling onDone.
+// releases a key (or taps, on touch devices) before calling onDone. Waiting for
+// keyup prevents the boot key from reaching the command form as empty input.
 // Cancellation: cleanup clears all pending timers, so the async runner simply
 // never resumes after unmount.
 export default function BootSequence({ reduced, onDone }) {
@@ -29,10 +30,10 @@ export default function BootSequence({ reduced, onDone }) {
   useEffect(() => {
     if (!showTitle) return undefined;
     const enter = () => doneRef.current();
-    window.addEventListener('keydown', enter);
+    window.addEventListener('keyup', enter);
     window.addEventListener('pointerdown', enter);
     return () => {
-      window.removeEventListener('keydown', enter);
+      window.removeEventListener('keyup', enter);
       window.removeEventListener('pointerdown', enter);
     };
   }, [showTitle]);
