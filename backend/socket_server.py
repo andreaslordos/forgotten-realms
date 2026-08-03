@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
+# Imports below _load_dotenv are intentionally delayed so local env values are
+# available to modules that read configuration during import.
+# ruff: noqa: E402
+
 import asyncio
 import logging
 import os
-import ssl
 import sys
 from pathlib import Path
 from typing import Any, List
@@ -37,6 +40,7 @@ from managers.mob_definitions import get_mob_definitions
 from managers.mob_manager import MobManager
 from managers.player import PlayerManager
 from managers.world import generate_world
+from server_config import ServerConfig, build_ssl_context
 from services.notifications import set_context
 from tick_service import start_background_tick
 
@@ -109,34 +113,38 @@ logger.info("Registering Socket.IO event handlers...")
 register_handlers(sio, auth_manager, player_manager, game_state, online_sessions, utils)
 logger.info("Socket.IO event handlers registered.")
 
-# Determine the port.
-port = int(os.environ.get("PORT", 8080))
-logger.info(f"Configured to run on port: {port}")
+# Configure the listener. Production keeps the existing Let's Encrypt default;
+# Cloudflare Tunnel sets SERVER_BIND_HOST=127.0.0.1 and SERVER_TLS_MODE=disabled.
+try:
+    server_config = ServerConfig.from_env(test_mode=TEST_MODE)
+    ssl_context = build_ssl_context(server_config)
+except (OSError, ValueError) as exc:
+    logger.error(f"Failed to configure the backend listener: {exc}")
+    sys.exit(1)
 
-# Setup SSL only if not in test mode.
-ssl_context = None
-if not TEST_MODE:
-    try:
-        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        ssl_context.load_cert_chain(
-            certfile="/etc/letsencrypt/live/api.realms.lordos.tech/fullchain.pem",
-            keyfile="/etc/letsencrypt/live/api.realms.lordos.tech/privkey.pem",
-        )
-        logger.info("🔒 Running with SSL enabled (Production Mode)")
-    except Exception as e:
-        logger.error(f"Failed to set up SSL: {e}")
-        sys.exit(1)
-else:
-    logger.info("🛠 Running without SSL (Test Mode)")
+logger.info(
+    "Configured listener: host=%s port=%s tls=%s",
+    server_config.bind_host,
+    server_config.port,
+    server_config.tls_mode,
+)
 
 
 async def main() -> None:
     try:
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, "0.0.0.0", port, ssl_context=ssl_context)
+        site = web.TCPSite(
+            runner,
+            server_config.bind_host,
+            server_config.port,
+            ssl_context=ssl_context,
+        )
         logger.info(
-            f"Server starting at {'https' if ssl_context else 'http'}://0.0.0.0:{port}"
+            "Server starting at %s://%s:%s",
+            "https" if ssl_context else "http",
+            server_config.bind_host,
+            server_config.port,
         )
         await site.start()
 

@@ -166,9 +166,11 @@ const MOB_DEFINITIONS = [
 ];
 
 let socket;
+let managerHandlers;
 let confirmSpy;
 
 function installSocketMock() {
+  managerHandlers = {};
   socket = {
     handlers: {},
     emit: jest.fn(),
@@ -176,6 +178,11 @@ function installSocketMock() {
       socket.handlers[event] = handler;
     }),
     disconnect: jest.fn(),
+    io: {
+      on: jest.fn((event, handler) => {
+        managerHandlers[event] = handler;
+      }),
+    },
   };
   io.mockReturnValue(socket);
 }
@@ -256,6 +263,58 @@ test('renders the existing game terminal on normal paths', () => {
   expect(screen.getByText('The Forgotten Realms')).toBeInTheDocument();
   expect(screen.getByPlaceholderText('Type your command....')).toBeInTheDocument();
   expect(screen.queryByText('Admin World Builder')).not.toBeInTheDocument();
+});
+
+test('configures bounded Socket.IO reconnection', () => {
+  render(<App />);
+
+  expect(io).toHaveBeenCalledWith(
+    'http://localhost:8080',
+    expect.objectContaining({
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 5000,
+    }),
+  );
+});
+
+test('recovers the login UI after a network reconnect', () => {
+  render(<App />);
+
+  act(() => {
+    socket.handlers.connect();
+    socket.handlers.statsUpdate({
+      name: 'Tester',
+      score: 10,
+      stamina: 20,
+      max_stamina: 20,
+    });
+    socket.handlers.disconnect('transport close');
+  });
+  expect(screen.getByText('Connection lost. Reconnecting...')).toBeInTheDocument();
+  expect(screen.getByPlaceholderText('Connection Closed')).toBeDisabled();
+
+  act(() => {
+    socket.handlers.connect();
+  });
+  expect(screen.getByText('The Forgotten Realms')).toBeInTheDocument();
+  expect(screen.getByPlaceholderText('Type your command....')).toBeEnabled();
+});
+
+test('keeps input disabled after reconnection attempts are exhausted', () => {
+  render(<App />);
+
+  act(() => {
+    socket.handlers.disconnect('transport close');
+    managerHandlers.reconnect_failed();
+  });
+
+  expect(
+    screen.getByText('Unable to reconnect. Reload the page to try again.'),
+  ).toBeInTheDocument();
+  expect(screen.getByPlaceholderText('Connection Closed')).toBeDisabled();
 });
 
 test('renders the admin world builder route with the login panel until a token arrives', () => {

@@ -41,6 +41,7 @@ function App() {
 
   // Socket and refs for scrolling and input selection
   const socketRef = useRef(null);
+  const hasConnectedRef = useRef(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -59,7 +60,11 @@ function App() {
 
     socketRef.current = io(SOCKET_URL, {
       transports: ['websocket'],
-      reconnection: false,   // Disable auto-reconnection
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 5000,
+      randomizationFactor: 0.5,
       pingInterval: 60000,   // 60 seconds (in ms)
       pingTimeout: 180000,    // 180 seconds (in ms)
     });
@@ -67,11 +72,38 @@ function App() {
     // On successful connect
     socketRef.current.on('connect', () => {
       console.log('Connected to backend.');
+      setInputDisabled(false);
+
+      if (hasConnectedRef.current) {
+        // A new Socket.IO connection has a new server session. Return the UI
+        // to login state so the server's fresh login prompt is handled safely.
+        setPhase("login");
+        setInputType("text");
+        setPlayerName("");
+        setCommand("");
+        setHistoryPosition(0);
+      }
+      hasConnectedRef.current = true;
     });
 
     // If the server forcibly disconnects or the connection is lost
-    socketRef.current.on('disconnect', () => {
-      setMessages((prev) => [...prev, "Connection lost."]);
+    socketRef.current.on('disconnect', (reason) => {
+      if (reason === 'io client disconnect') {
+        return;
+      }
+
+      const status = reason === 'io server disconnect'
+        ? "Connection closed."
+        : "Connection lost. Reconnecting...";
+      setMessages((prev) => [...prev, status]);
+      setInputDisabled(true);
+    });
+
+    socketRef.current.io?.on?.('reconnect_failed', () => {
+      setMessages((prev) => [
+        ...prev,
+        "Unable to reconnect. Reload the page to try again.",
+      ]);
       setInputDisabled(true);
     });
 
