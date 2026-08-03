@@ -6,13 +6,30 @@ on:
       - main
     paths:
       - 'backend/**'
+      - 'scripts/deploy_backend_remote.sh'
+      - '.github/workflows/backend-deploy.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-backend-production
+  cancel-in-progress: false
+
+env:
+  GCE_INSTANCE: my-socket-server
+  GCE_ZONE: us-central1-a
+  GCE_USER: andreas
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+        with:
+          # The VM fetches from this bundle instead of reaching GitHub itself.
+          fetch-depth: 0
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -20,19 +37,37 @@ jobs:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
+        uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: SSH into VM and Update Backend
+      - name: Build deployment bundle
         run: |
-          gcloud compute ssh andreas@my-socket-server --zone=us-central1-a --command "
-            sudo chown -R andreas:andreas /home/andreas/forgotten-realms &&
-            git config --global --add safe.directory /home/andreas/forgotten-realms &&
-            cd /home/andreas/forgotten-realms &&
-            git pull origin main &&
-            cd backend &&
-            source venv/bin/activate &&
-            pip install -r requirements.txt &&
-            sudo systemctl restart socket-server
-          "
+          bundle="forgotten-realms-${GITHUB_SHA}.bundle"
+          git bundle create "${bundle}" HEAD
+          git bundle verify "${bundle}"
+
+      - name: Copy deployment through IAP
+        run: |
+          bundle="forgotten-realms-${GITHUB_SHA}.bundle"
+          remote_script="deploy-backend-${GITHUB_SHA}.sh"
+          cp scripts/deploy_backend_remote.sh "${remote_script}"
+
+          gcloud compute scp \
+            --project="${{ secrets.GCP_PROJECT_ID }}" \
+            --zone="${GCE_ZONE}" \
+            --tunnel-through-iap \
+            --quiet \
+            "${bundle}" \
+            "${remote_script}" \
+            "${GCE_USER}@${GCE_INSTANCE}:/tmp/"
+
+      - name: Deploy backend through IAP
+        run: |
+          gcloud compute ssh \
+            --project="${{ secrets.GCP_PROJECT_ID }}" \
+            --zone="${GCE_ZONE}" \
+            --tunnel-through-iap \
+            --quiet \
+            "${GCE_USER}@${GCE_INSTANCE}" \
+            --command="bash '/tmp/deploy-backend-${GITHUB_SHA}.sh' '/tmp/forgotten-realms-${GITHUB_SHA}.bundle' '${GITHUB_SHA}'"
