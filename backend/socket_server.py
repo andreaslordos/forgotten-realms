@@ -40,7 +40,7 @@ from managers.mob_definitions import get_mob_definitions
 from managers.mob_manager import MobManager
 from managers.player import PlayerManager
 from managers.world import generate_world
-from server_config import ServerConfig, build_ssl_context
+from server_config import ServerConfig
 from services.notifications import set_context
 from tick_service import start_background_tick
 
@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 # Install log buffer for error reporting (captures last 200 lines)
 install_log_buffer(capacity=200)
 
-# Determine if we're in test mode (skip SSL) using a -test flag
+# Test mode (-test) may bind a non-loopback SERVER_BIND_HOST for LAN testing.
 TEST_MODE = "-test" in sys.argv
 
 # Setup Socket.IO server and the web app.
@@ -113,20 +113,18 @@ logger.info("Registering Socket.IO event handlers...")
 register_handlers(sio, auth_manager, player_manager, game_state, online_sessions, utils)
 logger.info("Socket.IO event handlers registered.")
 
-# Configure the listener. Production keeps the existing Let's Encrypt default;
-# Cloudflare Tunnel sets SERVER_BIND_HOST=127.0.0.1 and SERVER_TLS_MODE=disabled.
+# Configure the listener: plain HTTP on 127.0.0.1 by default. Production sits
+# behind Cloudflare Tunnel, which terminates TLS at Cloudflare's edge.
 try:
     server_config = ServerConfig.from_env(test_mode=TEST_MODE)
-    ssl_context = build_ssl_context(server_config)
-except (OSError, ValueError) as exc:
+except ValueError as exc:
     logger.error(f"Failed to configure the backend listener: {exc}")
     sys.exit(1)
 
 logger.info(
-    "Configured listener: host=%s port=%s tls=%s",
+    "Configured listener: host=%s port=%s",
     server_config.bind_host,
     server_config.port,
-    server_config.tls_mode,
 )
 
 
@@ -134,15 +132,9 @@ async def main() -> None:
     try:
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(
-            runner,
-            server_config.bind_host,
-            server_config.port,
-            ssl_context=ssl_context,
-        )
+        site = web.TCPSite(runner, server_config.bind_host, server_config.port)
         logger.info(
-            "Server starting at %s://%s:%s",
-            "https" if ssl_context else "http",
+            "Server starting at http://%s:%s",
             server_config.bind_host,
             server_config.port,
         )
@@ -168,9 +160,7 @@ async def main() -> None:
 
 async def handle_root(request: Any) -> web.Response:
     logger.info("Received request on root endpoint.")
-    return web.Response(
-        text="Socket.IO server is running" + (" over HTTPS." if ssl_context else ".")
-    )
+    return web.Response(text="Socket.IO server is running.")
 
 
 app.router.add_get("/", handle_root)
