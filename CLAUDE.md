@@ -14,7 +14,7 @@ Forgotten Realms is a text-based multiplayer MUD (Multi-User Dungeon) with AI-ge
 ```bash
 cd backend
 python3 socket_server.py -test    # Test mode (no SSL, http://localhost:8080)
-python3 socket_server.py          # Production mode (with SSL)
+python3 socket_server.py          # Production mode (HTTP on 127.0.0.1, behind Cloudflare Tunnel)
 ```
 
 **Frontend (React dev server):**
@@ -706,9 +706,9 @@ Before submitting any code, verify:
 
 Room persistence (`save_rooms()` / `load_rooms()`) is commented out in `game_state.py`. The world is regenerated fresh on each server start. Player data **is** persisted to JSON.
 
-### SSL Certificates are Hardcoded
+### Production Runs Behind Cloudflare Tunnel
 
-Production mode expects Let's Encrypt certs at `/etc/letsencrypt/live/api.realms.lordos.tech/`. Use `-test` flag for local development.
+Production serves plain HTTP on `127.0.0.1:8080`. Cloudflare Tunnel routes `realms-api.lordos.tech` to `http://localhost:8080` and terminates TLS, so there is no origin certificate to renew. `SERVER_TLS_MODE=letsencrypt` restores direct TLS, but the old `api.realms.lordos.tech` certificate can no longer renew: that hostname and the VM's public IPv4 are gone. Use the `-test` flag for local development.
 
 ### Global State in utils.py
 

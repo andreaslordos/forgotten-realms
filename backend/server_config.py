@@ -32,9 +32,10 @@ class ServerConfig:
         test_mode: bool = False,
         environ: Optional[Mapping[str, str]] = None,
     ) -> "ServerConfig":
-        """Build configuration while preserving the legacy production defaults."""
+        """Build configuration; production defaults to the Cloudflare Tunnel origin."""
         values = os.environ if environ is None else environ
-        bind_host = values.get("SERVER_BIND_HOST", "0.0.0.0").strip()
+        default_bind_host = "0.0.0.0" if test_mode else "127.0.0.1"
+        bind_host = values.get("SERVER_BIND_HOST", default_bind_host).strip()
         if not bind_host:
             raise ValueError("SERVER_BIND_HOST cannot be empty")
 
@@ -46,8 +47,7 @@ class ServerConfig:
         if not 1 <= port <= 65535:
             raise ValueError("PORT must be between 1 and 65535")
 
-        default_tls_mode = "disabled" if test_mode else "letsencrypt"
-        tls_mode = values.get("SERVER_TLS_MODE", default_tls_mode).strip().lower()
+        tls_mode = values.get("SERVER_TLS_MODE", "disabled").strip().lower()
         if tls_mode not in TLS_MODES:
             supported = ", ".join(sorted(TLS_MODES))
             raise ValueError(f"SERVER_TLS_MODE must be one of: {supported}")
@@ -57,7 +57,7 @@ class ServerConfig:
             and bind_host not in {"127.0.0.1", "::1", "localhost"}
         ):
             raise ValueError(
-                "SERVER_TLS_MODE=disabled requires a loopback SERVER_BIND_HOST"
+                "SERVER_BIND_HOST must be loopback unless SERVER_TLS_MODE=letsencrypt"
             )
 
         return cls(

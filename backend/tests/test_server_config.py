@@ -14,20 +14,33 @@ from server_config import (  # noqa: E402
 
 
 class TestServerConfig(unittest.TestCase):
-    def test_from_env_preserves_legacy_production_defaults(self) -> None:
+    def test_from_env_defaults_production_to_loopback_tunnel_origin(self) -> None:
         config = ServerConfig.from_env(environ={})
 
-        self.assertEqual(config.bind_host, "0.0.0.0")
+        self.assertEqual(config.bind_host, "127.0.0.1")
         self.assertEqual(config.port, 8080)
-        self.assertEqual(config.tls_mode, "letsencrypt")
-        self.assertEqual(config.cert_file, DEFAULT_CERT_FILE)
-        self.assertEqual(config.key_file, DEFAULT_KEY_FILE)
+        self.assertEqual(config.tls_mode, "disabled")
+        self.assertFalse(config.tls_enabled)
 
     def test_from_env_test_mode_disables_tls_by_default(self) -> None:
         config = ServerConfig.from_env(test_mode=True, environ={})
 
+        self.assertEqual(config.bind_host, "0.0.0.0")
         self.assertEqual(config.tls_mode, "disabled")
         self.assertFalse(config.tls_enabled)
+
+    def test_from_env_allows_explicit_letsencrypt_opt_in(self) -> None:
+        config = ServerConfig.from_env(
+            environ={
+                "SERVER_BIND_HOST": "0.0.0.0",
+                "SERVER_TLS_MODE": "letsencrypt",
+            }
+        )
+
+        self.assertEqual(config.bind_host, "0.0.0.0")
+        self.assertTrue(config.tls_enabled)
+        self.assertEqual(config.cert_file, DEFAULT_CERT_FILE)
+        self.assertEqual(config.key_file, DEFAULT_KEY_FILE)
 
     def test_from_env_supports_loopback_tunnel_origin(self) -> None:
         config = ServerConfig.from_env(
@@ -47,13 +60,10 @@ class TestServerConfig(unittest.TestCase):
             ServerConfig.from_env(environ={"SERVER_TLS_MODE": "sometimes"})
 
     def test_from_env_rejects_plaintext_on_a_public_production_bind(self) -> None:
-        with self.assertRaisesRegex(ValueError, "loopback"):
-            ServerConfig.from_env(
-                environ={
-                    "SERVER_BIND_HOST": "0.0.0.0",
-                    "SERVER_TLS_MODE": "disabled",
-                }
-            )
+        for bind_host in ("0.0.0.0", "::"):
+            with self.subTest(bind_host=bind_host):
+                with self.assertRaisesRegex(ValueError, "loopback"):
+                    ServerConfig.from_env(environ={"SERVER_BIND_HOST": bind_host})
 
     def test_from_env_rejects_invalid_port(self) -> None:
         with self.assertRaisesRegex(ValueError, "PORT"):
@@ -67,6 +77,7 @@ class TestServerConfig(unittest.TestCase):
         create_default_context.return_value = context
         config = ServerConfig.from_env(
             environ={
+                "SERVER_TLS_MODE": "letsencrypt",
                 "SERVER_CERT_FILE": "/tmp/server.crt",
                 "SERVER_KEY_FILE": "/tmp/server.key",
             }
@@ -82,12 +93,7 @@ class TestServerConfig(unittest.TestCase):
     def test_build_ssl_context_skips_tls_when_disabled(
         self, create_default_context: Mock
     ) -> None:
-        config = ServerConfig.from_env(
-            environ={
-                "SERVER_BIND_HOST": "127.0.0.1",
-                "SERVER_TLS_MODE": "disabled",
-            }
-        )
+        config = ServerConfig.from_env(environ={})
 
         self.assertIsNone(build_ssl_context(config))
         create_default_context.assert_not_called()

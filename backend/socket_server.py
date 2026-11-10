@@ -113,8 +113,8 @@ logger.info("Registering Socket.IO event handlers...")
 register_handlers(sio, auth_manager, player_manager, game_state, online_sessions, utils)
 logger.info("Socket.IO event handlers registered.")
 
-# Configure the listener. Production keeps the existing Let's Encrypt default;
-# Cloudflare Tunnel sets SERVER_BIND_HOST=127.0.0.1 and SERVER_TLS_MODE=disabled.
+# Configure the listener. Production defaults to the Cloudflare Tunnel origin:
+# plain HTTP on 127.0.0.1, with TLS terminated at Cloudflare's edge.
 try:
     server_config = ServerConfig.from_env(test_mode=TEST_MODE)
     ssl_context = build_ssl_context(server_config)
