@@ -1,8 +1,10 @@
 """
 Error Reporter Service
 
-Automatically creates GitHub issues when runtime errors occur.
-Used with the anthropics/claude-code-action to trigger automated TDD bug fixes.
+Automatically creates GitHub issues when runtime errors occur, through the
+bug relay Worker in infra/bug-relay: the VM is IPv6-only and GitHub's API is
+IPv4-only. The relay holds the GitHub token and picks the labels; adding the
+auto-fix label to an issue starts the claude-code-action TDD bug fix.
 """
 
 import hashlib
@@ -66,34 +68,33 @@ def get_recent_logs() -> str:
 
 
 class ErrorReporter:
-    """Reports runtime errors as GitHub issues for automated fixing."""
+    """Reports runtime errors as GitHub issues via the bug relay."""
 
     def __init__(
         self,
-        github_token: Optional[str] = None,
-        repo: Optional[str] = None,
+        relay_url: Optional[str] = None,
+        relay_token: Optional[str] = None,
     ) -> None:
         """
         Initialize the error reporter.
 
         Args:
-            github_token: GitHub token with repo:issues permission.
-                         Falls back to GITHUB_TOKEN env var.
-            repo: GitHub repository in "owner/repo" format.
-                  Falls back to GITHUB_REPO env var.
+            relay_url: Bug relay endpoint (infra/bug-relay).
+                       Falls back to ERROR_RELAY_URL env var.
+            relay_token: Shared secret the relay expects.
+                         Falls back to ERROR_RELAY_TOKEN env var.
         """
-        self.github_token = github_token or os.environ.get("GITHUB_TOKEN")
-        self.repo = repo or os.environ.get("GITHUB_REPO")
+        self.relay_url = relay_url or os.environ.get("ERROR_RELAY_URL")
+        self.relay_token = relay_token or os.environ.get("ERROR_RELAY_TOKEN")
         self.reported_signatures: Set[str] = set()
-        self._enabled = bool(self.github_token and self.repo)
-        if self._enabled:
-            logger.info(f"ErrorReporter initialized for {self.repo}")
+        if self.relay_url and self.relay_token:
+            logger.info(f"ErrorReporter initialized for {self.relay_url}")
         else:
             missing = []
-            if not self.github_token:
-                missing.append("GITHUB_TOKEN")
-            if not self.repo:
-                missing.append("GITHUB_REPO")
+            if not self.relay_url:
+                missing.append("ERROR_RELAY_URL")
+            if not self.relay_token:
+                missing.append("ERROR_RELAY_TOKEN")
             logger.warning(f"ErrorReporter disabled: {', '.join(missing)} not set")
 
     def _generate_signature(
@@ -134,7 +135,7 @@ class ErrorReporter:
         Returns:
             True if issue was created, False otherwise.
         """
-        if not self._enabled:
+        if not self.relay_url or not self.relay_token:
             logger.debug("Error reporter disabled, skipping")
             return False
 
@@ -192,16 +193,9 @@ class ErrorReporter:
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    f"https://api.github.com/repos/{self.repo}/issues",
-                    headers={
-                        "Authorization": f"token {self.github_token}",
-                        "Accept": "application/vnd.github.v3+json",
-                    },
-                    json={
-                        "title": issue_title,
-                        "body": issue_body,
-                        "labels": ["bug", "auto-fix"],
-                    },
+                    self.relay_url,
+                    headers={"Authorization": f"Bearer {self.relay_token}"},
+                    json={"title": issue_title, "body": issue_body},
                     timeout=10.0,
                 )
                 response.raise_for_status()

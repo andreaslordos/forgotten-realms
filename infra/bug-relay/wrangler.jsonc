@@ -1,0 +1,13 @@
+{
+  "name": "forgotten-realms-bug-relay",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "vars": {
+    "GITHUB_REPO": "andreaslordos/forgotten-realms"
+  },
+  // Secrets, set with `wrangler secret put`: GITHUB_TOKEN and RELAY_TOKEN.
+  "observability": {
+    "enabled": true
+  }
+}
