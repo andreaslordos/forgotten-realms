@@ -710,6 +710,10 @@ Room persistence (`save_rooms()` / `load_rooms()`) is commented out in `game_sta
 
 The server only speaks plain HTTP and binds `127.0.0.1:8080` by default. In production, Cloudflare Tunnel routes `realms-api.lordos.tech` to `http://localhost:8080` and terminates TLS at Cloudflare's edge, so there is no origin certificate to renew. Outside `-test`, a non-loopback `SERVER_BIND_HOST` is refused, so the game is never served unencrypted on a public interface.
 
+### Runtime Errors Become GitHub Issues
+
+When a command raises, `services/error_reporter.py` files a GitHub issue through the bug relay Worker in `infra/bug-relay/` (`https://realms-bugs.lordos.tech/`), because the VM is IPv6-only and GitHub's API is IPv4-only. The VM's `backend/.env` sets `ERROR_RELAY_URL` and `ERROR_RELAY_TOKEN`; without them the reporter is disabled. The GitHub token lives only in the Worker, and the Worker labels every issue `bug`: add `auto-fix` (or comment `@claude`) to start the fix workflow.
+
 ### Global State in utils.py
 
 `mob_manager` is attached to the `utils` module at runtime in `socket_server.py`:
