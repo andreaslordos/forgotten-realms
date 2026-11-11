@@ -1,8 +1,12 @@
 {
   "name": "forgotten-realms-bug-relay",
   "main": "src/index.js",
-  "compatibility_date": "2026-10-01",
-  "workers_dev": true,
+  "compatibility_date": "2026-11-10",
+  // A fixed hostname on our zone, so renaming the account's workers.dev
+  // subdomain can never break ERROR_RELAY_URL on the VM.
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "realms-bugs.lordos.tech", "custom_domain": true }],
   "vars": {
     "GITHUB_REPO": "andreaslordos/forgotten-realms"
   },
